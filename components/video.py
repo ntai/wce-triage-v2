@@ -1,5 +1,9 @@
 #
-from components.pci import *
+try:
+  from components.pci import *
+except:
+  from pci import *
+  pass
 
 #
 # Video device blacklist

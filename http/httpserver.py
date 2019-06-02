@@ -41,8 +41,8 @@ PROTOCOL = "http"
 
 def make_bytestream(data):
   json_data = dumps(data)
-  print(json_data)
   return BytesIO(bytes(json_data, "utf-8") if sys.version_info >= (3, 0) else bytes(json_data))
+
 
 class HTTPStatusError(Exception):
   """Exception wrapping a value from http.server.HTTPStatus"""
@@ -79,6 +79,7 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
                     "/triage.json": self.route_triage,
                     "/disks.json": self.route_disks,
                     "/disk-images.json": self.route_disk_images,
+                    "/disk-load-status.json": self.route_disk_load_status,
                     "/load": self.route_load_image,
                     "/save": self.route_save_image
     }
@@ -161,14 +162,14 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
         # The service returned an error
         raise HTTPStatusError(HTTP_STATUS["INTERNAL_SERVER_ERROR"],
                               str(err))
-      self.overall_decision = self.computer.triage()
       pass
 
     # decision comes back as tuple, make it to the props for jsonify
-    jsonified = { "components": [ {"component": component, "result": "Good" if good else "Bad", "details": dtl} for component, good, dtl in self.computer.decisions ] }
+    jsonified = { "components": [ {"component": thing, "result": "Good" if good else "Bad", "details": dtl} for thing, good, dtl in self.computer.decisions ] }
     return ResponseData(status=HTTP_STATUS["OK"],
                         content_type="application/json",
                         data_stream=make_bytestream(jsonified))
+
 
   def route_disks(self, path, query):
     """Handles getting the list of disks"""
@@ -184,35 +185,59 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
       self.overall_decision = self.computer.triage()
       pass
 
-    disks = [ {"device": disk.device_name,
+    
+    disks = [ {"target": 0,
+               "progress": 0,
+               "elapseTime": 0,
+               "device": disk.device_name,
                "disk": "y" if disk.is_disk else "n",
                "mounted": "y" if disk.mounted else "n",
                "bus": "usb" if disk.is_usb else "ata",
                "model": disk.disk_model }
               for disk in self.computer.disks ]
 
+    jsonified = { "diskPages": 1, "disks": disks }
+
     return ResponseData(status=HTTP_STATUS["OK"],
                         content_type="application/json",
-                        data_stream=make_bytestream(disks))
+                        data_stream=make_bytestream(jsonified))
     pass
 
 
   def route_disk_images(self, path, query):
     """Handles getting the list of disk images"""
 
-    images = get_disk_images()
+    # images = get_disk_images()
+    images = { "sources": [ "wce-1.tar.gz", "wce-2.tar.gz", "wce-3.tar.gz" ] }
     return ResponseData(status=HTTP_STATUS["OK"],
                         content_type="application/json",
-                        data_stream=make_bytestream(images.keys()))
+                        data_stream=make_bytestream(images))
     pass
 
 
   def route_load_image(self, path, query):
     """Load disk image to disk"""
 
+    fake_status = { "pages": 1,
+                    "sources": [ "wce-1.tar.gz", "wce-2.tar.gz", "wce-3.tar.gz" ] }
+
     return ResponseData(status=HTTP_STATUS["OK"],
                         content_type="application/json",
-                        data_stream=make_bytestream("HELLO!"))
+                        data_stream=make_bytestream(fake_status))
+    pass
+
+  def route_disk_load_status(self, path, query):
+    """Load disk image to disk"""
+
+    fake_status = { "pages": 1,
+                    "steps": [ { "category": "Step-1", "progress": 100, "elapseTime": "100", "status": "done" },
+                               { "category": "Step-2", "progress": 30, "elapseTime": "30", "status": "running" },
+                               { "category": "Step-3", "progress": 0, "elapseTime": "0", "status": "waiting" },
+                               { "category": "Step-4", "progress": 0, "elapseTime": "0", "status": "waiting" } ] }
+
+    return ResponseData(status=HTTP_STATUS["OK"],
+                        content_type="application/json",
+                        data_stream=make_bytestream(fake_status))
     pass
 
   def route_save_image(self, path, query):
@@ -238,12 +263,14 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
         # Push out the stream's content in chunks
         while True:
           data = managed_stream.read(CHUNK_SIZE)
-          # self.wfile.write(b"%X\r\n%s\r\n" % (len(data), data))
-          self.wfile.write(b"%s\r\n" % (data))
-
           # If there's no more data to read, stop streaming
           if not data:
+            print("\nEND-OF-DATA")
+            self.wfile.write(b"\r\n")
             break
+
+          print(data)
+          self.wfile.write(b"%s" % (data))
           pass
 
         # Ensure any buffered output has been transmitted and close the
