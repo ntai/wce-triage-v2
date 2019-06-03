@@ -10,6 +10,8 @@ from contextlib import closing
 from json import dumps
 import os
 import sys
+import mimetypes
+mimetypes.add_type("text/css", ".less")
 
 if sys.version_info >= (3, 0):
   from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -76,17 +78,16 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
     HTTP request handler for triage
     """
     self.routes = { "/index.html": self.route_index,
-                    "/triage.json": self.route_triage,
-                    "/disks.json": self.route_disks,
-                    "/disk-images.json": self.route_disk_images,
-                    "/disk-load-status.json": self.route_disk_load_status,
-                    "/load": self.route_load_image,
-                    "/save": self.route_save_image
+                    "/dispatch/triage.json": self.route_triage,
+                    "/dispatch/disks.json": self.route_disks,
+                    "/dispatch/disk-images.json": self.route_disk_images,
+                    "/dispatch/disk-load-status.json": self.route_disk_load_status,
+                    "/dispatch/load": self.route_load_image,
+                    "/dispatch/save": self.route_save_image
     }
 
     self.computer = Computer()
     self.overall_decision = None
-
     super(BaseHTTPRequestHandler, self).__init__(*argv)
     pass
 
@@ -106,15 +107,14 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
     print(u"[START]: Received GET for %s with query: %s" % (path, query))
 
     handler = self.routes.get(path)
+    if handler is None:
+      filepath = os.path.join(rootdir, path)
+      handler = self.route_static_file if os.path.exists(filepath) and os.path.isfile(filepath) else self.route_404
+      pass
 
     try:
       # Handle the possible request paths
-      if handler:
-        response = handler(path, query)
-      else:
-        response = self.route_404(path, query)
-        pass
-
+      response = handler(path, query)
       self.send_headers(response.status, response.content_type)
       self.stream_data(response.data_stream)
 
@@ -126,28 +126,37 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
       else:
         self.send_error(err.code, err.message)
         pass
-
       self.log_error(u"%s %s %s - [%d] %s", self.client_address[0],
                      self.command, self.path, err.code, err.explain)
-
-      print("[END]")
       pass
+
+    print("[END]")
     pass
+
 
   def route_404(self, path, query):
     """Handles routing for unexpected paths"""
     raise HTTPStatusError(HTTP_STATUS["NOT_FOUND"], "Page not found")
 
-  def route_index(self, path, query):
-    """Handles routing for the application's entry point'"""
+  def route_static_file(self, path, query):
+    """Handles routing for a file'"""
+
+    ctype = mimetypes.guess_type(path)[0]
+    if ctype is None:
+      ctype  = "text"
+      pass
     try:
-      # Open a binary stream for reading the index HTML file
-      return ResponseData(status=HTTP_STATUS["OK"], content_type="text_html",
-                          data_stream=open(os.path.join(sys.path[0],
-                                                        path[1:]), "rb"))
+      # Open a binary stream for reading a file
+      return ResponseData(status=HTTP_STATUS["OK"], content_type=ctype,
+                          data_stream=open(os.path.join(rootdir, path[1:]), "rb"))
     except IOError as err:
       # Couldn't open the stream
       raise HTTPStatusError(HTTP_STATUS["INTERNAL_SERVER_ERROR"], str(err))
+    pass
+
+  def route_index(self, path, query):
+    """Handles routing for the application's entry point'"""
+    self.route_static_file(path, query)
     pass
 
 
@@ -208,7 +217,12 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
     """Handles getting the list of disk images"""
 
     # images = get_disk_images()
-    images = { "sources": [ "wce-1.tar.gz", "wce-2.tar.gz", "wce-3.tar.gz" ] }
+    images = { "sources": [
+      { "mtime": "2019-04-01", "name": "wce-1.tar.gz", "fullpath": "/var/www/wce-1.tar.gz", "size": 1001 },
+      { "mtime": "2019-04-02", "name": "wce-2.tar.gz", "fullpath": "/var/www/wce-2.tar.gz", "size": 1002 },
+      { "mtime": "2019-04-03", "name": "wce-3.tar.gz", "fullpath": "/var/www/wce-3.tar.gz", "size": 1003 }
+      ]}
+
     return ResponseData(status=HTTP_STATUS["OK"],
                         content_type="application/json",
                         data_stream=make_bytestream(images))
@@ -303,11 +317,13 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
 cli = ArgumentParser(description='Example Python Application')
 cli.add_argument("-p", "--port", type=int, metavar="PORT", dest="port", default=8312)
 cli.add_argument("--host", type=str, metavar="HOST", dest="host", default="0.0.0.0")
+cli.add_argument("--rootdir", type=str, metavar="ROOTDIR", dest="rootdir", default=os.getcwd())
 arguments = cli.parse_args()
 
 # If the module is invoked directly, initialize the application
 if __name__ == '__main__':
   # Create and configure the HTTP server instance
+  rootdir = arguments.rootdir
   server = ThreadedHTTPServer((arguments.host, arguments.port), TriageHTTPRequestHandler)
   print("Starting server, use <Ctrl-C> to stop...")
   weburl = u"{0}://{1}:{2}{3}".format(PROTOCOL,
@@ -315,7 +331,6 @@ if __name__ == '__main__':
                                       arguments.port,
                                       "/index.html")
   print(u"Open {0} in a web browser.".format(weburl))
-  subprocess.call(["x-www-browser", weburl])
   try:
     # Listen for requests indefinitely
     server.serve_forever()
