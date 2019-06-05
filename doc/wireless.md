@@ -11,3 +11,5 @@ Following two modules needs to be removed.
 To find the PCI ID, do
 lspci -vnn | grep -i 14e4:
 
+Also, 'firmware-b43-insaller' and 'firmware-b43legacy-installer'
+

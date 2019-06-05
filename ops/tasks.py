@@ -10,6 +10,7 @@
 #
 
 import datetime, re, subproess
+import components.pci
 
 class disk_op_task(object):
   def __init__(self, op, description):
@@ -42,6 +43,14 @@ class disk_op_task(object):
   def set_progress(self, progress, msg):
     self.progress = progress
     self.message = msg
+    pass
+
+  def _noop(self):
+    self.is_started = True
+    self.is_done = True
+    self.progress = 100
+    self.start_time = datetime.datetime.now()
+    self.end_time = self.start_time
     pass
 
   pass
@@ -945,6 +954,7 @@ class task_finalize_disk(disk_op_task_python):
 class task_mount_nfs_destination(disk_op_task_process):
 
   def __init__(self, op, description):
+    super().__init__(op, description)
     pass
   
   def start(self):
@@ -973,4 +983,39 @@ class task_mount_nfs_destination(disk_op_task_process):
     super().start()
     pass
 
+  pass
+
+
+# Package uninsall base class
+class task_uninstall_package(disk_op_task_process):
+
+  def __init__(self, op, description, packages=None):
+    super().__init__(op, description)
+    self.packages = packages
+    pass
+  
+  def start(self):
+    if self.packages:
+      self.argv = [ "apt", "purge", "-y" ] + self.packages
+      super().start()
+      pass
+    pass
+
+  pass
+
+class task_uninstall_bcmwl(task_uninstall_package):
+  
+  def __init__(self, op, description, packages=None):
+    super().__init__(op, description)
+    pass
+  
+  def start(self):
+    if components.pci.find_pci_device_node([0x14e4], [0x4312]):
+      self.packages = ['bcmwl-kernel-source']
+      super().start()
+      pass
+    else:
+      self._noop()
+      pass
+    pass
   pass
