@@ -138,11 +138,12 @@ class Computer:
       msg = "Hard Drive:\n"
       good_disk = False
       for disk in self.disks:
-        disk_gb = disk.get_byte_size() / 1000000000
+        print ("%s = %d" % (disk.device_name, disk.get_byte_size()))
+        disk_gb = disk.get_byte_size() / 1000000
         disk_msg = "     Device %s: size = %dGbytes  %s" % (disk.device_name, disk_gb, disk.model_name)
-        if (disk_gb / 1000) >= 60:
+        if disk_gb >= 60:
           good_disk = True
-          disk_msg += " - Good size"
+          disk_msg += " - Good"
           pass
         else:
           disk_msg += " - TOO SMALL"
@@ -249,3 +250,11 @@ class Computer:
   pass
 
 
+if __name__ == "__main__":
+  computer = Computer()
+  decision = computer.triage()
+  print( "decision %s" % decision)
+  for detail in computer.decisions:
+    print(detail)
+    pass
+  pass
