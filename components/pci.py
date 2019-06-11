@@ -1,4 +1,4 @@
-import re, subprocess
+import re, subprocess, os
 
 # PCI vendors
 PCI_VENDOR_VIA = "1106"
@@ -56,9 +56,39 @@ def get_lspci_device_desc(pci_id):
     return m.group(3) + " " + m.group(4)
   return ""
 
+
+def safe_read_text(pathname):
+  if os.path.exists(pathname):
+    filedesc = open(pathname)
+    contents = filedesc.read()
+    filedesc.close()
+    return contents
+  return ""
+
+def find_pci_device_node(vendors, devices):
+  pci_path = '/sys/bus/pci/devices'
+  for a_device in os.listdir(pci_path):
+    devnode = os.path.join(pci_path, a_device)
+    vendor = safe_read_text(os.path.join(devnode, "vendor"))
+    device = safe_read_text(os.path.join(devnode, "device"))
+    vendor_id = int(vendor, 16)
+    device_id = int(device, 16)
+    if vendor_id in vendors and device_id in devices:
+      return devnode
+    pass
+  return None
+
+
 if __name__ == "__main__":
   for device in list_pci():
     print(str(device))
+    pass
+
+  devnode = find_pci_device_node([0x14e4], [0x4312])
+  if devnode:
+    print('broadcom bcm4312 is found at %s' % devnode)
+  else:
+    print('broadcom bcm4312 is not found.')
     pass
   pass
   

@@ -8,6 +8,7 @@
 #
 
 import datetime, re, subprocess, abc, os, select, time
+import components.pci
 
 class op_task(object, metaclass=abc.ABCMeta):
   def __init__(self, description):
@@ -35,6 +36,14 @@ class op_task(object, metaclass=abc.ABCMeta):
   def set_progress(self, progress, msg):
     self.progress = progress
     self.message = msg
+    pass
+
+  def _noop(self):
+    self.is_started = True
+    self.is_done = True
+    self.progress = 100
+    self.start_time = datetime.datetime.now()
+    self.end_time = self.start_time
     pass
 
   pass
@@ -986,6 +995,44 @@ class task_sleep(op_task_process):
     wallclock = datetime.datetime.now()
     dt = wallclock - self.start_time
     return 100 * (dt.total_seconds()/self.duration)
+  pass
+
+
+# Package uninsall base class
+class task_uninstall_package(disk_op_task_process):
+
+  def __init__(self, op, description, packages=None):
+    super().__init__(op, description)
+    self.packages = packages
+    pass
+  
+  def start(self):
+    if self.packages:
+      self.argv = [ "apt", "purge", "-y" ] + self.packages
+      super().start()
+      pass
+    pass
+
+  pass
+
+#
+# Uninstall Broadcom STA
+#
+class task_uninstall_bcmwl(task_uninstall_package):
+  
+  def __init__(self, op, description, packages=None):
+    super().__init__(op, description)
+    pass
+  
+  def start(self):
+    if components.pci.find_pci_device_node([0x14e4], [0x4312]):
+      self.packages = ['bcmwl-kernel-source']
+      super().start()
+      pass
+    else:
+      self._noop()
+      pass
+    pass
   pass
 
 

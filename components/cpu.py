@@ -1,13 +1,10 @@
 import os
 
 def parse_cpu_info_tag_value(line):
-  try:
-    elems = line.split(":")
-    return string.strip(elems[0]), string.strip(elems[1])
-  except:
-    return None, None
-  pass
-
+  elems = line.split(":")
+  if len(elems) == 2:
+    return (elems[0].strip(), elems[1].strip())
+  return (None, None)
 
 def detect_cpu_type():
   max_processor = 0
@@ -42,7 +39,7 @@ def detect_cpu_type():
         pass
       pass
     elif tag == 'cpu MHz':
-      cpu_speed = (int)(string.atof(value)+0.5)
+      cpu_speed = (int)(float(value)+0.5)
       pass
     elif tag == 'model name':
       model_name = value
@@ -92,7 +89,7 @@ def detect_cpu_type():
     f = open(scaling_max_freq)
     speed = f.read()
     f.close()
-    cpu_speed = string.atol(speed) / 1000
+    cpu_speed = int(speed) / 1000
     pass
   
   return { "class": cpu_class, "cores": cpu_cores, "processors": max_processor + 1, "vendor": cpu_vendor, "model": model_name, "bogomips": bogomips, "speed": cpu_speed }
