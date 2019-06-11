@@ -11,6 +11,7 @@ from json import dumps
 import os
 import sys
 import mimetypes
+import socket
 mimetypes.add_type("text/css", ".less")
 
 if sys.version_info >= (3, 0):
@@ -32,6 +33,7 @@ from components.computer import Computer
 
 ResponseStatus = namedtuple("HTTPStatus", ["code", "message"])
 ResponseData = namedtuple("ResponseData", ["status", "content_type", "data_stream"])
+Redirect = namedtuple("Redirect", ["url"])
 
 CHUNK_SIZE = 4096
 HTTP_STATUS = {"OK": ResponseStatus(code=200, message="OK"),
@@ -77,7 +79,8 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
     """
     HTTP request handler for triage
     """
-    self.routes = { "/index.html": self.route_index,
+    self.routes = { "/": self.route_root,
+                    "/index.html": self.route_index,
                     "/dispatch/triage.json": self.route_triage,
                     "/dispatch/disks.json": self.route_disks,
                     "/dispatch/disk-images.json": self.route_disk_images,
@@ -108,16 +111,28 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
 
     handler = self.routes.get(path)
     if handler is None:
-      filepath = os.path.join(rootdir, path)
+      filepath = os.path.join(rootdir, path[1:])
       handler = self.route_static_file if os.path.exists(filepath) and os.path.isfile(filepath) else self.route_404
       pass
 
     try:
       # Handle the possible request paths
       response = handler(path, query)
-      self.send_headers(response.status, response.content_type)
-      self.stream_data(response.data_stream)
-
+      if isinstance(response, ResponseData):
+        self.send_headers(response.status, response.content_type)
+        self.stream_data(response.data_stream)
+      elif isinstance(response, Redirect):
+        self.send_response(301)
+        self.send_header('Transfer-Encoding', 'utf-8')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Location', response.url)
+        self.end_headers()
+        pass
+      elif response is None:
+        raise Exception("Response is None. You bonehead!")
+      else:
+        raise Exception("Unknown response")
+      pass
     except HTTPStatusError as err:
       # Respond with an error and log debug
       # information
@@ -154,11 +169,15 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
       raise HTTPStatusError(HTTP_STATUS["INTERNAL_SERVER_ERROR"], str(err))
     pass
 
+  def route_root(self, path, query):
+    """Redirect / to index.html"""
+    global the_root_url
+    print(u"Redirecting to {0} in a web browser.".format(the_root_url))
+    return Redirect(the_root_url)
+
   def route_index(self, path, query):
     """Handles routing for the application's entry point'"""
-    self.route_static_file(path, query)
-    pass
-
+    return self.route_static_file(path, query)
 
   def route_triage(self, path, query):
     """Handles requesting traige result"""
@@ -265,8 +284,6 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
 
   def stream_data(self, stream):
     """Consumes a stream in chunks to produce the response's output'"""
-    print("Streaming started...")
-
     if stream:
       # Note: Closing the stream is important as the service throttles on
       # the number of parallel connections. Here we are using
@@ -275,28 +292,31 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
       # scope.
       with closing(stream) as managed_stream:
         # Push out the stream's content in chunks
-        while True:
+        streaming = True
+        while streaming:
           data = managed_stream.read(CHUNK_SIZE)
           # If there's no more data to read, stop streaming
-          if not data:
-            print("\nEND-OF-DATA")
-            self.wfile.write(b"\r\n")
-            break
-
-          print(data)
-          self.wfile.write(b"%s" % (data))
+          try:
+            if not data:
+              streaming = False
+              self.wfile.write(b"\r\n")
+              break
+            self.wfile.write(b"%s" % (data))
+          except BrokenPipeError as exc:
+            # The receiving end stopped accepting data.
+            streaming = False
+            pass
+          except Exception as exc:
+            raise exc
           pass
 
         # Ensure any buffered output has been transmitted and close the
         # stream
         self.wfile.flush()
         pass
-
-      print("Streaming completed.")
     else:
       # The stream passed in is empty
       self.wfile.write(b"\r\n\r\n")
-      print("Nothing to stream.")
       pass
     pass
 
@@ -316,21 +336,23 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
 # Define and parse the command line arguments
 cli = ArgumentParser(description='Example Python Application')
 cli.add_argument("-p", "--port", type=int, metavar="PORT", dest="port", default=8312)
-cli.add_argument("--host", type=str, metavar="HOST", dest="host", default="0.0.0.0")
+cli.add_argument("--host", type=str, metavar="HOST", dest="host", default=socket.getfqdn())
 cli.add_argument("--rootdir", type=str, metavar="ROOTDIR", dest="rootdir", default=os.getcwd())
 arguments = cli.parse_args()
 
 # If the module is invoked directly, initialize the application
 if __name__ == '__main__':
   # Create and configure the HTTP server instance
+  global the_root_url
+  the_root_url = u"{0}://{1}:{2}{3}".format(PROTOCOL,
+                                            arguments.host,
+                                            arguments.port,
+                                            "/index.html")
   rootdir = arguments.rootdir
-  server = ThreadedHTTPServer((arguments.host, arguments.port), TriageHTTPRequestHandler)
+  # Accept connection from everywhere
+  server = ThreadedHTTPServer(('0.0.0.0', arguments.port), TriageHTTPRequestHandler)
   print("Starting server, use <Ctrl-C> to stop...")
-  weburl = u"{0}://{1}:{2}{3}".format(PROTOCOL,
-                                      arguments.host,
-                                      arguments.port,
-                                      "/index.html")
-  print(u"Open {0} in a web browser.".format(weburl))
+  print(u"Open {0} in a web browser.".format(the_root_url))
   try:
     # Listen for requests indefinitely
     server.serve_forever()

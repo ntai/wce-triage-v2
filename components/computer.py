@@ -218,8 +218,11 @@ class Computer:
       pass
 
     if len(eth_devices) > 0:
-      msg = "Ethernet card detected"
-      self.decisions.append( ("Network", True, msg))
+      for eth in eth_devices:
+        msg = "Ethernet detected on device {dev}".format(dev=eth.device_name)
+        self.decisions.append( ("Network", True, msg))
+        pass
+      pass
     else:
       msg = "Ethernet card: NOT DETECTED -- INSTALL ETHERNET CARD"
       self.decisions.append( ("Network", False, msg))

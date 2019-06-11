@@ -12,6 +12,40 @@ from lib.util import *
 
 ethernet_device_blacklist = { PCI_VENDOR_SIS : { "0191" : True } }
 
+
+class NetworkDevice(object):
+  Unknown = 0
+  Ethernet = 1
+  Wifi = 2
+  Bluetooth = 3
+  Other = 4
+  
+  def __init__(self, device_name=None, device_type=Unknown):
+    self.device_type = device_type
+    self.device_name = device_name
+    self.connected = None
+    pass
+  
+  def is_network_connected(self):
+    self.connected = False
+    netdir = '/sys/class/net'
+    devpath = os.path.join(netdir, node)
+    try:
+      carrierpath = os.path.join(devpath, "carrier")
+      carrier = open(carrierpath)
+      carrier_state = carrier.read()
+      carrier.close()
+      if int(carrier_state) == 1:
+        self.connected = True
+        pass
+      pass
+    except:
+      pass
+    return self.connected
+
+  pass
+
+
 def detect_ethernet():
   blacklisted_cards = []
   for pci in list_pci():
@@ -49,34 +83,12 @@ def detect_ethernet():
   for line in out.splitlines():
     m = eth_entry_re.match(line.strip())
     if m:
-      eth_devices.append(m.group(1))
+      eth_devices.append(NetworkDevice(device_name = m.group(1),
+                                       device_type = NetworkDevice.Ethernet))
       pass
     pass
   return { "detected": ethernet_detected, "blacklist": blacklisted_cards, "devices": eth_devices}
 
-
-def is_network_connected():
-  connected = False
-  netdir = '/sys/class/net'
-  for node in os.listfiles(netdir):
-    # Skip loopback
-    if node == 'lo':
-      continue
-
-    devpath = os.path.join(netdir, node)
-    
-    try:
-      carrierpath = os.path.join(devpath, "carrier")
-      carrier = open(carrierpath)
-      carrier_state = carrier.read()
-      carrier.close()
-      if int(carrier_state) == 1:
-        connected = True
-        pass
-      pass
-    except:
-      pass
-  return connected
 
 def get_transport_scheme(u):
   transport_scheme = None
@@ -87,6 +99,9 @@ def get_transport_scheme(u):
   return transport_scheme
 
 
+#
+# This is to get the IP address of connected server.
+# 
 def get_router_ip_address():
   netstat = subprocess.Popen("netstat -rn", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
   (out, err) = netstat.communicate()

@@ -1,7 +1,5 @@
 #
-# Disk operations
-#
-# Tasks: each task is a disk operation. Some tasks can take a long time.
+# Tasks: each task is a operation. Some tasks can take a long time.
 #
 # For example, a task is like mkfs. As the task runs, it should produce progress
 #
@@ -9,11 +7,10 @@
 # exec runs through the tasks.
 #
 
-import datetime, re, subproess
+import datetime, re, subprocess, abc, os, select, time
 
-class disk_op_task(object):
-  def __init__(self, op, description):
-    self.op = op
+class op_task(object, metaclass=abc.ABCMeta):
+  def __init__(self, description):
     self.description = description
     self.is_started = False
     self.is_done = False
@@ -23,16 +20,12 @@ class disk_op_task(object):
     self.end_time = None
     pass
 
-  @abstractmethod
+  @abc.abstractmethod
   def start(self):
     pass
 
-  @abstractmethod
+  @abc.abstractmethod
   def poll(self):
-    pass
-
-  @abstractmethod
-  def finished(self):
     pass
 
   @property
@@ -48,9 +41,9 @@ class disk_op_task(object):
 
 
 # Base class for Python based task
-class disk_op_task_python(object):
-  def __init__(self, op, description):
-    super().__init__(op, description)
+class op_task_python(op_task):
+  def __init__(self, description):
+    super().__init__(description)
     pass
 
   def start(self):
@@ -62,21 +55,22 @@ class disk_op_task_python(object):
     self.end_time = datetime.datetime.now()
     pass
 
-  @abstractmethod
+  @abc.abstractmethod
   def run_python(self):
     pass
 
   pass
 
 
-# Base class for subproess based task
-class disk_op_task_process(disk_op_task):
-  def __init__(self, op, description, argv=None, part=None)
-    super().__init__(op, description)
+# Base class for subprocess based task
+class op_task_process(op_task):
+  def __init__(self, description, argv=None, part=None, select_timeout=1):
+    super().__init__(description)
 
     self.argv = argv
     self.partition = part
     self.process = None
+    self.select_timeout = select_timeout
     pass
 
   def start(self):
@@ -84,18 +78,23 @@ class disk_op_task_process(disk_op_task):
     self.process = subprocess.Popen(self.argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     self.stdout = self.process.stdout
     self.stderr = self.process.stderr
-    self.read_set = [this.stdout, this.stderr]
+    self.read_set = [self.stdout, self.stderr]
     self.out = ""
     self.err = ""
     pass
 
   def _poll_process(self):
-    try:
-      rlist, wlist, xlist = select.select(self.read_set, [], [])
-    except select.error as e:
-      if e.args[0] == errno.EINTR:
-        continue
-      raise
+    selecting = True
+    while selecting:
+      selecting = False
+      try:
+        rlist, wlist, xlist = select.select(self.read_set, [], [], self.select_timeout)
+      except select.error as e:
+        if e.args[0] == errno.EINTR:
+          selecting = True
+          pass
+        raise
+      pass
       
     if self.stdout in rlist:
       data = os.read(self.stdout.fileno(), 1024)
@@ -103,18 +102,18 @@ class disk_op_task_process(disk_op_task):
         self.read_set.remove(self.stdout)
         pass
       else:
-        self.out = self.out + data
+        self.out = self.out + data.decode('utf-8')
         pass
       pass
 
-    if self.process.return_code is not None:
+    if self.process.returncode is not None:
       self.end_time = datetime.datetime.now()
       pass
 
     pass
 
   def _update_progress(self):
-    if self.process.return_code is None:
+    if self.process.returncode is None:
       # Let's fake it.
       wallclock = datetime.datetime.now()
       dt = wallclock - self.start_time
@@ -125,10 +124,10 @@ class disk_op_task_process(disk_op_task):
         self.set_progress(progress, "running" )
         pass
       pass
-    elif self.process.return_code is in self.good_returncode:
-      self.set_progress(100, "running" )
+    elif self.process.returncode in self.good_returncode:
+      self.set_progress(100, "finished" )
     else:
-      self.set_progress(999, "failed with return code %d" % self.process.return_code)
+      self.set_progress(999, "failed with return code %d" % self.process.returncode)
       pass
     pass
 
@@ -142,19 +141,20 @@ class disk_op_task_process(disk_op_task):
 
   pass
 
+
 #
 # mkdir uses Python os.mkdir
 #
-class task_mkdir(disk_op_task_python):
+class task_mkdir(op_task_python):
 
-  def __init__(self, op, description, dir_path):
+  def __init__(self, description, dir_path):
     '''
     :param op: diskop instance
     :param description: description of operation
     :param dir_path: path to do mkdir
 
     '''
-    super().__init__(op, description)
+    super().__init__(description)
     self.dir_path = dir_path
     pass
 
@@ -181,10 +181,10 @@ class task_mkdir(disk_op_task_python):
 
 #
 #
-class task_partclone(disk_op_task_process):
+class task_partclone(op_task_process):
 
-  def __init__(self, op, description):
-    super().__init__(op, description)
+  def __init__(self, description):
+    super().__init__(description)
 
     self.start_re = []
     self.start_re.append(re.compile(r'Partclone [^ ]+ http://partclone.org\n'))
@@ -233,8 +233,8 @@ class task_partclone(disk_op_task_process):
         pass
       pass
     
-    if self.process.return_code is not None:      
-      if self.process.return_code == 0:
+    if self.process.returncode is not None:      
+      if self.process.returncode == 0:
         self.set_progress(100, "Success")
       else:
         self.set_progress(999, "Failed")
@@ -246,9 +246,9 @@ class task_partclone(disk_op_task_process):
 #
 #
 #
-class task_mkfs(disk_op_task_process):
-  def __init__(self, op, description, partition=None):
-    super().__init__(self, op, description)
+class task_mkfs(op_task_process):
+  def __init__(self, description, partition=None):
+    super().__init__(self, description)
     self.success_returncodes = [0]
     self.success_msg = "Initializing file system succeeded."
     self.failure_msg = "Initializing file system failed."
@@ -272,16 +272,16 @@ class task_mkfs(disk_op_task_process):
     
   #
   def _estimate_progress(self, total_seconds):
-    return int(total_seconds) / 5)
+    return int(total_seconds) / 5
 
   pass
 
 #
 #
 #
-class task_unmount(disk_op_task_process):
-  def __init__(self, op, description, partition=None, force_unmount=False):
-    super().__init__(op, description)
+class task_unmount(op_task_process):
+  def __init__(self, description, partition=None, force_unmount=False):
+    super().__init__(description)
     self.part = partition
     self.force = force_unmount
     pass
@@ -304,10 +304,10 @@ class task_unmount(disk_op_task_process):
   pass
 
 
-class task_mount(disk_op_task_process):
+class task_mount(op_task_process):
 
-  def __init__(self, op, description, partition=None):
-    super().__init__(op, description)
+  def __init__(self, description, partition=None):
+    super().__init__(description)
     self.part = partition
     pass
   
@@ -327,10 +327,10 @@ class task_mount(disk_op_task_process):
   pass
 
 
-class task_assign_uuid_to_partition(disk_op_task_process):
+class task_assign_uuid_to_partition(op_task_process):
 
-  def __init__(self, op, description, disk=None, partition_id=None):
-    super().__init__(op, description)
+  def __init__(self, description, disk=None, partition_id=None):
+    super().__init__(description)
     self.disk = disk
     self.part_id = partition_id
     pass
@@ -344,7 +344,7 @@ class task_assign_uuid_to_partition(disk_op_task_process):
 
     if self.part.partition_type == "83":
       self.argv = ["tune2fs", "%s1" % part.device_name, "-U", part.partition_uuid, "-L", "/"]
-    elif part.partition_type = "C":
+    elif part.partition_type == "C":
       self.argv = ["mkswap", "-U", disk.uuid2, "%s5" % disk.device_name]
       pass
     else:
@@ -358,10 +358,10 @@ class task_assign_uuid_to_partition(disk_op_task_process):
   pass
 
 
-class task_install_bootloader(disk_op_task_process):
+class task_install_bootloader(op_task_process):
 
-  def __init__(self, op, description, disk=None):
-    super().__init__(op, description)
+  def __init__(self, description, disk=None):
+    super().__init__(description)
     self.disk = disk
     pass
 
@@ -376,9 +376,9 @@ class task_install_bootloader(disk_op_task_process):
   pass
 
 
-def task_get_uuid_from_partition(disk_op_task_process):
-  def __init__(self, op, description, partition=None):
-    super().__init__(op, description)
+def task_get_uuid_from_partition(op_task_process):
+  def __init__(self, description, partition=None):
+    super().__init__(description)
 
     self.part = partition
     pass
@@ -398,10 +398,10 @@ def task_get_uuid_from_partition(disk_op_task_process):
     if self.progress == 100:
       blkid_re = re.compile(r'/dev/(\w+)1: LABEL="([/\w\.\d]+)" UUID="([\w\d]+-[\w\d]+-[\w\d]+-[\w\d]+-[\w\d]+)" TYPE="([\w\d]+)"')
       for line in safe_string(self.out).splitlines():
-      m = blkid_re.match(line)
-      if m:
-        self.part.partition_uuid = m.group(2)
-        break
+        m = blkid_re.match(line)
+        if m:
+          self.part.partition_uuid = m.group(2)
+          break
       pass
     pass
   pass
@@ -410,8 +410,8 @@ def task_get_uuid_from_partition(disk_op_task_process):
 class task_restore_disk_image(task_partclone):
   
   # Restore partclone image file to the first partition
-  def __init__(self, op, description, disk=None, partition_id=None, source=None):
-    super().__init__(op, description)
+  def __init__(self, description, disk=None, partition_id=None, source=None):
+    super().__init__(description)
     self.disk = disk
     self.part_id = partition_id
     self.source = source
@@ -443,9 +443,9 @@ class task_restore_disk_image(task_partclone):
   pass
 
 
-class task_fsck(disk_op_task_process):
+class task_fsck(op_task_process):
   #
-  def __init__(self, op, description, disk=None, partition_id=None):
+  def __init__(self, description, disk=None, partition_id=None):
     self.disk = disk
     self.part_id = partition_id
     pass
@@ -459,10 +459,10 @@ class task_fsck(disk_op_task_process):
   pass
 
 
-class task_expand_partition(disk_op_task_process):
+class task_expand_partition(op_task_process):
   #
-  def __init__(self, op, description, disk=None, partition_id=None):
-    super().__init__(op, description)
+  def __init__(self, description, disk=None, partition_id=None):
+    super().__init__(description)
     self.disk = disk
     self.part_id = partition_id
     pass
@@ -481,10 +481,10 @@ class task_expand_partition(disk_op_task_process):
   pass
 
 
-class task_shrink_partition(disk_op_task_process):
+class task_shrink_partition(op_task_process):
   #
-  def __init__(self, op, description, disk=None, partition_id=None):
-    super().__init__(op, description)
+  def __init__(self, description, disk=None, partition_id=None):
+    super().__init__(description)
     self.disk = disk
     self.part_id = partition_id
     pass
@@ -506,9 +506,9 @@ class task_shrink_partition(disk_op_task_process):
   pass
 
 
-class task_finalize_disk(disk_op_task_process):
-  def __init__(self, op, description, disk=None):
-    super().__init__(op, description)
+class task_finalize_disk(op_task_process):
+  def __init__(self, description, disk=None):
+    super().__init__(description)
     self.disk = disk
     pass
 
@@ -539,9 +539,9 @@ class task_finalize_disk(disk_op_task_process):
   pass
 
 
-class task_create_wce_tag(disk_op_task_python):
-  def __init__(self, op, description, disk=None, source=None):
-    super().__init__(op, description)
+class task_create_wce_tag(op_task_python):
+  def __init__(self, description, disk=None, source=None):
+    super().__init__(description)
     self.disk = disk
     self.source = source
     pass
@@ -559,10 +559,10 @@ class task_create_wce_tag(disk_op_task_python):
   pass
 
 
-class task_create_image_disk(disk_op_task_process):
+class task_create_image_disk(op_task_process):
   
-  def __init__(self, op, description, disk=None, partition_id=None, stem_name=None):
-    super().__init__(op, description)
+  def __init__(self, description, disk=None, partition_id=None, stem_name=None):
+    super().__init__(description)
     self.stem_name = stem_name
     self.disk = disk
     self.part_id = partition_id
@@ -598,10 +598,10 @@ class task_create_image_disk(disk_op_task_process):
 
 # This is to purge the persistent rules for network and cd devices so that the clone
 # installation will have correct device names
-class task_remove_persistent_rules(disk_op_task_python):
+class task_remove_persistent_rules(op_task_python):
     #
-  def __init__(self, op, description, disk=None):
-    super().__init__(op, description)
+  def __init__(self, description, disk=None):
+    super().__init__(description)
     self.disk = disk
     pass
 
@@ -629,9 +629,9 @@ class task_remove_persistent_rules(disk_op_task_python):
   pass
 
 
-class task_install_mbr(disk_op_task_process):
-  def __init__(self, op, description, disk=None):
-    super().__init__(op, description)
+class task_install_mbr(op_task_process):
+  def __init__(self, description, disk=None):
+    super().__init__(description)
     self.disk = disk
     pass
 
@@ -643,7 +643,7 @@ class task_install_mbr(disk_op_task_process):
   pass
 
 
-class task_get_disk_geometry(disk_op_task_process):
+class task_get_disk_geometry(op_task_process):
   def __init__(self, disk, memsize, verbose):
     pass
 
@@ -671,9 +671,9 @@ class task_get_disk_geometry(disk_op_task_process):
   pass
 
 
-class task_partition_disk(disk_op_task_process):
-  def __init__(self, op, description, disk=None, memsize=None):
-    super().__init__(op, description)
+class task_partition_disk(op_task_process):
+  def __init__(self, description, disk=None, memsize=None):
+    super().__init__(description)
     self.disk = disk
     self.memsize = memsize
     pass
@@ -682,9 +682,6 @@ class task_partition_disk(disk_op_task_process):
     # Everything is multiple of 8, so that 4k sector problem never happens
     sectors = (self.disk.sectors / 8) * 8
     
-    # first, memsize and sectors.
-    memsize = self.op.get_memory_size()
-
     max_swap_sectors = 3 * (((memsize * 1024) / 512) * 1024)
     min_swap_sectors = (((memsize * 1024) / 512) * 1024) / 2
     swap_sectors = sectors / 20
@@ -712,8 +709,8 @@ class task_partition_disk(disk_op_task_process):
   
 class task_create_partitions_for_usb_stick():
 
-  def __init__(self, op, description, disk=None):
-    super().__init__(op, description)
+  def __init__(self, description, disk=None):
+    super().__init__(description)
     self.disk = disk
     pass
 
@@ -738,9 +735,9 @@ class task_create_partitions_for_usb_stick():
   pass
   
 
-class task_refresh_partition(disk_op_task_process):
-  def __init__(self, op, description, disk=None):
-    super().__init__(op, description)
+class task_refresh_partition(op_task_process):
+  def __init__(self, description, disk=None):
+    super().__init__(description)
     self.disk = disk
     pass
   
@@ -759,16 +756,17 @@ class task_refresh_partition(disk_op_task_process):
 
       for line in self.out.splitlines():
         if looking_for_partition:
-        m = part_re.match(line)
-        if m:
-          self.partitions.append(Partition(device_name = m.group(1),
-                                           partition_type = m.group(2)))
+          m = part_re.match(line)
+          if m:
+            self.partitions.append(Partition(device_name = m.group(1),
+                                             partition_type = m.group(2)))
+            pass
           pass
-        pass
-      else:
-        if line == "":
-          looking_for_partition = True
-          continue
+        else:
+          if line == "":
+            looking_for_partition = True
+            continue
+          pass
         pass
       pass
     pass
@@ -777,7 +775,7 @@ class task_refresh_partition(disk_op_task_process):
     
 class task_install_grub():
 
-  def __init__(self, op, description, mount_dir, detected_video):
+  def __init__(self, description, mount_dir, detected_video):
     self.mount_dir = mount_dir
     self.script = [
       "#!/bin/sh",
@@ -828,7 +826,7 @@ class task_install_grub():
     script_file.close()
     
     subprocess.call("mount --bind /dev/ %s/dev" % self.mount_dir, shell=True)
-    os.chmod(script_file_path % self.mount_dir, 0755)
+    os.chmod(script_file_path % self.mount_dir, 0o755)
     self.argv = ["/usr/sbin/chroot", self.mount_dir, "/bin/sh", script_path_template % ""]
     super().start()
     pass
@@ -859,9 +857,9 @@ UUID=%s /               ext4    errors=remount-ro 0       1
 UUID=%s none            swap    sw              0       0
 '''
 
-class task_finalize_disk(disk_op_task_python):
-  def __init__(self, op, description, disk=None, mount_dir=None, newhostname=None):
-    super().__init__(op, description)
+class task_finalize_disk(op_task_python):
+  def __init__(self, description, disk=None, mount_dir=None, newhostname=None):
+    super().__init__(description)
     self.mount_dir = mount_dir
     self.disk = disk
     self.newhostname = newhostname
@@ -942,9 +940,9 @@ class task_finalize_disk(disk_op_task_python):
   pass
 
 
-class task_mount_nfs_destination(disk_op_task_process):
+class task_mount_nfs_destination(op_task_process):
 
-  def __init__(self, op, description):
+  def __init__(self, description):
     pass
   
   def start(self):
@@ -972,5 +970,34 @@ class task_mount_nfs_destination(disk_op_task_process):
     self.argv = [ "mount", "-t", "nfs",  "%s:/var/www" %nfs_server, "/mnt/www"]
     super().start()
     pass
-
   pass
+
+#
+# Sleep task - for testing
+#
+class task_sleep(op_task_process):
+  def __init__(self, description, duration):
+    super().__init__(description)
+    self.duration = duration
+    self.argv = ['sleep', str(duration)]
+    pass
+
+  def _estimate_progress(self, total_seconds):
+    wallclock = datetime.datetime.now()
+    dt = wallclock - self.start_time
+    return 100 * (dt.total_seconds()/self.duration)
+  pass
+
+
+#
+if __name__ == "__main__":
+  task = task_sleep('test', 5)
+  task.start()
+  
+  while task.progress < 99:
+    task.poll()
+    print("FOO")
+    pass
+  print('done')
+  pass
+
