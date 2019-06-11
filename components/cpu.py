@@ -1,5 +1,9 @@
 import os
 
+from collections import namedtuple
+CPUInfo = namedtuple('CPUInfo', 'cpu_class, cores, processors, vendor, model, bogomips, speed')
+
+
 def parse_cpu_info_tag_value(line):
   elems = line.split(":")
   if len(elems) == 2:
@@ -92,5 +96,6 @@ def detect_cpu_type():
     cpu_speed = int(speed) / 1000
     pass
   
-  return { "class": cpu_class, "cores": cpu_cores, "processors": max_processor + 1, "vendor": cpu_vendor, "model": model_name, "bogomips": bogomips, "speed": cpu_speed }
+  return CPUInfo(**{ "cpu_class": cpu_class, "cores": cpu_cores, "processors": max_processor + 1, "vendor": cpu_vendor, "model": model_name, "bogomips": bogomips, "speed": cpu_speed })
+
 

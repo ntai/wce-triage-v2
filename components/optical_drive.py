@@ -1,5 +1,6 @@
 import os, subprocess, string
 from lib.util import *
+
 #
 # Find optical device files
 #
@@ -22,7 +23,7 @@ def find_optical_device_files(devpath = None):
 #
 # Optical drive class
 #
-class Optical_drive(object):
+class OpticalDrive(object):
   def __init__(self, device_name="unknown"):
     self.device_name = device_name
     self.features = []
@@ -169,7 +170,7 @@ class Optical_drive(object):
 def detect_optical_drives():
   drives = []
   for optical in find_optical_device_files():
-    current_optical = Optical_drive(optical)
+    current_optical = OpticalDrive(optical)
     if current_optical.detect():
       drives.append(current_optical)
       pass
@@ -179,7 +180,7 @@ def detect_optical_drives():
   
 if __name__ == "__main__":
   for optical in find_optical_device_files():
-    current_optical = Optical_drive()
+    current_optical = OpticalDrive()
     is_optical = current_optical.detect(optical)
     current_optical.debug_print()
     pass

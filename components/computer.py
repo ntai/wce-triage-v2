@@ -96,7 +96,7 @@ class Computer:
     #
     self.video = components.video.detect_video_cards()
     #
-    self.ethernet = components.network.detect_ethernet()
+    self.networks = components.network.detect_net_devices()
     self.sound_dev = components.sound.detect_sound_device()
     pass
 
@@ -110,24 +110,18 @@ class Computer:
   # It's easier to see the oveall decision in one location.
   def make_decision(self):
     #
-    cpu_class = self.cpu['class']
-    cpu_detail = "P%d %s %s %dMHz %d cores" % (cpu_class, self.cpu['vendor'], self.cpu['model'], self.cpu['speed'], self.cpu['cores'])
-    self.decisions.append(("CPU", cpu_class >= 5, cpu_detail))
-
-    if self.memory['ram-type'] == None:
-      self.memory['ram-type'] = "Unknown"
-      pass
+    cpu = self.cpu
+    cpu_detail = "P%d %s %s %dMHz %d cores" % (cpu.cpu_class, cpu.vendor, cpu.model, cpu.speed, cpu.cores)
+    self.decisions.append(("CPU", cpu.cpu_class >= 5, cpu_detail))
 
     # Memory
-    total_memory = self.memory['total']
-    ram_type = self.memory['ram-type']
-    rams = self.memory['rams']
-    self.decisions.append(("Memory", total_memory > 2000,  "RAM Type: %s  Size: %dMbytes" % (ram_type, total_memory)))
+    ramtype = self.memory.ramtype if self.memory.ramtype is not None else "Unknown"
+    self.decisions.append(("Memory", self.memory.total > 2000,  "RAM Type: %s  Size: %dMbytes" % (ramtype, self.memory.total)))
 
-    if len(rams) > 0:
-      slots = "    "
-      for ram in rams:
-        slots = slots + "  %s: %d MB" % (ram[0], ram[1])
+    if len(self.memory.slots) > 0:
+      slots = ""
+      for slot in self.memory.slots:
+        slots = slots + " %s: %d MB%s" % (slot.slot, slot.size, " Installed" if slot.status else "")
         pass
       self.decisions.append(("Memory", True, slots))
       pass
@@ -138,7 +132,7 @@ class Computer:
       msg = "Hard Drive:\n"
       good_disk = False
       for disk in self.disks:
-        print ("%s = %d" % (disk.device_name, disk.get_byte_size()))
+        # print ("%s = %d" % (disk.device_name, disk.get_byte_size()))
         disk_gb = disk.get_byte_size() / 1000000
         disk_msg = "     Device %s: size = %dGbytes  %s" % (disk.device_name, disk_gb, disk.model_name)
         if disk_gb >= 60:
@@ -206,8 +200,8 @@ class Computer:
       self.decisions.append( ("Video", False, "No Video card.") )
       pass
 
-    nics = components.network.detect_ethernet()
-    eth_devices = nics['devices']
+    nics = components.network.detect_net_devices()
+    net_devices = nics['devices']
     bad_ethernet_cards = nics['blacklist']
 
     if len(bad_ethernet_cards) > 0:
@@ -218,14 +212,20 @@ class Computer:
       self.decisions.append( ("Network", False, msg))
       pass
 
-    if len(eth_devices) > 0:
-      for eth in eth_devices:
-        msg = "Ethernet detected on device {dev}".format(dev=eth.device_name)
+    if len(net_devices) > 0:
+      for netdev in net_devices:
+        if netdev.is_wifi():
+          msg = "Wifi detected as device {dev}".format(dev=netdev.device_name)
+          pass
+        elif netdev.is_wifi():
+          msg = "Netdevernet detected as device {dev}".format(dev=netdev.device_name)
+        else:
+          msg = "Network device {dev} detected".format(dev=netdev.device_name)
         self.decisions.append( ("Network", True, msg))
         pass
       pass
     else:
-      msg = "Ethernet card: NOT DETECTED -- INSTALL ETHERNET CARD"
+      msg = "Network device is not present -- INSTALL ETHERNET CARD"
       self.decisions.append( ("Network", False, msg))
       pass
 

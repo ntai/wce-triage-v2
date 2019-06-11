@@ -14,24 +14,31 @@ ethernet_device_blacklist = { PCI_VENDOR_SIS : { "0191" : True } }
 
 
 class NetworkDevice(object):
-  Unknown = 0
   Ethernet = 1
   Wifi = 2
   Bluetooth = 3
   Other = 4
   
-  def __init__(self, device_name=None, device_type=Unknown):
+  def __init__(self, device_name=None, device_type=None):
     self.device_type = device_type
     self.device_name = device_name
+    self.device_node = os.path.join('/sys/class/net', device_name)
     self.connected = None
+
+    if self.device_type is None:
+      wifipath = os.path.join(self.device_node, 'wireless')
+      if os.path.exists(wifipath):
+        self.device_type = self.Wifi
+      else:
+        self.device_type = self.Ethernet
+        pass
+      pass
     pass
   
   def is_network_connected(self):
     self.connected = False
-    netdir = '/sys/class/net'
-    devpath = os.path.join(netdir, node)
     try:
-      carrierpath = os.path.join(devpath, "carrier")
+      carrierpath = os.path.join(self.device_node, "carrier")
       carrier = open(carrierpath)
       carrier_state = carrier.read()
       carrier.close()
@@ -43,10 +50,16 @@ class NetworkDevice(object):
       pass
     return self.connected
 
+  # Syntax sugar for triage needs
+  def is_wifi(self):
+    return self.device_type == self.Wifi
+
+  def is_ethernet(self):
+    return self.device_type == self.Ethernet
   pass
 
 
-def detect_ethernet():
+def detect_net_devices():
   blacklisted_cards = []
   for pci in list_pci():
     if pci['class'] == 'network':
@@ -83,8 +96,8 @@ def detect_ethernet():
   for line in out.splitlines():
     m = eth_entry_re.match(line.strip())
     if m:
-      eth_devices.append(NetworkDevice(device_name = m.group(1),
-                                       device_type = NetworkDevice.Ethernet))
+      netdev = NetworkDevice(device_name = m.group(1))
+      eth_devices.append(netdev)
       pass
     pass
   return { "detected": ethernet_detected, "blacklist": blacklisted_cards, "devices": eth_devices}
@@ -114,8 +127,7 @@ def get_router_ip_address():
   return None
             
 
-
 #
 if __name__ == "__main__":
-  print(detect_ethernet())
+  print(detect_net_devices())
   pass
