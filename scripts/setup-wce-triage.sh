@@ -98,6 +98,8 @@ sudo install -m 0755 /tmp/wce-kiosk.service /etc/systemd/system/wce-triage.servi
 
 cat > /tmp/wce-triage.sh <<EOF
 #!/bin/bash
+#
+PYTHONPATH=/home/wce/triage python3 /home/wce/triage/start-network.py
 PYTHONPATH=/home/wce/triage python3 /home/wce/triage/http/httpserver.py $*
 EOF
 
