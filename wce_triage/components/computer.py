@@ -1,9 +1,14 @@
-import re, subprocess
+import re, subprocess, os, sys
 
 re_socket_designation = re.compile(r'\s*Socket Designation: ([\w\d]+)')
 re_enabled_size = re.compile(r'\s*Enabled Size: (\d+) MB')
 re_error_status = re.compile(r'\sError Status: (\w+)')
 
+if __name__ == "__main__":
+  sys.path.append(os.path.split(os.getcwd())[0])
+  pass
+
+import components.pci
 import components.cpu
 import components.memory
 import components.network
@@ -68,7 +73,7 @@ class Computer:
     possible_disks = find_disk_device_files("/dev/hd") + find_disk_device_files("/dev/sd")
     
     for disk_name in possible_disks:
-      # Let's out right skip the mounted disk
+      # Let's skip the mounted disk
       if disk_name in self.mounted_devices and (not list_mounted_disks):
         # Mounted disk %s is not included in the candidate." % disk_name
         continue
@@ -92,7 +97,7 @@ class Computer:
   def gather_info(self):
     self.cpu = components.cpu.detect_cpu_type()
     self.memory = components.memory.detect_memory()
-    self.detect_disks(True)
+    self.detect_disks(list_mounted_disks=False)
     #
     self.video = components.video.detect_video_cards()
     #
@@ -160,60 +165,51 @@ class Computer:
       self.decisions.append( ("Optical drive", True, msg))
       pass
 
+    blacklist = components.pci.detect_blacklist_devices()
+    #
     videos = components.video.detect_video_cards()
-    n_nvidia = videos['nvidia']
-    n_ati = videos['ati']
-    n_vga = videos['vga']
-    blacklisted_videos = videos['blacklist']
+
+    if len(blacklist.videos) > 0:
+      msg = "Remove or disable following video(s) because known to not work\n"
+      for video in blacklist.videos:
+        msg = msg + "    " + video + "\n"
+        pass
+      self.decisions.append( ("Video", False, msg))
+      pass
+
     msg = ""
-    if n_nvidia > 0:
-      msg = msg + "Video:     nVidia video card = %d\n" % n_nvidia
+    if videos.nvidia > 0:
+      msg = msg + "Video:     nVidia video card = %d\n" % videos.nvidia
       pass
-    if n_ati > 0:
-      msg = msg + "Video:     ATI video card = %d\n" % n_ati
+    if videos.ati > 0:
+      msg = msg + "Video:     ATI video card = %d\n" % videos.ati
       pass
-    if n_vga > 0:
-      msg = msg + "Video:     Video card = %d\n" % n_vga
+    if videos.vga > 0:
+      msg = msg + "Video:     Video card = %d\n" % videos.vga
       pass
 
-    if (n_nvidia + n_ati + n_vga) >= 0:
-      if len(blacklisted_videos) > 0:
-        msg = "Remove or disable following video(s) because known to not work\n"
-        for video in blacklisted_videos:
-          msg = msg + "    " + video + "\n"
-          pass
-        self.decisions.append( ("Video", False, msg))
+    if (videos.nvidia + videos.ati + videos.vga) >= 0:
+      if videos.nvidia > 0:
+        self.decisions.append( ("Video", True, "nVidia video card present") )
         pass
-      else:
-        if n_nvidia > 0:
-          self.decisions.append( ("Video", True, "nVidia video card present") )
-          pass
-        if n_ati > 0:
-          self.decisions.append( ("Video", True, "ATI video card present") )
-          pass
-        if n_vga > 0:
-          self.decisions.append( ("Video", True, "VGA video card present") )
-          pass
+      if videos.ati > 0:
+        self.decisions.append( ("Video", True, "ATI video card present") )
+        pass
+      if videos.vga > 0:
+        self.decisions.append( ("Video", True, "VGA video card present") )
         pass
       pass
-    else:
-      self.decisions.append( ("Video", False, "No Video card.") )
-      pass
 
-    nics = components.network.detect_net_devices()
-    net_devices = nics['devices']
-    bad_ethernet_cards = nics['blacklist']
-
-    if len(bad_ethernet_cards) > 0:
+    if len(blacklist.nics) > 0:
       msg = "Remove or disable following cards because known to not work\n"
-      for card in bad_ethernet_cards:
+      for card in blacklist.nics:
         msg = msg + "    " + card + "\n"
         pass
       self.decisions.append( ("Network", False, msg))
       pass
 
-    if len(net_devices) > 0:
-      for netdev in net_devices:
+    if len(self.networks) > 0:
+      for netdev in self.networks:
         if netdev.is_wifi():
           msg = "Wifi detected as device {dev}".format(dev=netdev.device_name)
           pass
@@ -225,7 +221,7 @@ class Computer:
         pass
       pass
     else:
-      msg = "Network device is not present -- INSTALL ETHERNET CARD"
+      msg = "Network device is not present -- INSTALL NETWORK"
       self.decisions.append( ("Network", False, msg))
       pass
 

@@ -1,6 +1,6 @@
 
 from components.network import NetworkDevice
-import sys
+import sys, os
 
 indentspace = '  '
 
@@ -31,19 +31,27 @@ class Printer:
   pass
       
 
-
 # Create netplan.yaml file 
 def create_netplan_cfg(filename, devices):
   ethernets = []
   wifis = []
+  
+  SSID = os.environ.get('TRIAGE_SSID', 'wcetriage')
+  WIFIPASSWORD = os.environ.get('TRIAGE_PASSWORD', 'thepasswordiswcetriage')
 
   for dev in devices:
     if dev.device_type == NetworkDevice.Ethernet:
       ethernets.append( { dev.device_name: [ { 'dhcp4': 'yes' }, { 'optional': 'yes' } ] } )
     elif dev.device_type == NetworkDevice.Wifi:
-      # FIXME: This is 100% wrong. It needs to do wpa-supplicant to talk
-      # to wifi.
-      wifis.append( { dev.device_name: [ { 'dhcp4': 'yes' }, { 'optional': 'yes' } ] } )
+      # netplan works with wpa-supplicant, generates a simple config file
+      # in the same directory and hands off the auth.
+      wifis.append( { dev.device_name:
+                      [ { 'dhcp4': 'yes' },
+                        { 'optional': 'yes' },
+                        { 'access-points':
+                         [ { SSID : 
+                             [ { 'password': WIFIPASSWORD } ]
+                         } ] } ] } )
       pass
     pass
 

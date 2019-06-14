@@ -1,16 +1,11 @@
+#
+# 
+#
 import urllib.parse
 import os, sys
 sys.path.append(os.path.split(os.getcwd())[0])
 from components.pci import *
 from lib.util import *
-
-
-# Ethernet device blacklist
-#
-# SIS 191 gigabit controller 1039:0191 does not work.
-# 
-
-ethernet_device_blacklist = { PCI_VENDOR_SIS : { "0191" : True } }
 
 
 class NetworkDevice(object):
@@ -59,24 +54,10 @@ class NetworkDevice(object):
   pass
 
 
+#
+# FIXME: do something with iwconfig and rfkill
+#
 def detect_net_devices():
-  blacklisted_cards = []
-  for pci in list_pci():
-    if pci['class'] == 'network':
-      pci_address = pci['address']
-      vendor_id = pci['vendor']
-      deevice_id = pci['device']
-      try:
-        if ethernet_device_blacklist[vendor_id][pcidevice_id]:
-          blacklisted_cards.append(get_lspci_device_desc(pci_address))
-          pass
-        pass
-      except KeyError:
-        pass
-      pass
-    pass
-  pass
-
   ethernet_detected = False
   ip = subprocess.Popen(["ip", "addr", "show", "scope", "link"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   (out, err) = ip.communicate()
@@ -91,16 +72,16 @@ def detect_net_devices():
     out = ""
     pass
 
-  eth_entry_re = re.compile(r"\d+: (\w+):")
-  eth_devices = []
+  net_entry_re = re.compile(r"\d+: (\w+):")
+  net_devices = []
   for line in out.splitlines():
-    m = eth_entry_re.match(line.strip())
+    m = net_entry_re.match(line.strip())
     if m:
       netdev = NetworkDevice(device_name = m.group(1))
-      eth_devices.append(netdev)
+      net_devices.append(netdev)
       pass
     pass
-  return { "detected": ethernet_detected, "blacklist": blacklisted_cards, "devices": eth_devices}
+  return net_devices
 
 
 def get_transport_scheme(u):

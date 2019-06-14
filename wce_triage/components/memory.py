@@ -2,7 +2,7 @@ import re, subprocess, string, os
 from lib.util import *
 
 from collections import namedtuple
-MemoryInfo = namedtuple('Memory', 'rams, ramtype, total, slots')
+MemoryInfo = namedtuple('MemoryInfo', 'rams, ramtype, total, slots')
 
 RAM = namedtuple('RAM', 'socket, size, status')
 MemorySlot = namedtuple('MemorySlot', 'slot, size, status, memtype')
@@ -86,6 +86,10 @@ class dmi_type_handler_6(dmi_type_handler):
 class dmi_type_handler_16(dmi_type_handler):
   re_memory_type = re.compile(r'\sType: (\w+)')
   
+  def __init__(self):
+    self.memory_type = None
+    pass
+
   def start(self, line):
     self.memory_type = None
     pass
@@ -111,8 +115,9 @@ class dmi_type_handler_17(dmi_type_handler):
   # re_memory_device = re.compile(r'Memory Device')
 
   re_Locator = re.compile(r'^\s*Locator: (\w+)')
-  re_Size = re.compile(r'^\s*Size: (\d+|No Module Installed)')
+  re_Size = re.compile(r'^\s*Size: (\d+\s*\w*|No Module Installed)')
   re_Type = re.compile(r'^\s*Type: (\w+)')
+  re_Manufacturer = re.compile(r'^\s*Manufacturer: (.+)')
   
   def __init__(self):
     self.slots = []
@@ -123,6 +128,7 @@ class dmi_type_handler_17(dmi_type_handler):
     self.slot = None
     self.size = None
     self.memtype = None
+    self.manufacturer = None
     pass
   
   def parse(self, line):
@@ -151,6 +157,12 @@ class dmi_type_handler_17(dmi_type_handler):
     if m:
       self.memtype = m.group(1)
       pass
+
+    m = self.re_Manufacturer.match(line)
+    if m:
+      self.manufacturer = m.group(1)
+      pass
+
     pass
 
   def finish(self):
