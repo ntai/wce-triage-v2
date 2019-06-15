@@ -35,6 +35,7 @@ EOF
 
 sudo install -m 0555 /tmp/wce-kiosk.sh /usr/local/bin
 
+
 #
 #
 #
@@ -99,10 +100,15 @@ sudo install -m 0755 /tmp/wce-kiosk.service /etc/systemd/system/wce-triage.servi
 cat > /tmp/wce-triage.sh <<EOF
 #!/bin/bash
 #
-PYTHONPATH=/home/wce/triage python3 /home/wce/triage/start-network.py
-PYTHONPATH=/home/wce/triage python3 /home/wce/triage/http/httpserver.py $*
+export PYTHONPATH=/usr/local/lib/wcw/triage
+python3 /usr/local/lib/wce/triage/start-network.py
+python3 /usr/local/lib/wce/triage/http/httpserver.py $*
 EOF
 
 sudo systemctl daemon-reload
 
 sudo install -m 0555 /tmp/wce-triage.sh /usr/local/bin
+
+#
+#
+

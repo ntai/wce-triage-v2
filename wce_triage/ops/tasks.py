@@ -7,11 +7,14 @@
 # exec runs through the tasks.
 #
 
-import datetime, re, subprocess, abc, os, select, time
+import datetime, re, subprocess, abc, os, select, time, uuid
 import components.pci
 
 class op_task(object, metaclass=abc.ABCMeta):
   def __init__(self, description):
+    if not isinstance(description, str):
+      raise Exception("Description must be a string")
+      pass
     self.description = description
     self.is_started = False
     self.is_done = False
@@ -46,6 +49,19 @@ class op_task(object, metaclass=abc.ABCMeta):
     self.end_time = self.start_time
     pass
 
+  @abc.abstractmethod
+  def _estimate_progress(self):
+    pass
+
+  @abc.abstractmethod
+  def estimate_time(self):
+    pass
+
+  @abc.abstractmethod
+  def explain(self):
+    pass
+
+  
   pass
 
 
@@ -73,14 +89,19 @@ class op_task_python(op_task):
 
 # Base class for subprocess based task
 class op_task_process(op_task):
-  def __init__(self, description, argv=None, part=None, select_timeout=1):
+  def __init__(self, description, argv=None, select_timeout=1, time_estimate=None):
     super().__init__(description)
 
     self.argv = argv
-    self.partition = part
     self.process = None
     self.select_timeout = select_timeout
+    self.time_estimate = time_estimate
     pass
+
+  def estimate_time(self):
+    if self.time_estimate is None:
+      raise Exception("Time estimate is not provided.")
+    return self.time_estimate
 
   def start(self):
     self.start_time = datetime.datetime.now()
@@ -148,6 +169,10 @@ class op_task_process(op_task):
     self._update_progress()
     pass
 
+  def explain(self):
+    if self.argv is None:
+      raise Exception("%s has no argv" % self.description )
+    return "Execute " + " ".join( [ str(arg) for arg in self.argv ] )
   pass
 
 
@@ -256,27 +281,33 @@ class task_partclone(op_task_process):
 #
 #
 class task_mkfs(op_task_process):
-  def __init__(self, description, partition=None):
-    super().__init__(self, description)
+  def __init__(self, description, partition=None, time_estimate=10):
+    super().__init__(description, time_estimate=time_estimate)
     self.success_returncodes = [0]
     self.success_msg = "Initializing file system succeeded."
     self.failure_msg = "Initializing file system failed."
     self.part = partition
-    pass
-
-  def start(self):
 
     if self.part.partition_type == 'c':
-      self.argv = ["mkfs.vfat", "-F", "32", "-n", name, part.device_name]
-      self.description = "Creating vfat partition"
-    elif part.partition_type == '83':
+      self.argv = ["mkfs.vfat", "-F", "32", "-n", name, '/dev/' + part.device_name]
+      # self.description = "Creating vfat partition"
+    elif self.part.partition_type == '83':
+      #
+      partname = self.part.partition_name
+      if partname is None:
+        partname = "Linux"
+        pass
+      
+      partuuid = self.part.partition_uuid
+      if partuuid is None:
+        partuuid = uuid.uuid4()
+        pass
       # I got the list from the ext4 standard installation with Ubuntu 18.04
       fs_features = 'has_journal,ext_attr,resize_inode,dir_index,filetype,needs_recovery,extent,64bit,flex_bg,sparse_super,large_file,huge_file,dir_nlink,extra_isize,metadata_csum'
-      self.argv = ["mkfs.ext4", "-O", fs_features, "-L", self.part.partition_name, "-U", self.part.partition_uuid, self.part.device_name]
+      self.argv = ["mkfs.ext4", "-O", fs_features, "-L", partname, "-U", str(partuuid), self.part.device_name]
     else:
       raise Exception("Unsuppoted partition type")
-
-    super().start()
+    print(self.argv)
     pass
     
   #
@@ -999,7 +1030,7 @@ class task_sleep(op_task_process):
 
 
 # Package uninsall base class
-class task_uninstall_package(disk_op_task_process):
+class task_uninstall_package(op_task_process):
 
   def __init__(self, op, description, packages=None):
     super().__init__(op, description)
@@ -1034,7 +1065,6 @@ class task_uninstall_bcmwl(task_uninstall_package):
       pass
     pass
   pass
-
 
 #
 if __name__ == "__main__":

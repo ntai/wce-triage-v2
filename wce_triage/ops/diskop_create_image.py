@@ -1,5 +1,5 @@
   
-class DiskOp_CreateImage(DiskOp):
+class CreateImageRunner(Runner):
 
   def prepare(self):
     self.tasks.append(task_mount_nfs_destination(self, "Mount the destination volume"))

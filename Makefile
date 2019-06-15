@@ -9,7 +9,7 @@ HTTP := httpserver.py
 TOPLEVEL := httpserver.sh
 
 SOURCES := $(addprefix $(SRCDIR)/,$(TOPLEVEL)) $(addprefix $(SRCDIR)/components/,$(COMPONENTS)) $(addprefix $(SRCDIR)/ops/,$(OPS)) $(addprefix $(SRCDIR)/http/,$(HTTP))
-TARGETS := $(subst $(SRCDIR),$(DESTDIR),$(SOURCES))
+TARGETS := $(subst $(SRCDIR),$(DESTDIR),$(SOURCES)) 
 
 all: $(TARGETS)
 

@@ -17,13 +17,19 @@ wce_release_file_name = 'wce-release'
 #
 
 class Partition:
-  def __init__(self):
-    self.device_name = None
-    self.partition_name = None
-    self.partition_type = None
-    self.partition_number = None
-    self.partition_uuid = None
-    self.mounted = False
+  def __init__(self,
+               device_name=None,
+               partition_name=None,
+               partition_type=None,
+               partition_number=None,
+               partition_uuid=None,
+               mounted=False):
+    self.device_name = device_name
+    self.partition_name = partition_name
+    self.partition_type = partition_type
+    self.partition_number = partition_number
+    self.partition_uuid = partition_uuid
+    self.mounted = mounted
     pass
 
   def get_mount_point(self):
@@ -47,6 +53,7 @@ class Disk:
     self.is_disk = None
     self.is_ata_or_scsi = None
     self.is_usb = None
+    self.bus = None
     self.model_name = ""
     self.serial_no = ""
     self.mount_dir = "/mnt/wce_install_target.%d" % os.getpid()
@@ -72,6 +79,7 @@ class Disk:
     return None
   
   def has_wce_release(self):
+    # FIXME - this + "1" needs to go away
     part1 = self.device_name + "1"
     installed = False
     for partition in self.partitions:
@@ -103,7 +111,7 @@ class Disk:
     if self.byte_size is not None:
       return self.byte_size
     size_fd = open("/sys/block/%s/size" % os.path.split(self.device_name)[1])
-    self.byte_size = int(size_fd.read())
+    self.byte_size = 512*int(size_fd.read())
     size_fd.close()
     return self.byte_size
   
@@ -158,10 +166,10 @@ class Disk:
               pass
             pass
           elif tag == "ID_MODEL":
-            self.disk_model = value
+            self.model_name = value
             pass
           elif tag == "ID_SERIAL":
-            self.disk_serial = value
+            self.serial_no = value
             pass
           pass
         except:
@@ -199,7 +207,7 @@ def run_detect():
   machine = computer.Computer()
   machine.detect_disks()
   for disk in machine.disks:
-    print("size=%d" % disk.get_byte_size())
+    print("device: %s, model: %s, size: %d" % (disk.device_name, disk.model_name, disk.get_byte_size()))
     pass
   pass
 

@@ -1,12 +1,12 @@
 
-import * from .diskop
-import * from .diskop_tasks
+from runner import * 
+from tasks import * 
 
 #
 # Restroing disk from network
 #
 
-class RestoreDiskFromNetwork(DiskOp):
+class RestoreDiskFromNetwork(Runner):
   def __init__(self, ui, disk):
     super.__init__(self, ui)
     self.disk = disk
