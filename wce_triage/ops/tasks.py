@@ -9,6 +9,8 @@
 
 import datetime, re, subprocess, abc, os, select, time, uuid
 import components.pci
+from components.disk import Disk, Partition
+
 
 class op_task(object, metaclass=abc.ABCMeta):
   def __init__(self, description):
@@ -96,6 +98,7 @@ class op_task_process(op_task):
     self.process = None
     self.select_timeout = select_timeout
     self.time_estimate = time_estimate
+    self.good_returncode = [0]
     pass
 
   def estimate_time(self):
@@ -114,33 +117,41 @@ class op_task_process(op_task):
     pass
 
   def _poll_process(self):
+    self.process.poll()
     selecting = True
     while selecting:
       selecting = False
       try:
         rlist, wlist, xlist = select.select(self.read_set, [], [], self.select_timeout)
-      except select.error as e:
-        if e.args[0] == errno.EINTR:
+      except select.error as exc:
+        if exc.args[0] == errno.EINTR:
           selecting = True
           pass
         raise
       pass
       
-    if self.stdout in rlist:
-      data = os.read(self.stdout.fileno(), 1024)
-      if data == "":
-        self.read_set.remove(self.stdout)
-        pass
-      else:
-        self.out = self.out + data.decode('utf-8')
+    for pipe in self.read_set:
+      if pipe in rlist:
+        data = os.read(pipe.fileno(), 1024)
+        if data == b'':
+          self.read_set.remove(pipe)
+          pass
+        else:
+          data = data.decode('utf-8')
+          if pipe == self.stdout:
+            self.out = self.out + data
+          else:
+            self.err = self.err + data
+            pass
+          pass
         pass
       pass
 
     if self.process.returncode is not None:
       self.end_time = datetime.datetime.now()
       pass
-
     pass
+
 
   def _update_progress(self):
     if self.process.returncode is None:
@@ -157,7 +168,7 @@ class op_task_process(op_task):
     elif self.process.returncode in self.good_returncode:
       self.set_progress(100, "finished" )
     else:
-      self.set_progress(999, "failed with return code %d" % self.process.returncode)
+      self.set_progress(999, "failed with return code %d\n%s" % (self.process.returncode, self.err))
       pass
     pass
 
@@ -288,10 +299,16 @@ class task_mkfs(op_task_process):
     self.failure_msg = "Initializing file system failed."
     self.part = partition
 
-    if self.part.partition_type == 'c':
-      self.argv = ["mkfs.vfat", "-F", "32", "-n", name, '/dev/' + part.device_name]
+    if self.part.file_system == 'fat32':
+      #
+      partname = self.part.partition_name
+      if partname is None:
+        partname = "EFI" if self.part.partition_type == Partition.UEFI else "UNNAMED"
+        pass
+
+      self.argv = ["mkfs.vfat", "-n", partname, self.part.device_name]
       # self.description = "Creating vfat partition"
-    elif self.part.partition_type == '83':
+    elif self.part.file_system == 'ext4':
       #
       partname = self.part.partition_name
       if partname is None:
@@ -304,10 +321,9 @@ class task_mkfs(op_task_process):
         pass
       # I got the list from the ext4 standard installation with Ubuntu 18.04
       fs_features = 'has_journal,ext_attr,resize_inode,dir_index,filetype,needs_recovery,extent,64bit,flex_bg,sparse_super,large_file,huge_file,dir_nlink,extra_isize,metadata_csum'
-      self.argv = ["mkfs.ext4", "-O", fs_features, "-L", partname, "-U", str(partuuid), self.part.device_name]
+      self.argv = ["mkfs.ext4", "-L", partname, "-U", str(partuuid), self.part.device_name]
     else:
       raise Exception("Unsuppoted partition type")
-    print(self.argv)
     pass
     
   #

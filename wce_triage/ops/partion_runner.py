@@ -44,14 +44,8 @@ class PartPlan:
 
   pass
 
-MBR = 0
-EFI_system = 1
-SWAP = 2
-EXT4 = 3
-
 from components.disk import Disk, Partition
 from runner import *
-
 #
 # Base class for disk operations
 #
@@ -62,10 +56,10 @@ class PartitionDiskRunner(Runner):
     diskmbsize = int(self.disk.get_byte_size() / (1024*1024))
     swapsize = int(diskmbsize * 0.05)
     swapsize = 8192 if swapsize > 8192 else (2048 if swapsize < 2048 else swapsize)
-    self.pplan = [PartPlan(0, None,         0,        1, MBR, None),
-                  PartPlan(1, 'fat32',      0,        1, EFI_system, 'boot,esp'),
-                  PartPlan(2, 'linux-swap', 0, swapsize, SWAP, None),
-                  PartPlan(3, 'ext4',       0,        0, EXT4, None) ]
+    self.pplan = [PartPlan(0, None,         0,        2, Partition.MBR, None),
+                  PartPlan(1, 'fat32',      0,      300, Partition.UEFI, 'boot,esp'),
+                  PartPlan(2, 'linux-swap', 0, swapsize, Partition.SWAP, None),
+                  PartPlan(3, 'ext4',       0,        0, Partition.EXT4, None) ]
     partion_start = 0
     for part in self.pplan:
       part.start = partion_start
@@ -81,7 +75,8 @@ class PartitionDiskRunner(Runner):
 
   def prepare(self):
     super().prepare()
-    argv = ['parted', '-s', '-a', 'optimal', '/dev/' + self.disk.device_name, 'unit', 'MiB', 'mklabel', 'gpt']
+    # Calling parted
+    argv = ['parted', '-s', '-a', 'optimal', self.disk.device_name, 'unit', 'MiB', 'mklabel', 'gpt']
     for part in self.pplan:
       # Skip MBR
       if part.no == 0:
@@ -96,11 +91,12 @@ class PartitionDiskRunner(Runner):
     self.tasks.append(op_task_process('Partition disk', argv=argv, time_estimate=5))
 
     for part in self.pplan:
-      if part.parttype == EXT4:
+      if part.filesys in ['fat32', 'ext4']:
         partition = Partition(device_name=disk.device_name + str(part.no),
-                              partition_type='83',
+                              file_system=part.filesys,
+                              partition_type=part.parttype,
                               partition_number=part.no)
-        mkfs_desc = "Create EXT4 file system on %s%d" % (disk.device_name, part.no)
+        mkfs_desc = "Create file system on %s%d" % (disk.device_name, part.no)
         mkfs = task_mkfs(mkfs_desc,
                          partition=partition,
                          time_estimate=part.size/1024+1)
@@ -119,5 +115,6 @@ if __name__ == "__main__":
   runner.prepare()
   runner.preflight()
   runner.explain()
+  runner.run()
   pass
 

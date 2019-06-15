@@ -17,18 +17,25 @@ wce_release_file_name = 'wce-release'
 #
 
 class Partition:
+  MBR = '0000'
+  UEFI = 'EF00'
+  SWAP = '8200'
+  EXT4 = '8300'
+
   def __init__(self,
                device_name=None,
                partition_name=None,
                partition_type=None,
                partition_number=None,
                partition_uuid=None,
+               file_system=None,
                mounted=False):
     self.device_name = device_name
     self.partition_name = partition_name
     self.partition_type = partition_type
     self.partition_number = partition_number
     self.partition_uuid = partition_uuid
+    self.file_system = file_system
     self.mounted = mounted
     pass
 

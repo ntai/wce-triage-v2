@@ -18,7 +18,7 @@ class RunState(Enum):
   Preflight = 2
   Running = 3
   Success = 4
-  Failuer = 5
+  Failed = 5
   pass
 
 #
@@ -35,6 +35,7 @@ class Runner:
     if self.state != RunState.Initial:
       raise Exception("Run state is not initial")
     self.state = RunState.Prepare
+    self.task_step = 0
     pass
 
 
@@ -48,10 +49,6 @@ class Runner:
       self.total_estimate_time + task.estimate_time()
       pass
     self.ui.report_tasks(self.total_estimate_time, self.tasks)
-    pass
-
-  def report_failure(self, task):
-    print("%s failed." % task.description)
     pass
 
   # Explaining what's going to happen
@@ -70,36 +67,49 @@ class Runner:
     self.state = RunState.Running
 
     self.start_time = datetime.datetime.now()
-    task = None
-    while self.tasks:
-      task = self.tasks[0]
-      self.tasks = self.tasks[1:]
-
+    while self.task_step < len(self.tasks):
+      task = self.tasks[self.task_step]
       task.start()
+      self.ui.report_task_progress(task.estimate_time, 0, 0, task)
 
       while task.progress < 100:
         task.poll()
+        current_time = datetime.datetime.now()
+        elapsed_time = current_time - task.start_time
+        # report_progress(self, estimate_time, elapsed_time, progress, task)
+        self.ui.report_task_progress(task.estimate_time,
+                                     elapsed_time,
+                                     task.progress,
+                                     task)
         pass
 
       if task.progress > 100:
         # something went wrong.
+        self.state = RunState.Failed
+        self.ui.report_task_failure(task.estimate_time,
+                                    elapsed_time,
+                                    task.progress,
+                                    task)
         break
-      task = None
+
+      if task.progress == 100:
+        # done
+        self.ui.report_task_success(task.estimate_time,
+                                    elapsed_time,
+                                    task.progress,
+                                    task)
+        self.task_step = self.task_step + 1
+        pass
 
       self.current_time = datetime.datetime.now()
       self.elapsed_time = self.current_time - self.start_time
+      self.ui.report_run_progress(self.task_step, self.tasks, self.total_estimate_time, self.elapsed_time)
       pass
 
-    # When the task completes, it is set to None.
-    # If task is set, it's pointing to the task that stopped the
-    # running.
-    if task:
-      self.state = RunState.Failure
-      self.report_failure(task)
-      pass
-    else:
+    if self.state == RunState.Running:
       self.state = RunState.Success
       pass
+
     pass
 
   pass
