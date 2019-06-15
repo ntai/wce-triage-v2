@@ -71,7 +71,7 @@ class PartitionDiskRunner(Runner):
       part.start = partion_start
       if part.size == 0:
         diskmbsize = diskmbsize - 1
-        part.size = diskmbsize-1
+        part.size = diskmbsize
         pass
       
       partion_start = partion_start + part.size
