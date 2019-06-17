@@ -19,11 +19,13 @@ if __name__ == "__main__":
 from ops.tasks import *
 from ops.ops_ui import *
 
-class PartPlan:
-  attribs = ['no', 'filesys', 'start', 'size', 'parttype', 'flags']
 
-  def __init__(self, no, filesys, start, size, parttype, flags):
+class PartPlan:
+  attribs = ['no', 'name', 'filesys', 'start', 'size', 'parttype', 'flags']
+
+  def __init__(self, no, name, filesys, start, size, parttype, flags):
     self.no = no
+    self.name = name
     self.filesys = filesys
     self.start = start
     self.size = size
@@ -44,33 +46,60 @@ class PartPlan:
 
   pass
 
+def make_efi_partition_plan(disk):
+  diskmbsize = int(disk.get_byte_size() / (1024*1024))
+  swapsize = int(diskmbsize * 0.05)
+  swapsize = 8192 if swapsize > 8192 else (2048 if swapsize < 2048 else swapsize)
+  # This is for EFI
+  pplan = [PartPlan(0, None,    None,         0,        2, Partition.MBR,  None),
+           PartPlan(1, 'BOOT',  None,         0,       32, Partition.BIOSBOOT, 'boot'),
+           PartPlan(2, 'EFI',   'fat32',      0,      300, Partition.UEFI, None),
+           PartPlan(3, 'SWAP'   'linux-swap', 0, swapsize, Partition.SWAP, None),
+           PartPlan(4, 'Linux', 'ext4',       0,        0, Partition.EXT4, None) ]
+  partion_start = 0
+  for part in pplan:
+    part.start = partion_start
+    if part.size == 0:
+      diskmbsize = diskmbsize - 1
+      part.size = diskmbsize
+      pass
+      
+    partion_start = partion_start + part.size
+    diskmbsize = diskmbsize - part.size
+    pass
+  return pplan
+
+
+def make_usb_stick_partition_plan(disk):
+  diskmbsize = int(disk.get_byte_size() / (1024*1024))
+  # This is for EFI
+  pplan = [PartPlan(0, None,    None,         0,        2, Partition.MBR, None),
+           PartPlan(1, 'BOOT',  None,         0,       32, Partition.BIOSBOOT, 'boot'),
+           PartPlan(2, 'EFI',   'fat32',      0,      300, Partition.UEFI, None),
+           PartPlan(3, 'Linux', 'ext4',       0,        0, Partition.EXT4, None) ]
+  partion_start = 0
+  for part in pplan:
+    part.start = partion_start
+    if part.size == 0:
+      diskmbsize = diskmbsize - 1
+      part.size = diskmbsize
+      pass
+    partion_start = partion_start + part.size
+    diskmbsize = diskmbsize - part.size
+    pass
+  return pplan
+
+
 from components.disk import Disk, Partition
 from runner import *
 #
-# Base class for disk operations
+# create a new gpt partition from partition plan
 #
 class PartitionDiskRunner(Runner):
-  def __init__(self, ui, disk):
+  def __init__(self, ui, disk, partition_plan):
     super().__init__(ui)
     self.disk = disk
-    diskmbsize = int(self.disk.get_byte_size() / (1024*1024))
-    swapsize = int(diskmbsize * 0.05)
-    swapsize = 8192 if swapsize > 8192 else (2048 if swapsize < 2048 else swapsize)
-    self.pplan = [PartPlan(0, None,         0,        2, Partition.MBR, None),
-                  PartPlan(1, 'fat32',      0,      300, Partition.UEFI, 'boot,esp'),
-                  PartPlan(2, 'linux-swap', 0, swapsize, Partition.SWAP, None),
-                  PartPlan(3, 'ext4',       0,        0, Partition.EXT4, None) ]
-    partion_start = 0
-    for part in self.pplan:
-      part.start = partion_start
-      if part.size == 0:
-        diskmbsize = diskmbsize - 1
-        part.size = diskmbsize
-        pass
-      
-      partion_start = partion_start + part.size
-      diskmbsize = diskmbsize - part.size
-      pass
+    self.pplan = partition_plan
     pass
 
   def prepare(self):
@@ -82,12 +111,17 @@ class PartitionDiskRunner(Runner):
       if part.no == 0:
         continue
       argv = argv + [ arg for arg in [ 'mkpart', 'primary', part.filesys, str(part.start), str(part.start + part.size) ] if arg is not None ]
+      # Assign name
+      if part.name:
+        argv = argv + [ 'name', str(part.no), part.name ]
+        pass
       if part.flags:
         for flag in part.flags.split(','):
           argv = argv + ['set', str(part.no), flag, 'on']
           pass
         pass
       pass
+
     self.tasks.append(op_task_process('Partition disk', argv=argv, time_estimate=5))
 
     for part in self.pplan:
@@ -102,16 +136,25 @@ class PartitionDiskRunner(Runner):
                          time_estimate=part.size/1024+1)
         self.tasks.append(mkfs)
         pass
+      elif part.partition_type in [Partition.BIOSBOOT, Partition.MBR]:
+        zeropart = task_zero_partition("Clear partition",
+                                       partition=partition,
+                                       time_estimate=1)
+        self.tasks.append(zeropart)
+        pass
       pass
     pass
 
+
+
   pass
+
 
 if __name__ == "__main__":
   devname = sys.argv[1]
   disk = Disk(device_name=devname)
   ui = console_ui()
-  runner = PartitionDiskRunner(ui, disk)
+  runner = PartitionDiskRunner(ui, disk, make_usb_stick_partition_plan(disk))
   runner.prepare()
   runner.preflight()
   runner.explain()

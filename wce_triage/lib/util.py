@@ -1,4 +1,4 @@
-import uuid, os
+import uuid, os, subprocess
 
 def safe_string(piece):
   if piece:

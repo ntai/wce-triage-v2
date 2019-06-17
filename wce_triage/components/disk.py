@@ -17,7 +17,8 @@ wce_release_file_name = 'wce-release'
 #
 
 class Partition:
-  MBR = '0000'
+  MBR = 'EF01'
+  BIOSBOOT = 'EF02'
   UEFI = 'EF00'
   SWAP = '8200'
   EXT4 = '8300'
@@ -28,20 +29,22 @@ class Partition:
                partition_type=None,
                partition_number=None,
                partition_uuid=None,
+               fs_uuid=None,
                file_system=None,
                mounted=False):
     self.device_name = device_name
-    self.partition_name = partition_name
+    self.partition_name = partition_name # aka volume name
     self.partition_type = partition_type
     self.partition_number = partition_number
-    self.partition_uuid = partition_uuid
-    self.file_system = file_system
+    self.partition_uuid = partition_uuid # Partition UUID, different from fs_uuid
+    self.file_system = file_system # This is from parted
+    self.fs_uuid = fs_uuid # This is the file system UUID.
     self.mounted = mounted
     pass
 
-  def get_mount_point(self):
-    return "/media/%s" % self.partition_name
-    
+  def get_mount_point(self, root='/mnt'):
+    return os.path.join(root, self.fs_uuid)
+  
   pass
 
 
@@ -73,7 +76,7 @@ class Disk:
 
     if isinstance(part_id, str):
       for part in self.partitions:
-        if part.device_name == part_id:
+        if part.device_name == part_id or part.partition_name == part_id:
           return part
         pass
       pass
@@ -136,6 +139,7 @@ class Disk:
     self.get_byte_size()
     return True
 
+  # FIXME: may make sense to move this to a task.
   def detect_disk_type(self):
     # I'm going to be optimistic here since the user can pick a disk
     self.is_disk = False
@@ -145,16 +149,17 @@ class Disk:
     out = ""
     err = ""
     try:
-      cmd = "udevadm info --query=property --name=%s" % self.device_name
-      udevadm = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-      (out, err) = udevadm.communicate()
+      cmd = ['udevadm', 'info', '--query=property', '--name=' + self.device_name]
+      udevadm = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8', timeout=5)
+      out = udevadm.stdout
+      err = udevadm.stderr
     except Exception as exc:
       traceback.print_exc(sys.stdout)
       pass
       
     if out:
       self.is_disk = True
-      for line in safe_string(out).splitlines():
+      for line in out.splitlines():
         try:
           elems = line.split('=')
           tag = elems[0].strip()
@@ -191,20 +196,6 @@ class Disk:
       
     return self.is_disk
   pass # End of disk class
-
-
-#
-# Disk operation base class
-#
-class DiskOp:
-  def __init__(self, disk):
-    self.disk = disk
-    pass
-  
-  def dispatch(self):
-    pass
-  pass
-
 
 #
 #

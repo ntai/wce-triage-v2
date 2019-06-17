@@ -62,8 +62,6 @@ class op_task(object, metaclass=abc.ABCMeta):
   @abc.abstractmethod
   def explain(self):
     pass
-
-  
   pass
 
 
@@ -108,6 +106,7 @@ class op_task_process(op_task):
 
   def start(self):
     self.start_time = datetime.datetime.now()
+    print( "exec " + " ".join(self.argv))
     self.process = subprocess.Popen(self.argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     self.stdout = self.process.stdout
     self.stderr = self.process.stderr
@@ -173,7 +172,7 @@ class op_task_process(op_task):
     pass
 
   def _estimate_progress(self, total_seconds):
-    return int(total_seconds * 5)
+    return int(100.0 * total_seconds / self.time_estimate)
 
   def poll(self):
     self._poll_process()
@@ -185,6 +184,43 @@ class op_task_process(op_task):
       raise Exception("%s has no argv" % self.description )
     return "Execute " + " ".join( [ str(arg) for arg in self.argv ] )
   pass
+
+
+# Base class for command based task
+# this is to run multipe quick command line commands
+# subprocess based on is for long-ish running process
+# like mkfs.
+# This is to run quick running commands like getting
+# partition information.
+class op_task_command(op_task):
+  def __init__(self, description, argv=None, time_estimate=None):
+    super().__init__(description)
+    self.time_estimate = time_estimate
+    self.step = 0
+    pass
+
+  def estimate_time(self):
+    if self.time_estimate is None:
+      raise Exception("Time estimate is not provided.")
+    return self.time_estimate
+
+  def start(self):
+    self.start_time = datetime.datetime.now()
+    pass
+
+  def _update_progress(self):
+    pass
+
+  def _estimate_progress(self, total_seconds):
+    return int(total_seconds * 1)
+
+  def poll(self):
+    pass
+
+  def explain(self):
+    return "Execute %s" % self.description
+  pass
+
 
 
 #
@@ -303,7 +339,7 @@ class task_mkfs(op_task_process):
       #
       partname = self.part.partition_name
       if partname is None:
-        partname = "EFI" if self.part.partition_type == Partition.UEFI else "UNNAMED"
+        partname = "EFI" if self.part.partition_type == Partition.UEFI else "DOS"
         pass
 
       self.argv = ["mkfs.vfat", "-n", partname, self.part.device_name]
@@ -312,7 +348,7 @@ class task_mkfs(op_task_process):
       #
       partname = self.part.partition_name
       if partname is None:
-        partname = "Linux"
+        partname = "LINUX"
         pass
       
       partuuid = self.part.partition_uuid
@@ -320,7 +356,6 @@ class task_mkfs(op_task_process):
         partuuid = uuid.uuid4()
         pass
       # I got the list from the ext4 standard installation with Ubuntu 18.04
-      fs_features = 'has_journal,ext_attr,resize_inode,dir_index,filetype,needs_recovery,extent,64bit,flex_bg,sparse_super,large_file,huge_file,dir_nlink,extra_isize,metadata_csum'
       self.argv = ["mkfs.ext4", "-L", partname, "-U", str(partuuid), self.part.device_name]
     else:
       raise Exception("Unsuppoted partition type")
@@ -383,6 +418,9 @@ class task_mount(op_task_process):
   pass
 
 
+#
+#
+#
 class task_assign_uuid_to_partition(op_task_process):
 
   def __init__(self, description, disk=None, partition_id=None):
@@ -414,34 +452,15 @@ class task_assign_uuid_to_partition(op_task_process):
   pass
 
 
-class task_install_bootloader(op_task_process):
-
-  def __init__(self, description, disk=None):
-    super().__init__(description)
-    self.disk = disk
-    pass
-
-  def start(self):
-    self.argv = ["/usr/bin/syslinux", "-maf", self.disk.device_name]
-    super().start()
-    pass
-
-  def _estimate_progress(self, total_seconds):
-    return int(total_seconds * 10)
-
-  pass
-
-
 def task_get_uuid_from_partition(op_task_process):
   def __init__(self, description, partition=None):
-    super().__init__(description)
-
     self.part = partition
+    self.argv = ["/sbin/blkid", part.device_name]
+    super().__init__(description, argv)
     pass
 
   def start(self):
     self.part.partition_uuid = None
-    self.argv = ["/sbin/blkid", part.device_name]
     pass
 
   def _estimate_progress(self, total_seconds):
@@ -564,8 +583,8 @@ class task_shrink_partition(op_task_process):
 
 class task_finalize_disk(op_task_process):
   def __init__(self, description, disk=None):
-    super().__init__(description)
     self.disk = disk
+    super().__init__(description)
     pass
 
   def start(self):
@@ -587,9 +606,6 @@ class task_finalize_disk(op_task_process):
             pass
           pass
         pass
-    
-      # print("# Primary %s1 - UUID: %s" % (self.device_name, self.uuid1))
-      # print("# Swap    %s5 - UUID: %s" % (self.device_name, self.uuid2))
       pass
     pass
   pass
@@ -685,121 +701,30 @@ class task_remove_persistent_rules(op_task_python):
   pass
 
 
+# Installing MBR on disk
 class task_install_mbr(op_task_process):
   def __init__(self, description, disk=None):
-    super().__init__(description)
     self.disk = disk
-    pass
-
-  def start(self):
-    self.argv = ["/sbin/install-mbr", "-f", "-r", self.disk.device_name]
-    super().start()
-    pass
-  
-  pass
-
-
-class task_get_disk_geometry(op_task_process):
-  def __init__(self, disk, memsize, verbose):
-    pass
-
-  def start(self):
-    self.argv = "parted -s -m %s unit s print" % (self.device_name)
-    super().start()
-    pass
-
-  def poll(self):
-    super().poll()
-    
-    if self.progress >= 100:
-      if self.process.returncode == 0:
-        lines = self.out.split("\n")
-        disk_line = lines[1]
-        columns = disk_line.split(":")
-        if columns[0] != self.disk.device_name:
-          sys.exit(1)
-          pass
-        sectors = int(columns[1][:-1])
-        self.disk.sectors = sectors
-        pass
-      pass
+    argv = ["/sbin/install-mbr", "-f", "-r", self.disk.device_name]
+    super().__init__(description, argv, time_estimate=1)
     pass
   pass
 
 
-class task_partition_disk(op_task_process):
-  def __init__(self, description, disk=None, memsize=None):
-    super().__init__(description)
-    self.disk = disk
-    self.memsize = memsize
-    pass
-
-  def start(self):
-    # Everything is multiple of 8, so that 4k sector problem never happens
-    sectors = (self.disk.sectors / 8) * 8
-    
-    max_swap_sectors = 3 * (((memsize * 1024) / 512) * 1024)
-    min_swap_sectors = (((memsize * 1024) / 512) * 1024) / 2
-    swap_sectors = sectors / 20
-    if swap_sectors > max_swap_sectors:
-      swap_sectors = max_swap_sectors
-      pass
-    
-    if swap_sectors < min_swap_sectors:
-      swap_sectors = min_swap_sectors
-      pass
-    
-    part1_start = 2048
-    part2_start = ((sectors - part1_start - swap_sectors - 8) / 8) * 8
-    part5_start = part2_start + 8
-    part1_end = part2_start - 1
-    part2_end = sectors - 1 
-    part5_end = part2_end
-    
-    self.args = ["parted", "-s", self.device_name, "unit", "s", "mklabel", "msdos", "mkpart", "primary", "ext2", "2048", "%d" % part1_end, "mkpart", "extended", "%d" % part2_start, "%d" % part2_end, "mkpart", "logical", "linux-swap", "%d" % part5_start, "%d" % part5_end, "set", "1", "boot", "on" ]
-
-    super().start()
-    pass
-
-  pass
-  
-class task_create_partitions_for_usb_stick():
+#
+# Run parted and create partition entities.
+# You need to run refresh partitions in order to get the
+# file system UUID, so use following two tasks in
+# succession.
+#
+class task_fetch_partitions(op_task_process):
+  #                          1:    2:           3:           4:           5:fs  6:name  7:flags   
+  partline_re = re.compile('^(\d+):([\d\.]+)MiB:([\d\.]+)MiB:([\d\.]+)MiB:(\w*):([^:]*):(.*);')
 
   def __init__(self, description, disk=None):
-    super().__init__(description)
     self.disk = disk
-    pass
-
-  def start(self):
-    byte_size = self.disk.get_byte_size()
-    sectors = byte_size / 512
-    part1_sectors = (750 * 1024 * 1024) / 512
-    part1_start = 2048
-    if part1_sectors + part1_start > (sectors / 2):
-      part1_sectors = (sectors / 2) - part1_start
-      pass
-    part1_end = part1_start + part1_sectors - 1
-    part2_start = part1_start + part1_sectors
-    part2_end = sectors - 1 
-    # print("# %s byte size %d sectors %d part1_sectors %d" % (self.device_name, byte_size, sectors, part1_sectors))
-    
-    self.argv = ["parted", "-s", self.device_name, "unit", "s", "mklabel", "msdos", "mkpart", "primary", "fat32", "%d" % part1_start, "%d" % part1_end, "mkpart", "primary", "ext2", "%d" % part2_start, "%d" % part2_end, "set", "1", "boot", "on" ]
-
-    super().start()
-    pass
-
-  pass
-  
-
-class task_refresh_partition(op_task_process):
-  def __init__(self, description, disk=None):
-    super().__init__(description)
-    self.disk = disk
-    pass
-  
-  def start(self):
-    self.argv = ["fdisk", "-l", "-u", self.disk.device_name]
-    super().start()
+    argv = ["parted", "-m", disk.device_name, 'unit', 'MiB', 'print']
+    super().__init__(description, argv=argv, time_estimate=2)
     pass
   
   def poll(self):
@@ -808,96 +733,224 @@ class task_refresh_partition(op_task_process):
     if self.progress == 100:
       self.disk.partitions = []
     
-      looking_for_partition = False
-
       for line in self.out.splitlines():
-        if looking_for_partition:
-          m = part_re.match(line)
-          if m:
-            self.partitions.append(Partition(device_name = m.group(1),
-                                             partition_type = m.group(2)))
-            pass
+        m = self.partline_re.match(line)
+        if m:
+          self.disk.partitions.append(Partition(device_name = self.disk.device_name + m.group(1),
+                                                partition_name = m.group(6),
+                                                partition_number = int(m.group(1)),
+                                                partition_type = m.group(5)))
           pass
-        else:
-          if line == "":
-            looking_for_partition = True
-            continue
-          pass
+        pass
+
+      if len(self.disk.partitions) == 0:
+        self.set_progress(999, 'No partion found.')
         pass
       pass
     pass
   pass
 
     
-class task_install_grub():
 
-  def __init__(self, description, mount_dir, detected_video):
-    self.mount_dir = mount_dir
+class task_refresh_partitions(op_task_command):
+  props = {'PARTUUID':  'partition_uuid',
+           # 
+           'TYPE':      'partition_type',
+           'PARTLABEL': 'partition_name',
+           'UUID':      'fs_uuid'
+           }
+  tagvalre = re.compile('\s*(\w+)="([^"]+)"')
+
+  def __init__(self, description, disk=None):
+    super().__init__(description)
+    self.disk = disk
+    self.time_estimate = 2
+    pass
+  
+  def poll(self):
+    super().poll()
+
+    if self.step >= len(self.disk.partitions):
+      self.set_progress(100, "%s finished" % self.description)
+      return
+
+    part = self.disk.partitions[self.step]
+    self.step = self.step + 1
+
+    result = subprocess.run([ '/sbin/blkid', part.device_name ],
+                              timeout=10, encoding='utf-8',
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    out = result.stdout
+    devdelim = out.find(':')
+    # device_name should match with the part.device_name
+    device_name = out[:devdelim]
+
+    # The rest is key=value with space delimiter.
+    tokens = self.tagvalre.split(out[devdelim+1:].strip())
+    index = 0
+    tag = None
+    value = None
+    for token in tokens:
+      if token == '':
+        continue
+      
+      if tag is None:
+        tag = token
+        continue
+
+      attrname = self.props.get(tag)
+      if attrname is not None:
+        print (" %s=%s"  % (attrname, token))
+        part.__setattr__(attrname, token)
+        pass
+      tag = None
+      pass
+
+    #
+    self.set_progress(100 / len(self.disk.partitions) * self.step, "fetching")
+    pass
+  pass
+
+#
+#
+#
+class task_install_syslinux(op_task_process):
+  '''Installs syslinux on the device'''
+  def __init__(self, description, disk=None):
+    argv = ["/usr/bin/syslinux", "-maf", disk.device_name]
+    self.disk = disk
+    super().__init__(description, argv, time_estimate=1)
+    pass
+  pass
+
+
+
+#
+# Install GRUB boot loader
+#
+class task_install_grub(op_task_process):
+  script_path_template = "%s/tmp/bless.sh"
+
+  def __init__(self, description, disk, detected_video):
+    # Disk to bless
+    self.disk = disk
+    self.linuxpart = None
+    (self.n_nvidia, self.n_ati, self.n_vga) = detected_video
+
+    # FIXME: Time estimate is very different between USB stick and hard disk.
+
+    # argv is a placeholder
+    super().__init__(description, argv=['blessing', 'disk'], time_estimate=300)
+    pass
+
+  #
+  def start(self):
+    # this is the beginning of execution. I guess this is a hack...
+    self.linuxpart = self.disk.find_partition('Linux')
+    if self.linuxpart is None:
+      self.set_progress(999, "No linux partition")
+
+      for part in self.disk.partitions:
+        print( "%s : %s" % (part.device_name, part.partition_name))
+        pass
+      return
+    
+    self.mount_dir = self.linuxpart.get_mount_point()
+    if not os.path.exists(self.mount_dir):
+      os.mkdir(self.mount_dir)
+      pass
+
+    self.linuxpart.mounted = False
+    try:
+      subprocess.run(['mount', self.linuxpart.device_name, self.mount_dir], timeout=2)
+      self.linuxpart.mounted = True
+    except:
+      pass
+
+    if not self.linuxpart.mounted:
+      self.set_progress(999, "Failed to mount the linux parition.")
+      return
+
+    # Blesser
+    self.script_path = self.script_path_template % self.mount_dir
+
+    #
     self.script = [
       "#!/bin/sh",
       "mount -t proc none /proc",
       "mount -t sysfs none /sys",
       "mount -t devpts none /dev/pts",
       "#"]
-    (self.n_nvidia, self.n_ati, self.n_vga, self.n_black_vga, self.blacklisted_videos) = detected_video
-    pass
-
-
-  def start(self):
-    part1 = self.disk.find_partition(1)
-    script_path_template = "%s/tmp/install-grub"
-    script_path = script_path_template % self.mount_dir
 
     # Things to do is installing grub
     self.script.append("/usr/sbin/grub-install %s" % self.disk.device_name)
-    self.script.append("N_NVIDIA=%d" % self.n_nvidia)
-    self.script.append("N_ATI=%d" % self.n_ati)
-    self.script.append("N_VGA=%d" % self.n_vga)
-        
-    self.script.append("if [ $N_ATI .gt. 0  || $N_VGA .gt. > 0]; then")
-    self.script.append("  apt-get -q -y --force-yes purge `dpkg --get-selections | cut -f 1 | grep -v xorg | grep nvidia-`")
-    self.script.append("fi")
 
-    # 
-    self.script.append('#')
+    if self.n_ati > 0:
+      self.script.append('# If this machine has ATI video, get rid of other video drivers that can get in its way.')
+      self.script.append("apt-get -q -y --force-yes purge `dpkg --get-selections | cut -f 1 | grep -v xorg | grep nvidia-`")
+      pass
+
+    self.script.append('# Set up the grub.cfg')
     self.script.append('chmod +rw /boot/grub/grub.cfg')
-    self.script.append('export GRUB_DEVICE_UUID="%s"' % part1.uuid)
-    self.script.append('export GRUB_DISABLE_OS_PROBER=true')
-    self.script.append('export GRUB_DISABLE_LINUX_UUID=false')
     self.script.append('grub-mkconfig -o /boot/grub/grub.cfg')
 
-    self.script.append('#')
-    self.script.append('cp /boot/grub/grub.cfg /tmp/grub.cfg')
-    self.script.append(r"sed \"s/root='(hd.,1)'/root='(hd0,1)'/g\" /tmp/grub.cfg > /boot/grub/grub.cfg")
-
-    self.script.append('#')
-    self.script.append('chmod 444 /boot/grub/grub.cfg')
+    self.script.append('# clean up')
     self.script.append('umount /proc || umount -lf /proc')
     self.script.append('umount /sys')
     self.script.append('umount /dev/pts')
     self.script.append('# script end')
 
-    script_file = open(script_path, "w")
+    # Write out the bless script
+    script_file = open(self.script_path, "w")
     script_file.write("\n".join(self.script))
     script_file.close()
-    
-    subprocess.call("mount --bind /dev/ %s/dev" % self.mount_dir, shell=True)
-    os.chmod(script_file_path % self.mount_dir, 0o755)
-    self.argv = ["/usr/sbin/chroot", self.mount_dir, "/bin/sh", script_path_template % ""]
+    os.chmod(self.script_path, 0o755)
+
+    # Set up the /dev for chroot
+    subprocess.run("mount --bind /dev/ %s/dev" % self.mount_dir, shell=True)
+
+    # Run the blessing script with chroot
+    self.argv = ["/usr/sbin/chroot",  self.mount_dir, "/bin/sh", self.script_path_template % ""]
+
     super().start()
     pass
 
-  def poll(self):
-    super().poll()
-  
-    if self.progress >= 100:
-      subprocess.call("umount %s/dev" % self.mount_dir, shell=True)
-      pass
-
+  # grub-install takes long time. time out only when
+  # it takes 2x of time estmate.
+  def _estimate_progress(self, total_seconds):
+    progress = int(100.0 * total_seconds / self.time_estimate)
+    if progress > 200:
+      return progress
+    elif progress > 99:
+      return 99
+    else:
+      return progress
     pass
+    
+
   pass
 
+#
+# Zero the first 1MB of device. This clears off the
+# partition's magic number, etc. Without this, os-prober
+# can be very confused.
+#
+class task_zero_partition(op_task_python):
+  def __init__(self, description, partition=None):
+    super().__init__(description)
+    self.partition = partition
+    pass
 
+  def run_python(self):
+    fd = open(self.partition.device_name, "wb")
+    for ix in range(0, 16):
+      fd.write(bytes(65536))
+      pass
+    fd.close()
+    pass
+
+  pass
 
 fstab_template = '''# /etc/fstab: static file system information.
 #
@@ -913,9 +966,12 @@ UUID=%s /               ext4    errors=remount-ro 0       1
 UUID=%s none            swap    sw              0       0
 '''
 
+#
+# Create various files for blessed installation
+#
 class task_finalize_disk(op_task_python):
   def __init__(self, description, disk=None, mount_dir=None, newhostname=None):
-    super().__init__(description)
+    super().__init__(description, estimate_time=1)
     self.mount_dir = mount_dir
     self.disk = disk
     self.newhostname = newhostname
@@ -958,7 +1014,6 @@ class task_finalize_disk(op_task_python):
       hosts.close()
       pass
 
-
     #
     # Remove the WCE follow up files
     # 
@@ -996,6 +1051,9 @@ class task_finalize_disk(op_task_python):
   pass
 
 
+#
+#
+#
 class task_mount_nfs_destination(op_task_process):
 
   def __init__(self, description):
