@@ -3,7 +3,7 @@ SRCDIR := wce_triage
 DESTDIR := ../wce-triage-ui/public
 
 COMPONENTS := computer.py cpu.py disk.py memory.py network.py optical_drive.py pci.py sensor.py sound.py video.py
-OPS := diskop_create_image.py diskop.py diskop_restore.py tasks.py
+OPS := tasks.py runner.py partion_runner.py osp_ui.py bless.py
 HTTP := httpserver.py
 
 TOPLEVEL := httpserver.sh

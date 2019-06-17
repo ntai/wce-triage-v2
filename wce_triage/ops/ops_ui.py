@@ -7,6 +7,8 @@ def in_seconds(seconds):
     return seconds.total_seconds()
   return seconds
 
+from ops.run_state import RunState
+
 class ops_ui(object):
   def __init__(self):
     pass
@@ -103,6 +105,49 @@ class console_ui(object):
   # Used for explain. Probably needs better way
   def print(self, msg):
     print(msg)
+    pass
+
+  pass
+
+
+class virtual_ui(object):
+  def __init__(self):
+    self.state = RunState.Initial
+    pass
+
+  #
+  def report_tasks(self, total_estimate_time, tasks):
+    pass
+
+  #
+  def report_task_progress(self, estimate_time, elapsed_time, progress, task):
+    pass
+
+  def report_task_failure(self,
+                          task_estimate_time,
+                          elapsed_time,
+                          progress,
+                          task):
+    self.state = RunState.Failed
+    pass
+
+  def report_task_success(self, 
+                          task_estimate_time,
+                          elapsed_time,
+                          progress,
+                          task):
+    self.state = RunState.Success
+    pass
+
+  def report_run_progress(self, 
+                          step,
+                          tasks,
+                          task_estimate_time,
+                          elapsed_time):
+    pass
+
+  # Used for explain.
+  def print(self, msg):
     pass
 
   pass

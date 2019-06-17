@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 #
 # Disk operations
 #
@@ -8,7 +9,6 @@
 # By calling into diskop, it creates the plan - which is the sequence of tasks.
 # exec runs through the tasks.
 #
-
 
 import datetime, re, subprocess, sys, os
 
@@ -72,9 +72,10 @@ def make_efi_partition_plan(disk):
 
 def make_usb_stick_partition_plan(disk):
   diskmbsize = int(disk.get_byte_size() / (1024*1024))
-  # This is for EFI
+  # This is for gpt/grub. Set aside the EFI partition so we can 
+  # make this usb stick for EFI if needed.
   pplan = [PartPlan(0, None,    None,         0,        2, Partition.MBR, None),
-           PartPlan(1, 'BOOT',  None,         0,       32, Partition.BIOSBOOT, 'boot'),
+           PartPlan(1, 'BOOT',  None,         0,       32, Partition.BIOSBOOT, 'bios_grub'),
            PartPlan(2, 'EFI',   'fat32',      0,      300, Partition.UEFI, None),
            PartPlan(3, 'Linux', 'ext4',       0,        0, Partition.EXT4, None) ]
   partion_start = 0
@@ -125,21 +126,21 @@ class PartitionDiskRunner(Runner):
     self.tasks.append(op_task_process('Partition disk', argv=argv, time_estimate=5))
 
     for part in self.pplan:
+      partition = Partition(device_name=disk.device_name + str(part.no),
+                            file_system=part.filesys,
+                            partition_type=part.parttype,
+                            partition_number=part.no)
+
       if part.filesys in ['fat32', 'ext4']:
-        partition = Partition(device_name=disk.device_name + str(part.no),
-                              file_system=part.filesys,
-                              partition_type=part.parttype,
-                              partition_number=part.no)
-        mkfs_desc = "Create file system on %s%d" % (disk.device_name, part.no)
+        mkfs_desc = "Create file system on %s" % (partition.device_name)
         mkfs = task_mkfs(mkfs_desc,
                          partition=partition,
                          time_estimate=part.size/1024+1)
         self.tasks.append(mkfs)
         pass
-      elif part.partition_type in [Partition.BIOSBOOT, Partition.MBR]:
+      elif part.parttype in [Partition.BIOSBOOT, Partition.MBR]:
         zeropart = task_zero_partition("Clear partition",
-                                       partition=partition,
-                                       time_estimate=1)
+                                       partition=partition)
         self.tasks.append(zeropart)
         pass
       pass

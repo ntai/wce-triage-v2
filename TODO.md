@@ -5,7 +5,7 @@ Here is the things need to be solved.
 ## Backend
 
  - Make bootable disk
-   - For MBR boot, use grub
+   - For MBR boot, use grub (DONE)
      I have done this in version 1, so I should know the ingredients
      but (a) it's a long time ago, and I have to remember. (b) many
      many things have been changed so much that I probably need to

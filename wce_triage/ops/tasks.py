@@ -13,10 +13,11 @@ from components.disk import Disk, Partition
 
 
 class op_task(object, metaclass=abc.ABCMeta):
-  def __init__(self, description):
+  def __init__(self, description, encoding='utf-8'):
     if not isinstance(description, str):
       raise Exception("Description must be a string")
       pass
+    self.encoding = encoding
     self.description = description
     self.is_started = False
     self.is_done = False
@@ -26,8 +27,12 @@ class op_task(object, metaclass=abc.ABCMeta):
     self.end_time = None
     pass
 
-  @abc.abstractmethod
-  def start(self):
+  def setup(self):
+    self.start_time = datetime.datetime.now()
+    pass
+  
+  def teardown(self):
+    self.end_time = datetime.datetime.now()
     pass
 
   @abc.abstractmethod
@@ -48,7 +53,6 @@ class op_task(object, metaclass=abc.ABCMeta):
     self.is_done = True
     self.progress = 100
     self.start_time = datetime.datetime.now()
-    self.end_time = self.start_time
     pass
 
   @abc.abstractmethod
@@ -62,22 +66,26 @@ class op_task(object, metaclass=abc.ABCMeta):
   @abc.abstractmethod
   def explain(self):
     pass
+
   pass
 
 
 # Base class for Python based task
 class op_task_python(op_task):
-  def __init__(self, description):
-    super().__init__(description)
+  def __init__(self, description, encoding='utf-8'):
+    super().__init__(description, encoding=encoding)
     pass
 
-  def start(self):
-    self.start_time = datetime.datetime.now()
+  def setup(self):
+    super().setup()
+    pass
+  
+  def teardown(self):
+    super().teardown()
     pass
   
   def poll(self):
     self.run_python()
-    self.end_time = datetime.datetime.now()
     pass
 
   @abc.abstractmethod
@@ -87,9 +95,33 @@ class op_task_python(op_task):
   pass
 
 
+# Base class for simple Python 
+class op_task_python_simple(op_task_python):
+  def __init__(self, description, encoding='utf-8'):
+    super().__init__(description, encoding=encoding)
+    self.time_estimate = 1
+    pass
+
+  def poll(self):
+    self.run_python()
+    self.set_progress(100, "finished.")
+    pass
+
+  def _estimate_progress(self, total_seconds):
+    return 100
+
+  def estimate_time(self):
+    return self.time_estimate
+
+  def explain(self):
+    return "Run " + self.description
+  pass
+
+
+
 # Base class for subprocess based task
 class op_task_process(op_task):
-  def __init__(self, description, argv=None, select_timeout=1, time_estimate=None):
+  def __init__(self, description, argv=None, select_timeout=1, time_estimate=None, encoding='utf-8'):
     super().__init__(description)
 
     self.argv = argv
@@ -97,6 +129,11 @@ class op_task_process(op_task):
     self.select_timeout = select_timeout
     self.time_estimate = time_estimate
     self.good_returncode = [0]
+    self.encoding = encoding
+    pass
+
+  def set_time_estimate(self, time_estimate):
+    self.time_estimate = time_estimate
     pass
 
   def estimate_time(self):
@@ -104,15 +141,14 @@ class op_task_process(op_task):
       raise Exception("Time estimate is not provided.")
     return self.time_estimate
 
-  def start(self):
-    self.start_time = datetime.datetime.now()
-    print( "exec " + " ".join(self.argv))
+  def setup(self):
     self.process = subprocess.Popen(self.argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     self.stdout = self.process.stdout
     self.stderr = self.process.stderr
     self.read_set = [self.stdout, self.stderr]
     self.out = ""
     self.err = ""
+    super().setup()
     pass
 
   def _poll_process(self):
@@ -136,7 +172,7 @@ class op_task_process(op_task):
           self.read_set.remove(pipe)
           pass
         else:
-          data = data.decode('utf-8')
+          data = data.decode(self.encoding)
           if pipe == self.stdout:
             self.out = self.out + data
           else:
@@ -144,10 +180,6 @@ class op_task_process(op_task):
             pass
           pass
         pass
-      pass
-
-    if self.process.returncode is not None:
-      self.end_time = datetime.datetime.now()
       pass
     pass
 
@@ -193,10 +225,11 @@ class op_task_process(op_task):
 # This is to run quick running commands like getting
 # partition information.
 class op_task_command(op_task):
-  def __init__(self, description, argv=None, time_estimate=None):
-    super().__init__(description)
+  def __init__(self, description, argv=None, time_estimate=None, encoding='utf-8'):
+    super().__init__(description, encoding=encoding)
     self.time_estimate = time_estimate
     self.step = 0
+    self.encoding = encoding
     pass
 
   def estimate_time(self):
@@ -204,16 +237,7 @@ class op_task_command(op_task):
       raise Exception("Time estimate is not provided.")
     return self.time_estimate
 
-  def start(self):
-    self.start_time = datetime.datetime.now()
-    pass
-
-  def _update_progress(self):
-    pass
-
-  def _estimate_progress(self, total_seconds):
-    return int(total_seconds * 1)
-
+  @abc.abstractmethod
   def poll(self):
     pass
 
@@ -222,9 +246,9 @@ class op_task_command(op_task):
   pass
 
 
-
 #
 # mkdir uses Python os.mkdir
+# I think this is truely overkill.
 #
 class task_mkdir(op_task_python):
 
@@ -257,71 +281,6 @@ class task_mkdir(op_task_python):
       pass
     pass
 
-  pass
-
-
-#
-#
-class task_partclone(op_task_process):
-
-  def __init__(self, description):
-    super().__init__(description)
-
-    self.start_re = []
-    self.start_re.append(re.compile(r'Partclone [^ ]+ http://partclone.org\n'))
-    self.start_re.append(re.compile(r'Starting to clone device \(/dev/\w+\) to image \([^\)]+\)\n'))
-    self.start_re.append(re.compile(r'Reading Super Block\n'))
-    self.start_re.append(re.compile(r'Calculating bitmap... Please wait... [^\n]+\n[^\n]+\n[^\n]+\n'))
-    self.start_re.append(re.compile(r'File system:\s+EXTFS\n'))
-    self.start_re.append(re.compile(r'Device size:\s+[\d.]+\s+GB\n'))
-    self.start_re.append(re.compile(r'Space in use:\s+[\d.]+\s+GB\n'))
-    self.start_re.append(re.compile(r'Free Space:\s+[\d.]+\s+MB\n'))
-    self.start_re.append(re.compile(r'Block size:\s+\d+\s+Byte\n'))
-    self.start_re.append(re.compile(r'Used block :\s+\d+\n'))
-    
-    self.progress_re = re.compile(r'\r\s+\rElapsed: (\d\d:\d\d:\d\d), Remaining: (\d\d:\d\d:\d\d), Completed:\s+(\d+.\d*)%,\s+([^\/]+)/min,')
-    pass
-
-  def poll(self):
-    #
-    # This drives/fetches the process output
-    self._poll_process()
-
-    # Check the progress
-    if len(self.err) > 0:
-      while len(self.start_re) > 0:
-        m = self.start_re[0].match(self.err)
-        if not m:
-          break
-        start_re = self.start_re[1:]
-        self.err = self.err[len(m.group(0)):]
-        pass
-      if len(start_re) == 0:
-        self.set_progress(10, "Start imaging")
-      else:
-        while True:
-          m = self.progress_re.search(self.err)
-          if not m:
-            break
-          self.err = self.err[len(m.group(0)):]
-
-          elapsed = m.group(1)
-          remaining = m.group(2)
-          completed = float(m.group(3))
-
-          self.set_progress(round(completed*0.9)+10, "elapsed: %s remaining: %s" % (elapsed, remaining))
-          pass
-        pass
-      pass
-    
-    if self.process.returncode is not None:      
-      if self.process.returncode == 0:
-        self.set_progress(100, "Success")
-      else:
-        self.set_progress(999, "Failed")
-        pass
-      pass
-    pass
   pass
 
 #
@@ -377,7 +336,7 @@ class task_unmount(op_task_process):
     self.force = force_unmount
     pass
   
-  def start(self):
+  def setup(self):
     if not self.force and not self.part.mounted:
       return
     cmd = ["/bin/umount"]
@@ -386,7 +345,7 @@ class task_unmount(op_task_process):
       pass
     cmd.append(part.device_name)
 
-    super().start()
+    super().setup()
     pass
 
   def _estimate_progress(self, total_seconds):
@@ -403,13 +362,13 @@ class task_mount(op_task_process):
     pass
   
 
-  def start(self):
+  def setup(self):
     mount_point = self.part.get_mount_point()
     if not os.path.exists(mount_point):
       raise Exception("No mount point")
       pass
     self.argv = ["/bin/mount", self.part.device_name, mount_point]
-    super().start()
+    super().setup()
     pass
 
   def _estimate_progress(self, total_seconds):
@@ -430,7 +389,7 @@ class task_assign_uuid_to_partition(op_task_process):
     pass
   
 
-  def start(self):
+  def setup(self):
     self.part = self.disk.find_partition(self.part_id)
     if self.part is None:
       self.set_progress(999, "Partition %s on disk %d is not found." % (self.part_id, self.disk.device_name))
@@ -443,7 +402,7 @@ class task_assign_uuid_to_partition(op_task_process):
       pass
     else:
       raise Exception("unsupported partition type")
-    super().start()
+    super().setup()
     pass
 
   def _estimate_progress(self, total_seconds):
@@ -459,7 +418,7 @@ def task_get_uuid_from_partition(op_task_process):
     super().__init__(description, argv)
     pass
 
-  def start(self):
+  def setup(self):
     self.part.partition_uuid = None
     pass
 
@@ -482,42 +441,6 @@ def task_get_uuid_from_partition(op_task_process):
   pass
 
 
-class task_restore_disk_image(task_partclone):
-  
-  # Restore partclone image file to the first partition
-  def __init__(self, description, disk=None, partition_id=None, source=None):
-    super().__init__(description)
-    self.disk = disk
-    self.part_id = partition_id
-    self.source = source
-    pass
-
-  def start(self):
-    part1 = self.disk.find_partition(self.part_id)
-
-    if part1 is None:
-      # Partition is not there.
-      self.set_progress(999, "Partition %s does not exist on %s" % (self.part_id, self.disk.device_name))
-      return
-
-    decomp = get_file_decompression_app(self.source)
-    transport_scheme = get_transport_scheme(self.source)
-
-    if transport_scheme:
-      self.argv = "wget -q -O - '%s' | %s | partclone.ext4 -r -s - -o %s" % (self.source, decomp, part1.device_name)
-    else:
-      if decomp == "cat":
-        self.argv = "partclone.ext4 -r -s %s -o %s" % (self.source, part1.device_name)
-      else:
-        self.argv = "%s '%s' | partclone.ext4 -r -s - -o %s" % (decomp, self.source, part1.device_name)
-        pass
-      pass
-    self.set_progress(0, "Restore disk image")
-    pass
-
-  pass
-
-
 class task_fsck(op_task_process):
   #
   def __init__(self, description, disk=None, partition_id=None):
@@ -525,7 +448,7 @@ class task_fsck(op_task_process):
     self.part_id = partition_id
     pass
 
-  def start(self):
+  def setup(self):
     #
     part1 = self.disk.find_partition(self.part_id)
     self.argv = ["/sbin/e2fsck", "-f", "-y", part1.device_name]
@@ -542,7 +465,7 @@ class task_expand_partition(op_task_process):
     self.part_id = partition_id
     pass
 
-  def start(self):
+  def setup(self):
     #
     part1 = self.disk.find_partition(self.part_id)
     if part1 is None:
@@ -550,7 +473,7 @@ class task_expand_partition(op_task_process):
       return
 
     self.argv = ["resize2fs", "-p", (part1.device_name)]
-    super().start()
+    super().setup()
     return
 
   pass
@@ -564,7 +487,7 @@ class task_shrink_partition(op_task_process):
     self.part_id = partition_id
     pass
 
-  def start(self):
+  def setup(self):
     #
     part1 = self.disk.find_partition(self.part_id)
     if part1 is None:
@@ -572,7 +495,7 @@ class task_shrink_partition(op_task_process):
       return
 
     self.argv = ["resize2fs", "-M", (part1.device_name)]
-    super().start()
+    super().setup()
     return
 
   def _estimate_progress(self, total_seconds):
@@ -587,7 +510,7 @@ class task_finalize_disk(op_task_process):
     super().__init__(description)
     pass
 
-  def start(self):
+  def setup(self):
     self.argv = ["blkid"]
     pass
 
@@ -618,7 +541,7 @@ class task_create_wce_tag(op_task_python):
     self.source = source
     pass
   
-  def start(self):
+  def setup(self):
     # Set up the /etc/wce-release file
     release = open(self.disk.wce_release_file, "w+")
     release.write("wce-contents: %s\n" % get_filename_stem(self.source))
@@ -631,43 +554,6 @@ class task_create_wce_tag(op_task_python):
   pass
 
 
-class task_create_image_disk(op_task_process):
-  
-  def __init__(self, description, disk=None, partition_id=None, stem_name=None):
-    super().__init__(description)
-    self.stem_name = stem_name
-    self.disk = disk
-    self.part_id = partition_id
-    pass
-
-  def start(self):
-    self.start_time = datetime.datetime.now()
-
-    if not os.path.exists("/mnt/www/wce-disk-images"):
-      return
-
-    imagename = "/mnt/www/wce-disk-images/%s-%s.partclone.gz" % (self.stem_name, datetime.date.today().isoformat())
-
-    part1 = self.disk.find_partition(self.part_id)
-    
-    if comp == "cat":
-      self.argv = ["/usr/sbin/partclone.extfs", "-B", "-c" "-s", part1.device_name, "-o", imagename]
-    else:
-      self.argv = ["/usr/sbin/partclone.extfs", "-B", "-c", "-s", part1.device_name, "-o", "-" ]
-      pass
-
-    self.process = subprocess.Popen(self.argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-    if comp != "cat":
-      outputfile = open(imagename, "w")
-      errorfile = open("/tmp/comp-error", "w")
-      self.argv2 = [comp]
-      self.process2 = subprocess.Popen(self.argv2, stdin=self.process.stdout, stdout=outputfile, stderr=errorfile)
-      pass
-    pass
-  
-  pass
-
 # This is to purge the persistent rules for network and cd devices so that the clone
 # installation will have correct device names
 class task_remove_persistent_rules(op_task_python):
@@ -677,7 +563,7 @@ class task_remove_persistent_rules(op_task_python):
     self.disk = disk
     pass
 
-  def start(self):
+  def setup(self):
     files = ["/etc/wce-release",
              "/var/lib/world-computer-exchange/access-timestamp",
              "/var/lib/world-computer-exchange/computer-uuid",
@@ -705,7 +591,7 @@ class task_remove_persistent_rules(op_task_python):
 class task_install_mbr(op_task_process):
   def __init__(self, description, disk=None):
     self.disk = disk
-    argv = ["/sbin/install-mbr", "-f", "-r", self.disk.device_name]
+    argv = ["/sbin/install-mbr", "-r", "-e3", self.disk.device_name]
     super().__init__(description, argv, time_estimate=1)
     pass
   pass
@@ -762,7 +648,7 @@ class task_refresh_partitions(op_task_command):
   tagvalre = re.compile('\s*(\w+)="([^"]+)"')
 
   def __init__(self, description, disk=None):
-    super().__init__(description)
+    super().__init__(description, encoding='iso-8859-1')
     self.disk = disk
     self.time_estimate = 2
     pass
@@ -778,7 +664,7 @@ class task_refresh_partitions(op_task_command):
     self.step = self.step + 1
 
     result = subprocess.run([ '/sbin/blkid', part.device_name ],
-                              timeout=10, encoding='utf-8',
+                              timeout=10, encoding=self.encoding,
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     out = result.stdout
@@ -808,8 +694,12 @@ class task_refresh_partitions(op_task_command):
       pass
 
     #
-    self.set_progress(100 / len(self.disk.partitions) * self.step, "fetching")
+    self.set_progress(int(100 / len(self.disk.partitions) * self.step), "fetching")
     pass
+
+  def _estimate_progress(self, total_seconds):
+    return int(100 / len(self.disk.partitions) * self.step)
+
   pass
 
 #
@@ -841,11 +731,11 @@ class task_install_grub(op_task_process):
     # FIXME: Time estimate is very different between USB stick and hard disk.
 
     # argv is a placeholder
-    super().__init__(description, argv=['blessing', 'disk'], time_estimate=300)
+    super().__init__(description, argv=['blessing', 'disk'], time_estimate=100)
     pass
 
   #
-  def start(self):
+  def setup(self):
     # this is the beginning of execution. I guess this is a hack...
     self.linuxpart = self.disk.find_partition('Linux')
     if self.linuxpart is None:
@@ -913,7 +803,7 @@ class task_install_grub(op_task_process):
     # Run the blessing script with chroot
     self.argv = ["/usr/sbin/chroot",  self.mount_dir, "/bin/sh", self.script_path_template % ""]
 
-    super().start()
+    super().setup()
     pass
 
   # grub-install takes long time. time out only when
@@ -936,7 +826,7 @@ class task_install_grub(op_task_process):
 # partition's magic number, etc. Without this, os-prober
 # can be very confused.
 #
-class task_zero_partition(op_task_python):
+class task_zero_partition(op_task_python_simple):
   def __init__(self, description, partition=None):
     super().__init__(description)
     self.partition = partition
@@ -1059,7 +949,7 @@ class task_mount_nfs_destination(op_task_process):
   def __init__(self, description):
     pass
   
-  def start(self):
+  def setup(self):
     if not is_network_connected():
       self.set_progress(999, "Network is not working.")
       return
@@ -1082,7 +972,7 @@ class task_mount_nfs_destination(op_task_process):
       pass
 
     self.argv = [ "mount", "-t", "nfs",  "%s:/var/www" %nfs_server, "/mnt/www"]
-    super().start()
+    super().setup()
     pass
   pass
 
@@ -1111,10 +1001,10 @@ class task_uninstall_package(op_task_process):
     self.packages = packages
     pass
   
-  def start(self):
+  def setup(self):
     if self.packages:
       self.argv = [ "apt", "purge", "-y" ] + self.packages
-      super().start()
+      super().setup()
       pass
     pass
 
@@ -1129,10 +1019,10 @@ class task_uninstall_bcmwl(task_uninstall_package):
     super().__init__(op, description)
     pass
   
-  def start(self):
+  def setup(self):
     if components.pci.find_pci_device_node([0x14e4], [0x4312]):
       self.packages = ['bcmwl-kernel-source']
-      super().start()
+      super().setup()
       pass
     else:
       self._noop()
@@ -1143,7 +1033,7 @@ class task_uninstall_bcmwl(task_uninstall_package):
 #
 if __name__ == "__main__":
   task = task_sleep('test', 5)
-  task.start()
+  task.setup()
   
   while task.progress < 99:
     task.poll()
