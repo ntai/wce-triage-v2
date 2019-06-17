@@ -115,7 +115,7 @@ class dmi_type_handler_17(dmi_type_handler):
   # re_memory_device = re.compile(r'Memory Device')
 
   re_Locator = re.compile(r'^\s*Locator: (\w+)')
-  re_Size = re.compile(r'^\s*Size: (\d+\s*\w*|No Module Installed)')
+  re_Size = re.compile(r'^\s*Size: ((\d+)\s*(\w*)|No Module Installed)')
   re_Type = re.compile(r'^\s*Type: (\w+)')
   re_Manufacturer = re.compile(r'^\s*Manufacturer: (.+)')
   
@@ -141,7 +141,8 @@ class dmi_type_handler_17(dmi_type_handler):
     if m:
       if m.group(1) != 'No Module Installed':
         try:
-          self.size = int(m.group(1))
+          print("size = " + m.group(2))
+          self.size = int(m.group(2))
         except:
           self.size = 0
           self.status = False

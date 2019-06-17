@@ -11,13 +11,18 @@ import datetime, re, subprocess, abc, os, select, time, uuid
 import components.pci
 from components.disk import Disk, Partition
 from ops.tasks import *
+from lib.timeutil import *
+import functools
 
 #
 # Running partclone base class
 #
 class task_partclone(op_task_process):
+  t0= datetime.datetime.strptime('00:00:00', '%H:%M:%S')
 
   def __init__(self, description):
+    self.time_estimates = []
+    self.estimate_count = 0
     # 
     super().__init__(description, argv=None, time_estimate=600, encoding='iso-8859-1')
 
@@ -60,12 +65,25 @@ class task_partclone(op_task_process):
           remaining = m.group(2)
           completed = float(m.group(3))
 
-          self.set_time_estimate(elapsed + remaining)
+          dt_elapsed = datetime.datetime.strptime(elapsed, '%H:%M:%S') - self.t0
+          dt_remaining = datetime.datetime.strptime(remaining, '%H:%M:%S') - self.t0
+
+          self.set_time_estimate(in_seconds(dt_elapsed) + in_seconds(dt_remaining))
           self.set_progress(round(completed*0.9)+10, "elapsed: %s remaining: %s" % (elapsed, remaining))
           pass
         pass
       pass
     pass
+
+  def set_time_estimate(self, time_estimate):
+    if len(self.time_estimates) == 0:
+      self.time_estimates = [ time_estimate, time_estimate, time_estimate ]
+      pass
+    self.time_estimates[self.estimate_count] = time_estimate
+    self.time_estimate = functools.reduce(lambda x,y : x+y, self.time_estimates) / len(self.time_estimates)
+    self.estimate_count = (self.estimate_count + 1) % len(self.time_estimates)
+    pass
+
   pass
 
 #
@@ -77,16 +95,16 @@ class task_restore_disk_image(task_partclone):
   def __init__(self, description, disk=None, partition_id="Linux", source=None):
     super().__init__(description)
     self.disk = disk
-    self.part_id = partition_id
+    self.partition_id = partition_id
     self.source = source
     pass
 
   def setup(self):
-    self.linuxpart = self.disk.find_partition(self.part_id)
+    self.linuxpart = self.disk.find_partition(self.partition_id)
 
     if self.linuxpart is None:
       # Partition is not there.
-      self.set_progress(999, "Partition %s does not exist on %s" % (self.part_id, self.disk.device_name))
+      self.set_progress(999, "Partition %s does not exist on %s" % (self.partition_id, self.disk.device_name))
       return
 
     decomp = get_file_decompression_app(self.source)
@@ -108,13 +126,15 @@ class task_restore_disk_image(task_partclone):
 
 class task_create_disk_image(task_partclone):
   
-  def __init__(self, description, disk=None, partition_id="Linux", stem_name=None, compressor="gzip", destdir="/mnt/www/wce-disk-images"):
+  def __init__(self, description, disk=None, partition_id="Linux", stem_name=None, compressor=["pigz"], destdir="/mnt/www/wce-disk-images"):
     super().__init__(description)
     self.stem_name = stem_name
     self.disk = disk
-    self.part_id = partition_id
+    self.partition_id = partition_id
     self.destdir = destdir
+
     self.compressor = compressor
+    self.compressor_err = ""
     #
     self.imagename = os.path.join(self.destdir, "%s-%s.partclone.gz" % (self.stem_name, datetime.date.today().isoformat()))
     pass
@@ -129,11 +149,8 @@ class task_create_disk_image(task_partclone):
     # Final product
     self.outputfile = open(self.imagename, "wb")
 
-    # Error from compressor - usually empty
-    self.errorfile = open("/tmp/comp-error", "w")
-
     #
-    part1 = self.disk.find_partition(self.part_id)
+    part1 = self.disk.find_partition(self.partition_id)
     # -B : Show progress message without block detail
     # -c : output disk image
     self.argv = ["/usr/sbin/partclone.extfs", "-B", "-c", "-s", part1.device_name, "-o", "-" ]
@@ -146,27 +163,57 @@ class task_create_disk_image(task_partclone):
     self.out = ""
     self.err = ""
 
-    self.argv2 = [self.compressor]
-    self.process2 = subprocess.Popen(self.argv2, stdin=self.process.stdout, stdout=self.outputfile, stderr=self.errorfile)
+    self.process2 = subprocess.Popen(self.compressor, stdin=self.process.stdout, stdout=self.outputfile, stderr=subprocess.PIPE)
 
-    super().setup()
+    # Don't call any of super's setup.
+    self.start_time = datetime.datetime.now()
     pass
 
   def poll(self):
-    super().poll()
-    self.parse_partclone_progress()
+    self._poll_process()
+
+    if self.process.returncode is None:
+      self.parse_partclone_progress()
+    elif self.process.returncode in self.good_returncode:
+      self.set_progress(99, "finishing" )
+    else:
+      self.set_progress(999, "failed with return code %d\n%s" % (self.process.returncode, self.err + self.compressor_err))
+      pass
+
+    chunk = drain_pipe(self.process2.stderr)
+    if chunk:
+      self.compressor_err = self.compressor_err + chunk
+      pass
+    self.process2.poll()
+
+    if self.process2.returncode is not None:
+      # compressor exited
+      if self.process.returncode is None:
+        # Compressor died before draining pipe. Kill the partclone.
+        self.process.kill()
+        # stdout points to the output file but error should be here.
+        self.compressor_err = self.compressor_err + drain_pipe_completely(self.process2.stderr)
+        pass
+      pass
+
+    # The task is really done both processes exited.
+    if self.process.returncode in self.good_returncode and self.process2.returncode in [0]:
+      self.set_progress(100, "finished" )
+      pass
+
     pass   
 
   def teardown(self):
     self.outputfile.close()
-    self.errorfile.close()
     super().teardown()
     pass
 
   def explain(self):
-    part1 = self.disk.find_partition(self.part_id)
+    part1 = self.disk.find_partition(self.partition_id)
     if part1 is None:
-      return "*** No source partition ***"
+      errmsg = "*** No source partition '%s' ***\n%s" % (self.partition_id, self.disk.list_partitions())
+      self.set_progress(999, errmsg)
+      return errmsg
     
     return "/usr/sbin/partclone.extfs -B -c -s %s -o - | gzip > %s &2> /tmp/comp-error" % (part1.device_name, self.imagename)
 

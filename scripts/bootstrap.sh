@@ -8,4 +8,5 @@ sudo apt install -y mbr
 sudo apt install -y efibootmgr
 sudo apt install -y grub2-common grub-pc 
 sudo apt download grub-efi-amd64
+sudo apt install -y pigz
 

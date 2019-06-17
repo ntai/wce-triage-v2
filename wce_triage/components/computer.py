@@ -211,17 +211,15 @@ class Computer:
     if len(self.networks) > 0:
       for netdev in self.networks:
         if netdev.is_wifi():
-          msg = "Wifi detected as device {dev}".format(dev=netdev.device_name)
+          msg = "Wifi device '{dev}' detected".format(dev=netdev.device_name)
           pass
-        elif netdev.is_wifi():
-          msg = "Netdevernet detected as device {dev}".format(dev=netdev.device_name)
         else:
-          msg = "Network device {dev} detected".format(dev=netdev.device_name)
+          msg = "Network device '{dev}' detected".format(dev=netdev.device_name)
         self.decisions.append( ("Network", True, msg))
         pass
       pass
     else:
-      msg = "Network device is not present -- INSTALL NETWORK"
+      msg = "Network device is not present -- INSTALL NETWORK DEVICE"
       self.decisions.append( ("Network", False, msg))
       pass
 

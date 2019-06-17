@@ -45,6 +45,9 @@ class Partition:
   def get_mount_point(self, root='/mnt'):
     return os.path.join(root, self.fs_uuid)
   
+  def __str__(self):
+    return f"Partition {self.partition_number} on {self.device_name}, name: {self.partition_name}, type: {self.partition_type}, puuid: {self.partition_uuid}, fs: {self.file_system}" 
+
   pass
 
 
@@ -73,10 +76,9 @@ class Disk:
 
   # find a partition in the partitions
   def find_partition(self, part_id):
-
     if isinstance(part_id, str):
       for part in self.partitions:
-        if part.device_name == part_id or part.partition_name == part_id:
+        if part.device_name == part_id or part.partition_name == part_id or part.partition_uuid == part_id:
           return part
         pass
       pass
@@ -88,6 +90,16 @@ class Disk:
       pass
     return None
   
+
+  # find a partition by partition type
+  def find_partition_by_type(self, part_type):
+    for part in self.partitions:
+      if part.partition_type == part_type:
+        return part
+      pass
+    return None
+  
+
   def has_wce_release(self):
     # FIXME - this + "1" needs to go away
     part1 = self.device_name + "1"
@@ -195,6 +207,10 @@ class Disk:
       pass
       
     return self.is_disk
+
+  def list_partitions(self):
+    return [ str(part) for part in self.partitions ]
+
   pass # End of disk class
 
 #

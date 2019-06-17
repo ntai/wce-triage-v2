@@ -1,12 +1,7 @@
 
 import abc
 import datetime
-
-def in_seconds(seconds):
-  if isinstance(seconds, datetime.timedelta):
-    return seconds.total_seconds()
-  return seconds
-
+from lib.timeutil import *
 from ops.run_state import RunState
 
 class ops_ui(object):
@@ -62,6 +57,7 @@ class ops_ui(object):
 
 class console_ui(object):
   def __init__(self):
+    self.last_report_time = datetime.datetime.now()
     pass
 
   #
@@ -71,7 +67,12 @@ class console_ui(object):
 
   #
   def report_task_progress(self, estimate_time, elapsed_time, progress, task):
-    print("%d%% done. Time estimate for %s is %d" % (progress, task.description, task.estimate_time()))
+    current_time = datetime.datetime.now()
+    dt =in_seconds( current_time - self.last_report_time )
+    if dt < 0:
+      return
+    self.last_report_time = current_time
+    print("%d%% done. Time estimate for %s is %d" % (in_seconds(progress), task.description, task.estimate_time()))
     pass
 
 

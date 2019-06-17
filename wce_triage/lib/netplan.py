@@ -45,13 +45,16 @@ def create_netplan_cfg(filename, devices):
     elif dev.device_type == NetworkDevice.Wifi:
       # netplan works with wpa-supplicant, generates a simple config file
       # in the same directory and hands off the auth.
+      if len(WIFIPASSWORD) > 0:
+        ap_param = [ { 'password': WIFIPASSWORD } ]
+      else:
+        ap_param = '{}'
+        pass
       wifis.append( { dev.device_name:
                       [ { 'dhcp4': 'yes' },
                         { 'optional': 'yes' },
                         { 'access-points':
-                         [ { SSID : 
-                             [ { 'password': WIFIPASSWORD } ]
-                         } ] } ] } )
+                          [ { SSID: ap_param } ] } ] } )
       pass
     pass
 

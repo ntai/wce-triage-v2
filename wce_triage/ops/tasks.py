@@ -12,6 +12,48 @@ import components.pci
 from components.disk import Disk, Partition
 
 
+def drain_pipe(pipe, encoding='utf-8'):
+  read_set = [pipe]
+  selecting = True
+  while selecting:
+    selecting = False
+    try:
+      rlist, wlist, xlist = select.select(read_set, [], [], 1)
+
+      if pipe in rlist:
+        chunk = os.read(pipe.fileno(), 4096)
+        if data == b'':
+          return None
+        return chunk.decode(encoding)
+      pass
+    except select.error as exc:
+      if exc.args[0] == errno.EINTR:
+        selecting = True
+        pass
+      else:
+        raise
+      pass
+    pass
+      
+  return ""
+
+
+def drain_pipe_completely(pipe, encoding='utf-8'):
+  read_set = [pipe]
+  data = ""
+  draining = True
+  while draining:
+    chunk = drain_pipe(pipe, encoding=encoding)
+    if chunk is None:
+      draining = False
+      break
+    elif len(chunk):
+      data = data + chunk
+      pass
+    pass
+  return data
+
+
 class op_task(object, metaclass=abc.ABCMeta):
   def __init__(self, description, encoding='utf-8'):
     if not isinstance(description, str):
@@ -56,6 +98,7 @@ class op_task(object, metaclass=abc.ABCMeta):
     pass
 
   @abc.abstractmethod
+  # This is called when the process is still running.
   def _estimate_progress(self):
     pass
 
@@ -108,7 +151,7 @@ class op_task_python_simple(op_task_python):
     pass
 
   def _estimate_progress(self, total_seconds):
-    return 100
+    return 50
 
   def estimate_time(self):
     return self.time_estimate
@@ -183,7 +226,6 @@ class op_task_process(op_task):
       pass
     pass
 
-
   def _update_progress(self):
     if self.process.returncode is None:
       # Let's fake it.
@@ -218,6 +260,16 @@ class op_task_process(op_task):
   pass
 
 
+class op_task_process_simple(op_task):
+  def __init__(self, description, argv=None, select_timeout=1, time_estimate=None, encoding='utf-8'):
+    super().__init__(description)
+    pass
+
+  # For simple process task, report this as half done
+  def _estimate_progress(self, total_seconds):
+    return 50
+  pass
+
 # Base class for command based task
 # this is to run multipe quick command line commands
 # subprocess based on is for long-ish running process
@@ -244,7 +296,6 @@ class op_task_command(op_task):
   def explain(self):
     return "Execute %s" % self.description
   pass
-
 
 #
 # mkdir uses Python os.mkdir
@@ -329,50 +380,63 @@ class task_mkfs(op_task_process):
 #
 #
 #
-class task_unmount(op_task_process):
-  def __init__(self, description, partition=None, force_unmount=False):
-    super().__init__(description)
-    self.part = partition
+class task_unmount(op_task_process_simple):
+  def __init__(self, description, disk=None, partition_id='Linux', force_unmount=False):
+    self.disk = disk
+    self.partition_id = partition_id
+    self.part = self.disk.find_partition(self.partition_id)
     self.force = force_unmount
-    pass
-  
-  def setup(self):
-    if not self.force and not self.part.mounted:
-      return
-    cmd = ["/bin/umount"]
-    if force:
-      cmd.append("-f")
+    self.partition_is_mounted = self.part.mounted
+
+    argv = ["/bin/umount"]
+    if self.force:
+      argv.append("-f")
       pass
-    cmd.append(part.device_name)
-
-    super().setup()
+    argv.append(self.part.device_name)
+    super().__init__(description, argv=argv)
     pass
 
-  def _estimate_progress(self, total_seconds):
-    return int(total_seconds * 10)
+
+  def teardown(self):
+    if self.progress == 100:
+      self.part.mounted = False
+    else:
+      self.part.mounted = self.partition_is_mounted
+      pass
+
+    super().teardown()
+    pass
 
   pass
 
 
 class task_mount(op_task_process):
+  def __init__(self, description, disk=None, partition_id='Linux'):
+    self.disk = disk
+    self.partition_id = 'Linux'
+    self.part = self.disk.find_partition(self.partition_id)
+    mount_point = self.part.get_mount_point()
 
-  def __init__(self, description, partition=None):
-    super().__init__(description)
-    self.part = partition
+    super().__init__(description, argv = ["/bin/mount", self.part.device_name, mount_point])
     pass
   
 
   def setup(self):
     mount_point = self.part.get_mount_point()
     if not os.path.exists(mount_point):
-      raise Exception("No mount point")
+      try:
+        os.mkdir(mount_point)
+      except:
+        self.set_progress(999, "Creating mount point failed.")
+        pass
       pass
-    self.argv = ["/bin/mount", self.part.device_name, mount_point]
     super().setup()
     pass
 
-  def _estimate_progress(self, total_seconds):
-    return int(total_seconds * 10)
+  def teardown(self):
+    self.part.mounted = self.progress == 100
+    super().teardown()
+    pass
 
   pass
 
@@ -441,17 +505,22 @@ def task_get_uuid_from_partition(op_task_process):
   pass
 
 
+#
+# Run fsck on a partition
+#
 class task_fsck(op_task_process):
   #
   def __init__(self, description, disk=None, partition_id=None):
     self.disk = disk
     self.part_id = partition_id
+    super().__init__(description, argv=["/sbin/e2fsck", "-f", "-y", partition_id], time_estimate=self.disk.get_byte_size()/10000000000+2)
     pass
 
   def setup(self):
     #
     part1 = self.disk.find_partition(self.part_id)
     self.argv = ["/sbin/e2fsck", "-f", "-y", part1.device_name]
+    super().setup()
     pass
    
   pass
@@ -485,6 +554,7 @@ class task_shrink_partition(op_task_process):
     super().__init__(description)
     self.disk = disk
     self.part_id = partition_id
+    self.time_estimate = self.disk.get_byte_size() / 100000000
     pass
 
   def setup(self):
@@ -499,7 +569,11 @@ class task_shrink_partition(op_task_process):
     return
 
   def _estimate_progress(self, total_seconds):
-    return int(total_seconds * 0.2)
+    progress = 100 * total_seconds / self.time_estimate
+    if progress > 99:
+      progress = 99
+      pass
+    return progress
 
   pass
 
@@ -736,32 +810,6 @@ class task_install_grub(op_task_process):
 
   #
   def setup(self):
-    # this is the beginning of execution. I guess this is a hack...
-    self.linuxpart = self.disk.find_partition('Linux')
-    if self.linuxpart is None:
-      self.set_progress(999, "No linux partition")
-
-      for part in self.disk.partitions:
-        print( "%s : %s" % (part.device_name, part.partition_name))
-        pass
-      return
-    
-    self.mount_dir = self.linuxpart.get_mount_point()
-    if not os.path.exists(self.mount_dir):
-      os.mkdir(self.mount_dir)
-      pass
-
-    self.linuxpart.mounted = False
-    try:
-      subprocess.run(['mount', self.linuxpart.device_name, self.mount_dir], timeout=2)
-      self.linuxpart.mounted = True
-    except:
-      pass
-
-    if not self.linuxpart.mounted:
-      self.set_progress(999, "Failed to mount the linux parition.")
-      return
-
     # Blesser
     self.script_path = self.script_path_template % self.mount_dir
 
@@ -817,6 +865,11 @@ class task_install_grub(op_task_process):
     else:
       return progress
     pass
+
+  def teardown(self):
+    # tear down the /dev for chroot
+    subprocess.run("umount %s/dev" % self.mount_dir, shell=True)
+    pass
     
 
   pass
@@ -852,7 +905,9 @@ fstab_template = '''# /etc/fstab: static file system information.
 proc            /proc           proc    nodev,noexec,nosuid 0       0
 # / was on /dev/sda1 during installation
 UUID=%s /               ext4    errors=remount-ro 0       1
-# swap was on /dev/sda5 during installation
+'''
+
+swap_template = '''# swap was on /dev/sda5 during installation
 UUID=%s none            swap    sw              0       0
 '''
 
@@ -860,19 +915,25 @@ UUID=%s none            swap    sw              0       0
 # Create various files for blessed installation
 #
 class task_finalize_disk(op_task_python):
-  def __init__(self, description, disk=None, mount_dir=None, newhostname=None):
+  def __init__(self, description, disk=None, newhostname='wce', partition_id='Linux'):
     super().__init__(description, estimate_time=1)
-    self.mount_dir = mount_dir
-    self.disk = disk
     self.newhostname = newhostname
+
+    self.disk = disk
+    self.partition_id = partition_id
+    self.linuxpart = self.disk.find_partition(self.partition_id)
+    self.swappart = self.disk.find_partition_by_type(Partition.SWAP)
+    self.mount_dir = self.linuxpart.get_mount_point()
     pass
    
+
   def run_python(self):
     # patch up the restore
-    part1 = self.disk.find_partition(1)
-    part2 = self.disk.find_partition(5)
     fstab = open("%s/etc/fstab" % self.mount_dir, "w")
-    fstab.write(fstab_template % (part1.uuid, part2.uuid))
+    fstab.write(fstab_template % (self.linuxpart.pertition_uuid))
+    if self.swappart:
+      fstab.write(swap_template % (self.swappart.pertition_uuid))
+      pass
     fstab.close()
 
     #
@@ -912,9 +973,22 @@ class task_finalize_disk(op_task_python):
       try:
         os.unlink( removing % self.mount_dir)
       except:
+        # No big deal if the file isn't there or failed to remove.
         pass
       pass
+    pass
+  pass
 
+
+class task_finalize_disk_aux(op_task_python):
+  def __init__(self, description, disk=None, newhostname=None, partition_id='Linux'):
+    super().__init__(description, estimate_time=1)
+    self.disk = disk
+    self.linuxpart = self.disk.find_partition(partition_id)
+    self.newhostname = newhostname
+    pass
+   
+  def run_python(self):
     #
     # Patch up the grub.cfg just in case the "/dev/disk/by-uuid/%s" % 
     # self.uuid1 does not exist. If that happens, grub-mkconfig 
@@ -939,7 +1013,6 @@ class task_finalize_disk(op_task_python):
     grub_cfg_file.close()
     pass
   pass
-
 
 #
 #

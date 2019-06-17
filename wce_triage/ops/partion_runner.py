@@ -28,7 +28,7 @@ class PartPlan:
     self.name = name
     self.filesys = filesys
     self.start = start
-    self.size = size
+    self.size = size # Size is in MiB
     self.parttype = parttype
     self.flags = flags
     pass
@@ -135,7 +135,7 @@ class PartitionDiskRunner(Runner):
         mkfs_desc = "Create file system on %s" % (partition.device_name)
         mkfs = task_mkfs(mkfs_desc,
                          partition=partition,
-                         time_estimate=part.size/1024+1)
+                         time_estimate=part.size/4096 + 3)
         self.tasks.append(mkfs)
         pass
       elif part.parttype in [Partition.BIOSBOOT, Partition.MBR]:

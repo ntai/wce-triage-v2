@@ -29,7 +29,10 @@ class BlessDisk(Runner):
     detected_videos = components.video.detect_video_cards()
     self.tasks.append(task_fetch_partitions("Fetch disk information", disk))
     self.tasks.append(task_refresh_partitions("Refresh partition information", disk))
+    self.tasks.append(task_mount(disk))
     self.tasks.append(task_install_grub('Install GRUB boot manager', disk, detected_videos))
+    self.tasks.append(task_finalize_disk('Finalize disk', disk))
+    self.tasks.append(task_umount(disk))
     pass
 
   pass
