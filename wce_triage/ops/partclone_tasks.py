@@ -89,41 +89,6 @@ class task_partclone(op_task_process):
 #
 #
 #
-class task_restore_disk_image(task_partclone):
-  
-  # Restore partclone image file to the first partition
-  def __init__(self, description, disk=None, partition_id="Linux", source=None):
-    super().__init__(description)
-    self.disk = disk
-    self.partition_id = partition_id
-    self.source = source
-    pass
-
-  def setup(self):
-    self.linuxpart = self.disk.find_partition(self.partition_id)
-
-    if self.linuxpart is None:
-      # Partition is not there.
-      self.set_progress(999, "Partition %s does not exist on %s" % (self.partition_id, self.disk.device_name))
-      return
-
-    decomp = get_file_decompression_app(self.source)
-    transport_scheme = get_transport_scheme(self.source)
-
-    if transport_scheme:
-      self.argv = "wget -q -O - '%s' | %s | partclone.ext4 -r -s - -o %s" % (self.source, decomp, part1.device_name)
-    else:
-      if decomp == "cat":
-        self.argv = "partclone.ext4 -r -s %s -o %s" % (self.source, part1.device_name)
-      else:
-        self.argv = "%s '%s' | partclone.ext4 -r -s - -o %s" % (decomp, self.source, part1.device_name)
-        pass
-      pass
-    self.set_progress(0, "Restore disk image")
-    pass
-  pass
-
-
 class task_create_disk_image(task_partclone):
   
   def __init__(self, description, disk=None, partition_id="Linux", stem_name=None, compressor=["pigz"], destdir="/mnt/www/wce-disk-images"):
@@ -216,7 +181,139 @@ class task_create_disk_image(task_partclone):
       return errmsg
     
     return "/usr/sbin/partclone.extfs -B -c -s %s -o - | gzip > %s &2> /tmp/comp-error" % (part1.device_name, self.imagename)
+  pass
 
+#
+#
+#
+
+#
+#
+#
+class task_restore_disk_image(task_partclone):
+  
+  # Restore partclone image file to the first partition
+  def __init__(self, description, disk=None, partition_id="Linux", source=None):
+    super().__init__(description)
+    self.disk = disk
+    self.partition_id = partition_id
+    self.source = source
+    if self.source is None:
+      raise Exception("bone head. it needs the source image.")
+    pass
+
+  def setup(self):
+    self.linuxpart = self.disk.find_partition(self.partition_id)
+
+    if self.linuxpart is None:
+      # Partition is not there.
+      self.set_progress(999, "Partition %s does not exist on %s" % (self.partition_id, self.disk.device_name))
+      return
+
+    decomp = get_file_decompression_app(self.source)
+    transport_scheme = get_transport_scheme(self.source)
+
+    if transport_scheme:
+      self.argv = "wget -q -O - '%s' | %s | partclone.ext4 -r -s - -o %s" % (self.source, decomp, part1.device_name)
+    else:
+      if decomp == "cat":
+        self.argv = "partclone.ext4 -r -s %s -o %s" % (self.source, part1.device_name)
+      else:
+        self.argv = "%s '%s' | partclone.ext4 -r -s - -o %s" % (decomp, self.source, part1.device_name)
+        pass
+      pass
+    self.set_progress(0, "Restore disk image")
+    pass
   pass
 
 
+class task_restore_disk_image(task_partclone):
+  
+  def __init__(self, description, disk=None, partition_id="Linux", decompressor=["gzip"], source=None):
+    super().__init__(description)
+    self.source = source
+    self.disk = disk
+    self.partition_id = partition_id
+
+    self.decompressor = decompressor
+    self.decompressor_err = ""
+    pass
+
+  # Using partclone is different from other tasks.
+  # stdout goes into compressor and the output of compressor goes out as binary file
+  def setup(self):
+    if not os.path.exists(self.destdir):
+      self.set_progress(999, "Destination directory does not exist.")
+      return
+
+    # Final product
+    self.outputfile = open(self.imagename, "wb")
+
+    #
+    part1 = self.disk.find_partition(self.partition_id)
+    # -B : Show progress message without block detail
+    # -c : output disk image
+    self.argv = ["/usr/sbin/partclone.extfs", "-B", "-c", "-s", part1.device_name, "-o", "-" ]
+
+    # Start partclone
+    self.process = subprocess.Popen(self.argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    self.stdout = self.process.stdout
+    self.stderr = self.process.stderr
+    self.read_set = [self.stderr]
+    self.out = ""
+    self.err = ""
+
+    self.process2 = subprocess.Popen(self.compressor, stdin=self.process.stdout, stdout=self.outputfile, stderr=subprocess.PIPE)
+
+    # Don't call any of super's setup.
+    self.start_time = datetime.datetime.now()
+    pass
+
+  def poll(self):
+    self._poll_process()
+
+    if self.process.returncode is None:
+      self.parse_partclone_progress()
+    elif self.process.returncode in self.good_returncode:
+      self.set_progress(99, "finishing" )
+    else:
+      self.set_progress(999, "failed with return code %d\n%s" % (self.process.returncode, self.err + self.compressor_err))
+      pass
+
+    chunk = drain_pipe(self.process2.stderr)
+    if chunk:
+      self.compressor_err = self.compressor_err + chunk
+      pass
+    self.process2.poll()
+
+    if self.process2.returncode is not None:
+      # compressor exited
+      if self.process.returncode is None:
+        # Compressor died before draining pipe. Kill the partclone.
+        self.process.kill()
+        # stdout points to the output file but error should be here.
+        self.compressor_err = self.compressor_err + drain_pipe_completely(self.process2.stderr)
+        pass
+      pass
+
+    # The task is really done both processes exited.
+    if self.process.returncode in self.good_returncode and self.process2.returncode in [0]:
+      self.set_progress(100, "finished" )
+      pass
+
+    pass   
+
+  def teardown(self):
+    self.outputfile.close()
+    super().teardown()
+    pass
+
+  def explain(self):
+    part1 = self.disk.find_partition(self.partition_id)
+    if part1 is None:
+      errmsg = "*** No source partition '%s' ***\n%s" % (self.partition_id, self.disk.list_partitions())
+      self.set_progress(999, errmsg)
+      return errmsg
+    
+    return "/usr/sbin/partclone.extfs -B -c -s %s -o - | gzip > %s &2> /tmp/comp-error" % (part1.device_name, self.imagename)
+  pass

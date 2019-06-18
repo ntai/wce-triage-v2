@@ -70,14 +70,14 @@ def make_efi_partition_plan(disk):
   return pplan
 
 
-def make_usb_stick_partition_plan(disk):
+def make_usb_stick_partition_plan(disk, partition_id='Linux'):
   diskmbsize = int(disk.get_byte_size() / (1024*1024))
   # This is for gpt/grub. Set aside the EFI partition so we can 
   # make this usb stick for EFI if needed.
-  pplan = [PartPlan(0, None,    None,         0,        2, Partition.MBR, None),
-           PartPlan(1, 'BOOT',  None,         0,       32, Partition.BIOSBOOT, 'bios_grub'),
-           PartPlan(2, 'EFI',   'fat32',      0,      300, Partition.UEFI, None),
-           PartPlan(3, 'Linux', 'ext4',       0,        0, Partition.EXT4, None) ]
+  pplan = [PartPlan(0, None,         None,         0,        2, Partition.MBR, None),
+           PartPlan(1, 'BOOT',       None,         0,       32, Partition.BIOSBOOT, 'bios_grub'),
+           PartPlan(2, 'EFI',        'fat32',      0,      300, Partition.UEFI, None),
+           PartPlan(3, partition_id, 'ext4',       0,        0, Partition.EXT4, None) ]
   partion_start = 0
   for part in pplan:
     part.start = partion_start
@@ -145,9 +145,6 @@ class PartitionDiskRunner(Runner):
         pass
       pass
     pass
-
-
-
   pass
 
 

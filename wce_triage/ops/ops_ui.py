@@ -96,11 +96,11 @@ class console_ui(object):
   def report_run_progress(self, 
                           step,
                           tasks,
-                          task_estimate_time,
+                          total_estimate_time,
                           elapsed_time):
-    print("(%d/%d) elapsed %d, estimate %d seconds." % (step+1, len(tasks),
-                                                        in_seconds(task_estimate_time),
-                                                        in_seconds(elapsed_time)))
+    print("(%d/%d) elapsed %d, estimate %d seconds." % (step, len(tasks),
+                                                        in_seconds(elapsed_time),
+                                                        in_seconds(total_estimate_time)))
     pass
 
   # Used for explain. Probably needs better way
@@ -143,7 +143,7 @@ class virtual_ui(object):
   def report_run_progress(self, 
                           step,
                           tasks,
-                          task_estimate_time,
+                          total_estimate_time,
                           elapsed_time):
     pass
 

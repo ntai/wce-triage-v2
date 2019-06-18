@@ -29,17 +29,13 @@ class ImageDisk(Runner):
     super().prepare()
     
     # self.tasks.append(task_mount_nfs_destination(self, "Mount the destination volume"))
-
-    # self.tasks.append(task_mount(self, "Mount the target disk", disk=disk, partition_id=self.partition_id))
-    # self.tasks.append(task_remove_persistent_rules(self, "Remote persistent rules", disk=disk, partition_id=self.partition_id))
-    # self.tasks.append(task_unmount(self, "unmount target", disk=disk, partition_id=self.partition_id))
-    # self.tasks.append(task_fsck(self, "fsck partition", disk=disk, partition_id=self.partition_id))
-    # self.tasks.append(task_shrink_partition(self, "shrink partition", disk=disk, partition_id=self.partition_id))
-    # self.tasks.append(task_null(self, "Ready for imaging"))
-
-    self.tasks.append(task_create_disk_image("Creae disk image", disk, partition_id=self.partition_id, stem_name="wce-mate-18", destdir=self.destdir))
-
-    # self.tasks.append(task_extend_partition(self, "expand the partion back", disk=disk, partition_id=self.partition_id))
+    self.tasks.append(task_mount("Mount the target disk", disk=self.disk, partition_id=self.partition_id))
+    self.tasks.append(task_remove_persistent_rules("Remove persistent rules", disk=self.disk, partition_id=self.partition_id))
+    self.tasks.append(task_unmount("Unmount target", disk=self.disk, partition_id=self.partition_id))
+    self.tasks.append(task_fsck("fsck partition", disk=self.disk, partition_id=self.partition_id))
+    self.tasks.append(task_shrink_partition("Shrink partition to smallest", disk=self.disk, partition_id=self.partition_id))
+    self.tasks.append(task_create_disk_image("Create disk image", disk=self.disk, partition_id=self.partition_id, stem_name="triage", destdir=self.destdir))
+    self.tasks.append(task_expand_partition("Expand the partion back", disk=self.disk, partition_id=self.partition_id))
     pass
 
 

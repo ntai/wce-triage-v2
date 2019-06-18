@@ -22,7 +22,7 @@ def drain_pipe(pipe, encoding='utf-8'):
 
       if pipe in rlist:
         chunk = os.read(pipe.fileno(), 4096)
-        if data == b'':
+        if chunk == b'':
           return None
         return chunk.decode(encoding)
       pass
@@ -181,7 +181,7 @@ class op_task_process(op_task):
 
   def estimate_time(self):
     if self.time_estimate is None:
-      raise Exception("Time estimate is not provided.")
+      raise Exception(self.description + ": Time estimate is not provided.")
     return self.time_estimate
 
   def setup(self):
@@ -260,15 +260,16 @@ class op_task_process(op_task):
   pass
 
 
-class op_task_process_simple(op_task):
-  def __init__(self, description, argv=None, select_timeout=1, time_estimate=None, encoding='utf-8'):
-    super().__init__(description)
+class op_task_process_simple(op_task_process):
+  def __init__(self, description, argv=None, time_estimate=3, encoding='iso-8859-1'):
+    super().__init__(description, argv=argv, time_estimate=time_estimate, encoding=encoding)
     pass
 
   # For simple process task, report this as half done
   def _estimate_progress(self, total_seconds):
     return 50
   pass
+
 
 # Base class for command based task
 # this is to run multipe quick command line commands
@@ -384,18 +385,23 @@ class task_unmount(op_task_process_simple):
   def __init__(self, description, disk=None, partition_id='Linux', force_unmount=False):
     self.disk = disk
     self.partition_id = partition_id
-    self.part = self.disk.find_partition(self.partition_id)
     self.force = force_unmount
-    self.partition_is_mounted = self.part.mounted
-
-    argv = ["/bin/umount"]
-    if self.force:
-      argv.append("-f")
-      pass
-    argv.append(self.part.device_name)
-    super().__init__(description, argv=argv)
+    super().__init__(description, ["/bin/umount"], time_estimate=1)
     pass
 
+
+  def setup(self):
+    self.part = self.disk.find_partition(self.partition_id)
+    self.partition_is_mounted = self.part.mounted
+
+    self.argv = ["/bin/umount"]
+    if self.force:
+      self.argv.append("-f")
+      pass
+    self.argv.append(self.part.device_name)
+    super().setup()
+    pass
+    
 
   def teardown(self):
     if self.progress == 100:
@@ -410,19 +416,25 @@ class task_unmount(op_task_process_simple):
   pass
 
 
-class task_mount(op_task_process):
+#
+#
+#
+class task_mount(op_task_process_simple):
+  '''mount a partition on disk'''
+
   def __init__(self, description, disk=None, partition_id='Linux'):
     self.disk = disk
-    self.partition_id = 'Linux'
-    self.part = self.disk.find_partition(self.partition_id)
-    mount_point = self.part.get_mount_point()
+    self.partition_id = partition_id
 
-    super().__init__(description, argv = ["/bin/mount", self.part.device_name, mount_point])
+    super().__init__(description, argv = ["/bin/mount"], time_estimate=2)
     pass
   
 
   def setup(self):
+    self.part = self.disk.find_partition(self.partition_id)
     mount_point = self.part.get_mount_point()
+    self.argv = ["/bin/mount", self.part.device_name, mount_point]
+
     if not os.path.exists(mount_point):
       try:
         os.mkdir(mount_point)
@@ -442,9 +454,9 @@ class task_mount(op_task_process):
 
 
 #
+# not implemented
 #
-#
-class task_assign_uuid_to_partition(op_task_process):
+class task_assign_uuid_to_partition(op_task_process_simple):
 
   def __init__(self, description, disk=None, partition_id=None):
     super().__init__(description)
@@ -513,7 +525,7 @@ class task_fsck(op_task_process):
   def __init__(self, description, disk=None, partition_id=None):
     self.disk = disk
     self.part_id = partition_id
-    super().__init__(description, argv=["/sbin/e2fsck", "-f", "-y", partition_id], time_estimate=self.disk.get_byte_size()/10000000000+2)
+    super().__init__(description, argv=["/sbin/e2fsck", "-f", "-y", partition_id], time_estimate=self.disk.get_byte_size()/5000000000+2)
     pass
 
   def setup(self):
@@ -529,9 +541,11 @@ class task_fsck(op_task_process):
 class task_expand_partition(op_task_process):
   #
   def __init__(self, description, disk=None, partition_id=None):
-    super().__init__(description)
     self.disk = disk
     self.part_id = partition_id
+    super().__init__(description,
+                     argv = ["resize2fs", "-p", disk.device_name + partition_id],
+                     time_estimate = self.disk.get_byte_size() / 250000000+2) # FIXME time_estimate is bogus
     pass
 
   def setup(self):
@@ -545,16 +559,23 @@ class task_expand_partition(op_task_process):
     super().setup()
     return
 
+  def _estimate_progress(self, total_seconds):
+    progress = 100 * total_seconds / self.time_estimate
+    if progress > 99:
+      progress = 99
+      pass
+    return progress
   pass
 
 
 class task_shrink_partition(op_task_process):
   #
   def __init__(self, description, disk=None, partition_id=None):
-    super().__init__(description)
     self.disk = disk
     self.part_id = partition_id
-    self.time_estimate = self.disk.get_byte_size() / 100000000
+    super().__init__(description,
+                     time_estimate=self.disk.get_byte_size() / 100000000, # FIXME: bogus estimate
+                     argv=["resize2fs", "-M", disk.device_name+partition_id])
     pass
 
   def setup(self):
@@ -574,37 +595,6 @@ class task_shrink_partition(op_task_process):
       progress = 99
       pass
     return progress
-
-  pass
-
-
-class task_finalize_disk(op_task_process):
-  def __init__(self, description, disk=None):
-    self.disk = disk
-    super().__init__(description)
-    pass
-
-  def setup(self):
-    self.argv = ["blkid"]
-    pass
-
-  def poll(self):
-    super().poll()
-    
-    if self.progress == 100:
-      this_disk = re.compile(r'(' + self.disk.device_name + r'\d): ((LABEL=\"[^"]+\") ){0,1}(UUID=\"([0-9a-f-]+)\")\s+TYPE=\"([a-z0-9]+)\"')
-      for line in self.out.splitlines():
-        m = this_disk.match(line)
-        if m:
-          if m.group(6) == "swap":
-            self.uuid2 = m.group(5)
-          elif  m.group(6)[0:3] == "ext":
-            self.uuid1 = m.group(5)
-            pass
-          pass
-        pass
-      pass
-    pass
   pass
 
 
@@ -630,22 +620,30 @@ class task_create_wce_tag(op_task_python):
 
 # This is to purge the persistent rules for network and cd devices so that the clone
 # installation will have correct device names
-class task_remove_persistent_rules(op_task_python):
+class task_remove_persistent_rules(op_task_python_simple):
     #
-  def __init__(self, description, disk=None):
+  def __init__(self, description, disk=None, partition_id='Linux'):
     super().__init__(description)
     self.disk = disk
+    self.partition_id = partition_id
     pass
 
-  def setup(self):
-    files = ["/etc/wce-release",
-             "/var/lib/world-computer-exchange/access-timestamp",
-             "/var/lib/world-computer-exchange/computer-uuid",
-             "/etc/udev/rules.d/70-persistent-cd.rules",
-             "/etc/udev/rules.d/70-persistent-net.rules"]
+  def run_python(self):
+    part = self.disk.find_partition(self.partition_id)
+    if part is None:
+      self.set_progress(999, 'Partition does not exist.')
+      return
+    
+    rootpath = part.get_mount_point()
+    files = ["etc/wce-release",
+             "var/lib/world-computer-exchange/access-timestamp",
+             "var/lib/world-computer-exchange/computer-uuid",
+             "etc/udev/rules.d/70-persistent-cd.rules",
+             "etc/udev/rules.d/70-persistent-net.rules"]
     n = len(files)
     i = 0
-    for path in files:
+    for filename in files:
+      path = os.path.join(rootpath, filename)
       i = i + 1
       if os.path.exists(path):
         try:
@@ -653,10 +651,7 @@ class task_remove_persistent_rules(op_task_python):
         except:
           pass
         pass
-      self.set_progress(100.0 * i / n, "Removing file %s" % path)
       pass
-
-    self.set_progress(100, "Persistent rules removed.")
     pass
   pass
 
@@ -761,7 +756,6 @@ class task_refresh_partitions(op_task_command):
 
       attrname = self.props.get(tag)
       if attrname is not None:
-        print (" %s=%s"  % (attrname, token))
         part.__setattr__(attrname, token)
         pass
       tag = None

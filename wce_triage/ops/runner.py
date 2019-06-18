@@ -35,13 +35,17 @@ class Runner:
       raise Exception("Run state is not Prepare")
 
     self.state = RunState.Preflight
-    self.total_estimate_time = 0
-    for task in self.tasks:
-      self.total_estimate_time + task.estimate_time()
-      pass
+    self._update_total_estimate_time()
     self.ui.report_tasks(self.total_estimate_time, self.tasks)
     pass
 
+  def _update_total_estimate_time(self):
+    self.total_estimate_time = 0
+    for task in self.tasks:
+      self.total_estimate_time = self.total_estimate_time + task.estimate_time()
+      pass
+    pass
+  
   # Explaining what's going to happen
   def explain(self):
     step = 0
@@ -65,6 +69,7 @@ class Runner:
 
       self.current_time = datetime.datetime.now()
       self.elapsed_time = self.current_time - self.start_time
+      self._update_total_estimate_time()
       self.ui.report_run_progress(self.task_step, self.tasks, self.total_estimate_time, self.elapsed_time)
       pass
 
