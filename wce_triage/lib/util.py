@@ -138,7 +138,7 @@ def get_file_decompression_app(path):
 # options but for compression from here, gzip/pigz is it.
 
 def get_file_compression_app(path):
-  return ( ["pigz", "-7" ], None )
+  return ( ["pigz", "-7" ], [] )
 
 #
 #
