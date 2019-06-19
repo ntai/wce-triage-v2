@@ -1,6 +1,8 @@
 #
 # Blessing a disk for booting
 #
+# The runner initializes disk, loads up the GRUB boot loader
+#
 
 import datetime, re, subprocess, sys, os
 
@@ -26,13 +28,12 @@ class BlessDisk(Runner):
 
   def prepare(self):
     super().prepare()
-    detected_videos = components.video.detect_video_cards()
     self.tasks.append(task_fetch_partitions("Fetch disk information", disk))
     self.tasks.append(task_refresh_partitions("Refresh partition information", disk))
-    self.tasks.append(task_mount(disk))
-    self.tasks.append(task_install_grub('Install GRUB boot manager', disk, detected_videos))
+    self.tasks.append(task_mount("Mount disk %s" % disk.device_name, disk))
+    self.tasks.append(task_install_grub('Install GRUB boot manager', disk, (0, 0, 1)))
     self.tasks.append(task_finalize_disk('Finalize disk', disk))
-    self.tasks.append(task_umount(disk))
+    self.tasks.append(task_unmount("Unmount disk %s" % disk.device_name, disk))
     pass
 
   pass
@@ -48,4 +49,3 @@ if __name__ == "__main__":
   runner.explain()
   runner.run()
   pass
-

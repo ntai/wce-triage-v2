@@ -10,55 +10,14 @@
 import datetime, re, subprocess, abc, os, select, time, uuid
 import components.pci
 from components.disk import Disk, Partition
-
-
-def drain_pipe(pipe, encoding='utf-8'):
-  read_set = [pipe]
-  selecting = True
-  while selecting:
-    selecting = False
-    try:
-      rlist, wlist, xlist = select.select(read_set, [], [], 1)
-
-      if pipe in rlist:
-        chunk = os.read(pipe.fileno(), 4096)
-        if chunk == b'':
-          return None
-        return chunk.decode(encoding)
-      pass
-    except select.error as exc:
-      if exc.args[0] == errno.EINTR:
-        selecting = True
-        pass
-      else:
-        raise
-      pass
-    pass
-      
-  return ""
-
-
-def drain_pipe_completely(pipe, encoding='utf-8'):
-  read_set = [pipe]
-  data = ""
-  draining = True
-  while draining:
-    chunk = drain_pipe(pipe, encoding=encoding)
-    if chunk is None:
-      draining = False
-      break
-    elif len(chunk):
-      data = data + chunk
-      pass
-    pass
-  return data
-
+from lib.util import drain_pipe, drain_pipe_completely
 
 class op_task(object, metaclass=abc.ABCMeta):
-  def __init__(self, description, encoding='utf-8'):
+  def __init__(self, description, encoding='utf-8', time_estimate=None):
     if not isinstance(description, str):
       raise Exception("Description must be a string")
       pass
+    self.time_estimate = time_estimate
     self.encoding = encoding
     self.description = description
     self.is_started = False
@@ -102,9 +61,10 @@ class op_task(object, metaclass=abc.ABCMeta):
   def _estimate_progress(self):
     pass
 
-  @abc.abstractmethod
   def estimate_time(self):
-    pass
+    if self.time_estimate is None:
+      raise Exception("Time estimate is not provided.")
+    return self.time_estimate
 
   @abc.abstractmethod
   def explain(self):
@@ -115,8 +75,8 @@ class op_task(object, metaclass=abc.ABCMeta):
 
 # Base class for Python based task
 class op_task_python(op_task):
-  def __init__(self, description, encoding='utf-8'):
-    super().__init__(description, encoding=encoding)
+  def __init__(self, description, **kwargs):
+    super().__init__(description, **kwargs)
     pass
 
   def setup(self):
@@ -140,9 +100,8 @@ class op_task_python(op_task):
 
 # Base class for simple Python 
 class op_task_python_simple(op_task_python):
-  def __init__(self, description, encoding='utf-8'):
-    super().__init__(description, encoding=encoding)
-    self.time_estimate = 1
+  def __init__(self, description, **kwargs):
+    super().__init__(description, **kwargs)
     pass
 
   def poll(self):
@@ -164,15 +123,13 @@ class op_task_python_simple(op_task_python):
 
 # Base class for subprocess based task
 class op_task_process(op_task):
-  def __init__(self, description, argv=None, select_timeout=1, time_estimate=None, encoding='utf-8'):
-    super().__init__(description)
+  def __init__(self, description, argv=None, select_timeout=1, **kwargs):
+    super().__init__(description, **kwargs)
 
     self.argv = argv
     self.process = None
     self.select_timeout = select_timeout
-    self.time_estimate = time_estimate
     self.good_returncode = [0]
-    self.encoding = encoding
     pass
 
   def set_time_estimate(self, time_estimate):
@@ -261,8 +218,8 @@ class op_task_process(op_task):
 
 
 class op_task_process_simple(op_task_process):
-  def __init__(self, description, argv=None, time_estimate=3, encoding='iso-8859-1'):
-    super().__init__(description, argv=argv, time_estimate=time_estimate, encoding=encoding)
+  def __init__(self, description, argv=None, **kwargs):
+    super().__init__(description, argv=argv, **kwargs)
     pass
 
   # For simple process task, report this as half done
@@ -278,11 +235,9 @@ class op_task_process_simple(op_task_process):
 # This is to run quick running commands like getting
 # partition information.
 class op_task_command(op_task):
-  def __init__(self, description, argv=None, time_estimate=None, encoding='utf-8'):
-    super().__init__(description, encoding=encoding)
-    self.time_estimate = time_estimate
+  def __init__(self, description, argv=None, **kwargs):
+    super().__init__(description, **kwargs)
     self.step = 0
-    self.encoding = encoding
     pass
 
   def estimate_time(self):
@@ -302,7 +257,7 @@ class op_task_command(op_task):
 # mkdir uses Python os.mkdir
 # I think this is truely overkill.
 #
-class task_mkdir(op_task_python):
+class task_mkdir(op_task_python_simple):
 
   def __init__(self, description, dir_path):
     '''
@@ -311,7 +266,7 @@ class task_mkdir(op_task_python):
     :param dir_path: path to do mkdir
 
     '''
-    super().__init__(description)
+    super().__init__(description, time_estimate=1)
     self.dir_path = dir_path
     pass
 
@@ -340,7 +295,7 @@ class task_mkdir(op_task_python):
 #
 class task_mkfs(op_task_process):
   def __init__(self, description, partition=None, time_estimate=10):
-    super().__init__(description, time_estimate=time_estimate)
+    super().__init__(description, encoding='iso-8859-1', time_estimate=time_estimate)
     self.success_returncodes = [0]
     self.success_msg = "Initializing file system succeeded."
     self.failure_msg = "Initializing file system failed."
@@ -386,7 +341,7 @@ class task_unmount(op_task_process_simple):
     self.disk = disk
     self.partition_id = partition_id
     self.force = force_unmount
-    super().__init__(description, ["/bin/umount"], time_estimate=1)
+    super().__init__(description, argv=["/bin/umount"], time_estimate=1)
     pass
 
 
@@ -491,7 +446,7 @@ def task_get_uuid_from_partition(op_task_process):
   def __init__(self, description, partition=None):
     self.part = partition
     self.argv = ["/sbin/blkid", part.device_name]
-    super().__init__(description, argv)
+    super().__init__(description, argv, time_estimate=2)
     pass
 
   def setup(self):
@@ -598,14 +553,14 @@ class task_shrink_partition(op_task_process):
   pass
 
 
-class task_create_wce_tag(op_task_python):
+class task_create_wce_tag(op_task_python_simple):
   def __init__(self, description, disk=None, source=None):
-    super().__init__(description)
+    super().__init__(description, time_estimate=1)
     self.disk = disk
     self.source = source
     pass
   
-  def setup(self):
+  def run_python(self):
     # Set up the /etc/wce-release file
     release = open(self.disk.wce_release_file, "w+")
     release.write("wce-contents: %s\n" % get_filename_stem(self.source))
@@ -623,7 +578,7 @@ class task_create_wce_tag(op_task_python):
 class task_remove_persistent_rules(op_task_python_simple):
     #
   def __init__(self, description, disk=None, partition_id='Linux'):
-    super().__init__(description)
+    super().__init__(description, time_estimate=1)
     self.disk = disk
     self.partition_id = partition_id
     pass
@@ -657,7 +612,7 @@ class task_remove_persistent_rules(op_task_python_simple):
 
 
 # Installing MBR on disk
-class task_install_mbr(op_task_process):
+class task_install_mbr(op_task_process_simple):
   def __init__(self, description, disk=None):
     self.disk = disk
     argv = ["/sbin/install-mbr", "-r", "-e3", self.disk.device_name]
@@ -790,10 +745,10 @@ class task_install_syslinux(op_task_process):
 class task_install_grub(op_task_process):
   script_path_template = "%s/tmp/bless.sh"
 
-  def __init__(self, description, disk, detected_video):
+  def __init__(self, description, disk, detected_video, partition_id='Linux'):
     # Disk to bless
     self.disk = disk
-    self.linuxpart = None
+    self.partition_id = partition_id
     (self.n_nvidia, self.n_ati, self.n_vga) = detected_video
 
     # FIXME: Time estimate is very different between USB stick and hard disk.
@@ -804,7 +759,18 @@ class task_install_grub(op_task_process):
 
   #
   def setup(self):
+    # 
+    self.linuxpart = self.disk.find_partition(self.partition_id)
+    if self.linuxpart is None:
+      self.set_progress(999, "No Linux partition found")
+      return
+    # IOW, the disk should be mounted, or else, I'm in big problem
+    if not self.linuxpart.mounted:
+      self.set_progress(999, "Linux partition is not mounted.")
+      return
+
     # Blesser
+    self.mount_dir = self.linuxpart.get_mount_point()
     self.script_path = self.script_path_template % self.mount_dir
 
     #
@@ -908,20 +874,22 @@ UUID=%s none            swap    sw              0       0
 #
 # Create various files for blessed installation
 #
-class task_finalize_disk(op_task_python):
+class task_finalize_disk(op_task_python_simple):
   def __init__(self, description, disk=None, newhostname='wce', partition_id='Linux'):
-    super().__init__(description, estimate_time=1)
+    super().__init__(description, time_estimate=1)
     self.newhostname = newhostname
 
     self.disk = disk
     self.partition_id = partition_id
-    self.linuxpart = self.disk.find_partition(self.partition_id)
-    self.swappart = self.disk.find_partition_by_type(Partition.SWAP)
-    self.mount_dir = self.linuxpart.get_mount_point()
     pass
    
 
   def run_python(self):
+    #
+    self.linuxpart = self.disk.find_partition(self.partition_id)
+    self.swappart = self.disk.find_partition_by_type(Partition.SWAP)
+    self.mount_dir = self.linuxpart.get_mount_point()
+
     # patch up the restore
     fstab = open("%s/etc/fstab" % self.mount_dir, "w")
     fstab.write(fstab_template % (self.linuxpart.pertition_uuid))
@@ -976,7 +944,7 @@ class task_finalize_disk(op_task_python):
 
 class task_finalize_disk_aux(op_task_python):
   def __init__(self, description, disk=None, newhostname=None, partition_id='Linux'):
-    super().__init__(description, estimate_time=1)
+    super().__init__(description, time_estimate=1)
     self.disk = disk
     self.linuxpart = self.disk.find_partition(partition_id)
     self.newhostname = newhostname
