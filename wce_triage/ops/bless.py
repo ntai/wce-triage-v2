@@ -33,7 +33,9 @@ class BlessDisk(Runner):
     self.tasks.append(task_mount("Mount disk %s" % disk.device_name, disk))
     self.tasks.append(task_install_grub('Install GRUB boot manager', disk, (0, 0, 1)))
     self.tasks.append(task_finalize_disk('Finalize disk', disk))
-    self.tasks.append(task_unmount("Unmount disk %s" % disk.device_name, disk))
+    unmounter = task_unmount("Unmount disk %s" % disk.device_name, disk)
+    unmounter.set_teardown_task()
+    self.tasks.append(unmounter)
     pass
 
   pass

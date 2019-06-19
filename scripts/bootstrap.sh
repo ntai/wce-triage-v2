@@ -10,3 +10,7 @@ sudo apt install -y grub2-common grub-pc
 sudo apt download grub-efi-amd64
 sudo apt install -y pigz
 
+# This sets the console frame buffer things
+sudo apt install -y vbetool
+
+sudo apt install -y gfxboot
