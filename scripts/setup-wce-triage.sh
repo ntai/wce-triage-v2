@@ -1,8 +1,15 @@
 #!/bin/sh
 #
 # Install gunpg
-sudo apt install -y gnupg
-#
+for pkg in gnupg dmidecode partclone mbr efibootmgr grub2-common grub-pc pigz vbetool gfxboot; do
+    sudo apt install -y $pkg
+done
+
+sudo apt download grub-efi-amd64
+nvidia_driver=$(apt search xserver-xorg-video-nvidia 2> /dev/null | awk -F / '/xserver-xorg-video-nvidia/ { print $1 }')
+sudo apt download $nvidia_driver
+
+
 # Add Google signing key
 #
 wget -qO- https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
@@ -35,7 +42,6 @@ EOF
 
 sudo install -m 0555 /tmp/wce-kiosk.sh /usr/local/bin
 
-
 #
 #
 #
@@ -63,14 +69,11 @@ sudo usermod -a -G tty $USER
 # and, be able to start X by user
 sudo chmod ug+s /usr/lib/xorg/Xorg
 
-DISTRIBUTOR=`lsb_release -i -s 2> /dev/null || echo Debian`
-
 cat > /tmp/grub.cfg <<EOF
 GRUB_DEFAULT=0
-GRUB_HIDDEN_TIMEOUT=10
 GRUB_TIMEOUT=10
-GRUB_DISTRIBUTOR=$DISTRIBUTOR
-GRUB_CMDLINE_LINUX_DEFAULT="splash"
+GRUB_DISTRIBUTOR=Ubuntu
+GRUB_CMDLINE_LINUX_DEFAULT=""
 GRUB_CMDLINE_LINUX=""
 EOF
 

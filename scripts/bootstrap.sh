@@ -12,5 +12,4 @@ sudo apt install -y pigz
 
 # This sets the console frame buffer things
 sudo apt install -y vbetool
-
 sudo apt install -y gfxboot
