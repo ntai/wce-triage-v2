@@ -84,8 +84,8 @@ def load_disk(source, dest_dev):
   pipes.append(PipeInfo("partclone", partclone, "stderr", partclone.stderr))
 
   # all the processes are up. Drive them.
-  drive_process("LOADER", processes, pipes)
-  pass
+  return drive_process("LOADER", processes, pipes)
+
 
 if __name__ == "__main__":
   if len(sys.argv) != 3:
@@ -93,5 +93,4 @@ if __name__ == "__main__":
     sys.exit(1)
     pass
     
-  load_disk(sys.argv[1], sys.argv[2])
-  pass
+  return load_disk(sys.argv[1], sys.argv[2])

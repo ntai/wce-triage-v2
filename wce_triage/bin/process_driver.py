@@ -1,5 +1,5 @@
 #
-# 
+# Probably, I need to deal with signals. That's gonna be future project.
 #
 import os, sys, subprocess, urllib, datetime
 
@@ -17,7 +17,9 @@ from collections import namedtuple
 PipeInfo = namedtuple('PipeInfo', 'app, process, pipetag, pipe')
 
 def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
-
+  #
+  drive_process_retcode = 0
+  
   # gatherer gathers pipe outs
   gatherer = select.poll()
   fd_map = {}
@@ -52,6 +54,8 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
 
         # Something went wrong. Try to kill the rest.
         if retcode != 0:
+          # retcode sucks. cannot tell much about the failier.
+          drive_process_retcode = retcode
           for proc_name, remain in processes:
             remain.kill()
             pass
@@ -112,5 +116,6 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
         pass
       pass
     pass
-  pass
+  return drive_process_retcode
+
 
