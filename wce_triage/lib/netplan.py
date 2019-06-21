@@ -1,5 +1,5 @@
 
-from components.network import NetworkDevice
+from wce_triage.components.network import NetworkDevice
 import sys, os
 
 indentspace = '  '

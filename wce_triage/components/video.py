@@ -2,11 +2,7 @@
 # Video detection
 #
 
-if __name__ == "__main__":
-  sys.path.append(os.path.split(os.getcwd())[0])
-  pass
-
-from components.pci import *
+from wce_triage.components.pci import *
 
 from collections import namedtuple
 Videos = namedtuple('Videos', 'nvidia, ati, vga')

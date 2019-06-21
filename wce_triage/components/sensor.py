@@ -1,5 +1,5 @@
 import subprocess
-from lib.util import *
+from wce_triage.lib.util import *
 
 def detect_sensor_modules(modules_path):
   if modules_path:

@@ -169,19 +169,37 @@ def get_disk_image_directories():
 
 
 def get_disk_images():
+  # Dedup the same file name
   images = {}
   for dir in get_disk_image_directories():
     for file in os.listdir(dir):
-      if file.startswith("wce-") and file.endswith(".tar.gz"):
+      if file.endswith(".partclone.gz"):
         images[file] = os.path.join(dir, file)
         pass
       pass
     pass
-  return images
-      
+
+  result = []
+  for file, filepath in images.items():
+    filestat = os.stat(filepath)
+    mtime = datetime.datetime.fromtimestamp(filestat.st_mtime)
+    fattr = { "mtime": mtime.strftime('%Y-%m-%d %H:%M'),
+              "name": file,
+              "fullpath": filepath,
+              "size": filestat.st_size }
+    result.append(fattr)
+    pass
+
+  return result
+
 #
 if __name__ == "__main__":
-  sleep = subprocess.Popen("sleep 60", shell=True, stdout=subprocess.PIPE)
+  for diskimage in get_disk_images():
+    print (diskimage)
+    pass
+  
+
+  sleep = subprocess.Popen("sleep 5", shell=True, stdout=subprocess.PIPE)
   
   for i in range(1, 10):
     start_time = datetime.datetime.now()

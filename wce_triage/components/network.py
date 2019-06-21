@@ -4,8 +4,8 @@
 import urllib.parse
 import os, sys
 sys.path.append(os.path.split(os.getcwd())[0])
-from components.pci import *
-from lib.util import *
+from wce_triage.components.pci import *
+from wce_triage.lib.util import *
 
 
 class NetworkDevice(object):

@@ -7,10 +7,10 @@ if __name__ == "__main__":
   sys.path.append(os.path.split(os.getcwd())[0])
   pass
 
-from lib.util import *
-from lib.timeutil import *
+from wce_triage.lib.util import *
+from wce_triage.lib.timeutil import *
 from collections import deque
-from bin.process_driver import *
+from wce_triage.bin.process_driver import *
 
 def load_disk(source, dest_dev):
 
@@ -45,7 +45,7 @@ def load_disk(source, dest_dev):
   pipes = []
 
   # So, for partclone, the source is whatever upstream hands down.
-  argv_partclone = [ "partclone.ext4", "-r", "-s", source, "-o", dest_dev ]
+  argv_partclone = [ "partclone.ext4", "-f", "2", "-r", "-s", source, "-o", dest_dev ]
 
   # wire up the apps
   if argv_wget:
@@ -93,4 +93,4 @@ if __name__ == "__main__":
     sys.exit(1)
     pass
     
-  return load_disk(sys.argv[1], sys.argv[2])
+  sys.exit(load_disk(sys.argv[1], sys.argv[2]))

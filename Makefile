@@ -1,33 +1,22 @@
 
-SRCDIR := wce_triage
-DESTDIR := ../wce-triage-ui/public
+PYPI_USER := ntai
+PYPI_PASSWORD := ps8AVW4p@jT$98Ud
 
-COMPONENTS := computer.py cpu.py disk.py memory.py network.py optical_drive.py pci.py sensor.py sound.py video.py
-OPS := tasks.py runner.py partion_runner.py osp_ui.py bless.py
-HTTP := httpserver.py
+.PHONY: setup upload install
 
-TOPLEVEL := httpserver.sh
+default: setup
 
-SOURCES := $(addprefix $(SRCDIR)/,$(TOPLEVEL)) $(addprefix $(SRCDIR)/components/,$(COMPONENTS)) $(addprefix $(SRCDIR)/ops/,$(OPS)) $(addprefix $(SRCDIR)/http/,$(HTTP))
-TARGETS := $(subst $(SRCDIR),$(DESTDIR),$(SOURCES)) 
+setup:
+	python3 setup.py sdist bdist_wheel
 
-all: $(TARGETS)
+upload:
+	python3 -m twine upload --repository-url https://test.pypi.org/legacy/ dist/* --skip-existing -u ${PYPI_USER}
 
-$(TARGETS): $(SOURCES)
+check:
+	python3 -m twine check
 
-$(DESTDIR)/components/%.py : $(SRCDIR)/components/%.py
-	cp $< $@
+install:
+	sudo -H pip3 install --no-cache-dir -i https://test.pypi.org/simple/ --no-deps wce_triage
 
-$(DESTDIR)/http/%.py : $(SRCDIR)/http/%.py
-	cp $< $@
-
-$(DESTDIR)/ops/%.py : $(SRCDIR)/ops/%.py
-	cp $< $@
-
-$(DESTDIR)/%.sh : $(SRCDIR)/%.sh
-	cp $< $@
-
-.PHONY: clean
-
-clean:
-	rm -f $(TARGETS)
+uninstall:
+	sudo -H pip3 uninstall wce_triage

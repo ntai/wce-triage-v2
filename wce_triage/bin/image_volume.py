@@ -3,16 +3,12 @@
 #
 import os, sys, subprocess, urllib, datetime
 
-if __name__ == "__main__":
-  sys.path.append(os.path.split(os.getcwd())[0])
-  pass
-
-from lib.util import *
-from lib.timeutil import *
-from collections import deque
 import urllib.parse
-import os
-from bin.process_driver import *
+from collections import deque
+
+from wce_triage.lib.util import *
+from wce_triage.lib.timeutil import *
+from wce_triage.bin.process_driver import *
 
 def save_disk(source, dest, encoding='iso-8859-1'):
 
@@ -64,7 +60,7 @@ def save_disk(source, dest, encoding='iso-8859-1'):
     pass
 
   # partclone
-  argv_partclone = [ "partclone.ext4", "-c", "-s", source, "-o", partclone_output ]
+  argv_partclone = [ "partclone.ext4", "-f", "2", "-c", "-s", source, "-o", partclone_output ]
 
   # wire up the apps.
   pipes = []
@@ -116,5 +112,5 @@ if __name__ == "__main__":
     sys.exit(1)
     pass
     
-  return save_disk(sys.argv[1], sys.argv[2])
+  sys.exit(save_disk(sys.argv[1], sys.argv[2]))
   

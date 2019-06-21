@@ -10,8 +10,8 @@
 #
 
 import datetime, re, subprocess, traceback
-from ops.run_state import RunState
-from lib.timeutil import *
+from wce_triage.ops.run_state import RunState
+from wce_triage.lib.timeutil import *
 
 #
 # Base class for runner
@@ -126,9 +126,7 @@ class Runner:
 
       if task.progress == 100:
         # done
-        ui.report_task_success(task.time_estimate,
-                               elapsed_time,
-                               task)
+        ui.report_task_success(task.time_estimate, elapsed_time, task)
         task.teardown()
         pass
       pass

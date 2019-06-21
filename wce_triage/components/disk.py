@@ -1,9 +1,6 @@
 import re, sys, os, subprocess, traceback
 
-if __name__ == "__main__":
-  sys.path.append(os.path.join(os.getcwd(), ".."))
-  pass
-from lib.util import *
+from wce_triage.lib.util import *
 
 disk1_re = re.compile(r"Disk /dev/[^:]+:\s+\d+\.\d*\s+[KMG]B, (\d+) bytes")
 disk2_re = re.compile(r"\d+ heads, \d+ sectors/track, \d+ cylinders, total (\d+) sectors")

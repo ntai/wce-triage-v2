@@ -8,16 +8,17 @@ if __name__ == "__main__":
   sys.path.append(os.path.split(os.getcwd())[0])
   pass
 
-import components.pci
-import components.cpu
-import components.memory
-import components.network
-import components.disk
-import components.video
-import components.sound
-import components.optical_drive
+import wce_triage.components.pci as _pci
+import wce_triage.components.cpu as _cpu
+import wce_triage.components.memory as _memory
+import wce_triage.components.network as _network
+import wce_triage.components.disk as _disk
+import wce_triage.components.video as _video
+import wce_triage.components.sound as _sound
+import wce_triage.components.optical_drive as _optical_drive
 
-from lib.util import *
+from wce_triage.lib.util import *
+from wce_triage.components.disk import Disk, Partition
 
 class Computer:
   def __init__(self):
@@ -79,7 +80,7 @@ class Computer:
         continue
 
       # Now, I do double check that this is really a disk
-      disk = components.disk.Disk(disk_name)
+      disk = Disk(disk_name)
       if disk.detect_disk():
         if disk.is_usb:
           self.usb_disks.append(disk)
@@ -95,14 +96,14 @@ class Computer:
   # 
 
   def gather_info(self):
-    self.cpu = components.cpu.detect_cpu_type()
-    self.memory = components.memory.detect_memory()
+    self.cpu = _cpu.detect_cpu_type()
+    self.memory = _memory.detect_memory()
     self.detect_disks(list_mounted_disks=False)
     #
-    self.video = components.video.detect_video_cards()
+    self.video = _video.detect_video_cards()
     #
-    self.networks = components.network.detect_net_devices()
-    self.sound_dev = components.sound.detect_sound_device()
+    self.networks = _network.detect_net_devices()
+    self.sound_dev = _sound.detect_sound_device()
     pass
 
   def triage(self, live_system = False):
@@ -152,7 +153,7 @@ class Computer:
       self.decisions.append( ( "Disk", good_disk, msg ) )
       pass
 
-    optical_drives = components.optical_drive.detect_optical_drives()
+    optical_drives = _optical_drive.detect_optical_drives()
     if len(optical_drives) == 0:
       self.decisions.append( ("Optical drive", False, "***** NO OPTICALS: INSTALL OPTICAL DRIVE *****"))
     else:
@@ -165,9 +166,9 @@ class Computer:
       self.decisions.append( ("Optical drive", True, msg))
       pass
 
-    blacklist = components.pci.detect_blacklist_devices()
+    blacklist = _pci.detect_blacklist_devices()
     #
-    videos = components.video.detect_video_cards()
+    videos = _video.detect_video_cards()
 
     if len(blacklist.videos) > 0:
       msg = "Remove or disable following video(s) because known to not work\n"
@@ -223,8 +224,7 @@ class Computer:
       self.decisions.append( ("Network", False, msg))
       pass
 
-    sound_dev = components.sound.detect_sound_device()
-    if not sound_dev:
+    if not self.sound_dev:
       self.decisions.append( ("Sound", False, "Sound card: NOT DETECTED -- INSTALL SOUND CARD"))
       pass
     else:

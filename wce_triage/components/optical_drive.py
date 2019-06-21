@@ -1,5 +1,5 @@
 import os, subprocess, string
-from lib.util import *
+from wce_triage.lib.util import *
 
 #
 # Find optical device files

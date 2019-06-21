@@ -8,11 +8,12 @@
 #
 
 import datetime, re, subprocess, abc, os, select, time, uuid
-import components.pci
-from components.disk import Disk, Partition
-from lib.util import drain_pipe, drain_pipe_completely
+import wce_triage.components.pci as _pci
+from wce_triage.components.disk import Disk, Partition
+from wce_triage.lib.util import drain_pipe, drain_pipe_completely
 
 class op_task(object, metaclass=abc.ABCMeta):
+
   def __init__(self, description, encoding='utf-8', time_estimate=None):
     if not isinstance(description, str):
       raise Exception("Description must be a string")
@@ -30,7 +31,6 @@ class op_task(object, metaclass=abc.ABCMeta):
     self.teardown_task = False
     pass
 
-
   def setup(self):
     self.start_time = datetime.datetime.now()
     pass
@@ -43,7 +43,6 @@ class op_task(object, metaclass=abc.ABCMeta):
   def set_teardown_task(self):
     self.teardown_task = True
     pass
-
 
   @abc.abstractmethod
   def poll(self):
@@ -513,7 +512,7 @@ class task_expand_partition(op_task_process):
     self.part_id = partition_id
     super().__init__(description,
                      argv = ["resize2fs", "-p", disk.device_name + partition_id],
-                     time_estimate = self.disk.get_byte_size() / 250000000+2) # FIXME time_estimate is bogus
+                     time_estimate = self.disk.get_byte_size() / 2500000000+2) # FIXME time_estimate is bogus
     pass
 
   def setup(self):
@@ -542,7 +541,7 @@ class task_shrink_partition(op_task_process):
     self.disk = disk
     self.part_id = partition_id
     super().__init__(description,
-                     time_estimate=self.disk.get_byte_size() / 100000000, # FIXME: bogus estimate
+                     time_estimate=self.disk.get_byte_size() / 1000000000, # FIXME: bogus estimate
                      argv=["resize2fs", "-M", disk.device_name+partition_id])
     pass
 
@@ -1080,7 +1079,7 @@ class task_uninstall_bcmwl(task_uninstall_package):
     pass
   
   def setup(self):
-    if components.pci.find_pci_device_node([0x14e4], [0x4312]):
+    if _pci.find_pci_device_node([0x14e4], [0x4312]):
       self.packages = ['bcmwl-kernel-source']
       super().setup()
       pass

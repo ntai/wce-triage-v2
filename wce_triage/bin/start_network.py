@@ -6,9 +6,8 @@
 # When the service starts, 
 #
 import os, sys, subprocess
-sys.path.append(os.path.join("../wce_triage"))
-from components.network import * 
-from lib.netplan import *
+from wce_triage.components.network import * 
+from wce_triage.lib.netplan import *
 
 if __name__ == "__main__":
   devices = detect_net_devices()

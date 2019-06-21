@@ -6,14 +6,10 @@
 
 import datetime, re, subprocess, sys, os
 
-if __name__ == "__main__":
-  sys.path.append(os.path.split(os.getcwd())[0])
-  pass
-
-from ops.tasks import *
-from ops.ops_ui import *
-from components.disk import Disk, Partition
-from runner import *
+from wce_triage.ops.tasks import *
+from wce_triage.ops.ops_ui import *
+from wce_triage.ops.runner import *
+from wce_triage.components.disk import Disk, Partition
 
 #
 #

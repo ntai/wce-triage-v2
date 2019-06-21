@@ -5,67 +5,42 @@
 
 import datetime, re, subprocess, sys, os
 
-if __name__ == "__main__":
-  sys.path.append(os.path.split(os.getcwd())[0])
-  pass
-
-from ops.partclone_tasks import *
-from ops.ops_ui import *
-from components.disk import Disk, Partition
-from runner import *
+from wce_triage.ops.partclone_tasks import *
+from wce_triage.ops.ops_ui import *
+from wce_triage.components.disk import Disk, Partition
+from wce_triage.ops.runner import *
 
 #
 #
 class ImageDisk(Runner):
-  def __init__(self, ui, disk, destdir, partition_id = 'Linux'):
+  def __init__(self, ui, disk, destdir, partition_id = 'Linux', stem_name="wce-mate"):
     super().__init__(ui)
     self.disk = disk
     self.time_estimate = 600
     self.destdir = destdir
     self.partition_id = partition_id
+    self.stem_name = stem_name
+    self.imagename = os.path.join(self.destdir, "%s-%s.partclone.gz" % (self.stem_name, datetime.date.today().isoformat()))
     pass
 
   def prepare(self):
     super().prepare()
     
     # self.tasks.append(task_mount_nfs_destination(self, "Mount the destination volume"))
+    self.tasks.append(task_fetch_partitions("Fetch partitions", self.disk))
+    self.tasks.append(task_refresh_partitions("Refresh partition information", self.disk))
+
     self.tasks.append(task_mount("Mount the target disk", disk=self.disk, partition_id=self.partition_id))
     self.tasks.append(task_remove_persistent_rules("Remove persistent rules", disk=self.disk, partition_id=self.partition_id))
-    self.tasks.append(task_unmount("Unmount target", disk=self.disk, partition_id=self.partition_id))
+    task = task_unmount("Unmount target", disk=self.disk, partition_id=self.partition_id)
+    task.set_teardown_task()
+    self.tasks.append(task)
     self.tasks.append(task_fsck("fsck partition", disk=self.disk, partition_id=self.partition_id))
     self.tasks.append(task_shrink_partition("Shrink partition to smallest", disk=self.disk, partition_id=self.partition_id))
-    self.tasks.append(task_create_disk_image("Create disk image", disk=self.disk, partition_id=self.partition_id, stem_name="triage", destdir=self.destdir))
-    self.tasks.append(task_expand_partition("Expand the partion back", disk=self.disk, partition_id=self.partition_id))
-    pass
-
-
-  def preflight(self):
-    task = task_fetch_partitions("Fetch partitions", self.disk)
-    vui = virtual_ui()
-    self._run_task(task, vui)
-    
-    if self.state == RunState.Failed:
-      self.ui.print("Fetch partition failed.")
-      return
-
-    task = task_refresh_partitions("Refresh partition information", self.disk)
-    vui = virtual_ui()
-    self._run_task(task, vui)
-
-    if self.state == RunState.Failed:
-      self.ui.print("Refresh partition failed.")
-      return
-
-    linuxpart = self.disk.find_partition(self.partition_id)
-    if linuxpart is None:
-      self.state = RunState.Failed
-      self.ui.print("Number of partitions = %d" % len(self.disk.partitions))
-      for part in self.disk.partitions:
-        self.ui.print("%s (%s)" % (part.device_name, part.partition_name))
-        pass
-      return
-
-    super().preflight()
+    self.tasks.append(task_create_disk_image("Create disk image", disk=self.disk, partition_id=self.partition_id, imagename=self.imagename))
+    task = task_expand_partition("Expand the partion back", disk=self.disk, partition_id=self.partition_id)
+    task.set_teardown_task()
+    self.tasks.append(task)
     pass
 
   pass

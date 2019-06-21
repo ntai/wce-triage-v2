@@ -12,6 +12,7 @@ import os
 import sys
 import mimetypes
 import socket
+import subprocess
 mimetypes.add_type("text/css", ".less")
 
 if sys.version_info >= (3, 0):
@@ -29,7 +30,11 @@ else:
 
 import subprocess
 
-from components.computer import Computer
+from wce_triage.components.computer import Computer
+from wce_triage.ops.restore_image_runner import RestoreDisk
+from wce_triage.ops.create_image_runner import ImageDisk
+from wce_triage.components.disk import Disk, Partition
+import wce_triage.lib.util
 
 ResponseStatus = namedtuple("HTTPStatus", ["code", "message"])
 ResponseData = namedtuple("ResponseData", ["status", "content_type", "data_stream"])
@@ -72,7 +77,7 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
 
 class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
   """"HTTP 1.1 Triage encoding request handler"""
-  # Use HTTP 1.1 as 1.0 doesn't support triage encoding
+  # Use HTTP 1.1 as 1.0 doesn't support http encoding
   protocol_version = "HTTP/1.1"
 
   def __init__(self, *argv):
@@ -86,7 +91,8 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
                     "/dispatch/disk-images.json": self.route_disk_images,
                     "/dispatch/disk-load-status.json": self.route_disk_load_status,
                     "/dispatch/load": self.route_load_image,
-                    "/dispatch/save": self.route_save_image
+                    "/dispatch/save": self.route_save_image,
+                    "/dispatch/play-sound.json": self.route_play_sound
     }
 
     self.computer = Computer()
@@ -180,7 +186,7 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
     return self.route_static_file(path, query)
 
   def route_triage(self, path, query):
-    """Handles requesting traige result"""
+    """Handles requesting triage result"""
     
     if self.overall_decision is None:
       try:
@@ -212,16 +218,15 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
                               str(err))
       self.overall_decision = self.computer.triage()
       pass
-
     
     disks = [ {"target": 0,
+               "deviceName": disk.device_name,
                "progress": 0,
                "elapseTime": 0,
-               "device": disk.device_name,
-               "disk": "y" if disk.is_disk else "n",
                "mounted": "y" if disk.mounted else "n",
+               "size": int(disk.get_byte_size() / 1073741824.0 + 0.5),
                "bus": "usb" if disk.is_usb else "ata",
-               "model": disk.disk_model }
+               "model": disk.model_name }
               for disk in self.computer.disks ]
 
     jsonified = { "diskPages": 1, "disks": disks }
@@ -231,16 +236,30 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
                         data_stream=make_bytestream(jsonified))
     pass
 
+  def route_play_sound(self, path, query):
+    """Play music!"""
+    asset_path = "/usr/local/share/wce/triage/assets"
+
+    argv = ["mpg123", "-q"]
+    for asset in os.listdir(asset_path):
+      if asset.endswith(".mp3"):
+        argv.append(os.path.join(asset_path, asset))
+        pass
+      pass
+    mpg123 = subprocess.Popen(argv)
+    mpg123.communicate()
+    soundPlaying = False
+    jsonified = { "soundPlaying": soundPlaying }
+    return ResponseData(status=HTTP_STATUS["OK"],
+                        content_type="application/json",
+                        data_stream=make_bytestream(jsonified))
+    pass
+
 
   def route_disk_images(self, path, query):
     """Handles getting the list of disk images"""
 
-    # images = get_disk_images()
-    images = { "sources": [
-      { "mtime": "2019-04-01", "name": "wce-1.tar.gz", "fullpath": "/var/www/wce-1.tar.gz", "size": 1001 },
-      { "mtime": "2019-04-02", "name": "wce-2.tar.gz", "fullpath": "/var/www/wce-2.tar.gz", "size": 1002 },
-      { "mtime": "2019-04-03", "name": "wce-3.tar.gz", "fullpath": "/var/www/wce-3.tar.gz", "size": 1003 }
-      ]}
+    images = { "sources": wce_triage.lib.util.get_disk_images() }
 
     return ResponseData(status=HTTP_STATUS["OK"],
                         content_type="application/json",
@@ -258,6 +277,8 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
                         content_type="application/json",
                         data_stream=make_bytestream(fake_status))
     pass
+
+
 
   def route_disk_load_status(self, path, query):
     """Load disk image to disk"""

@@ -1,8 +1,8 @@
 
 import abc
 import datetime
-from lib.timeutil import *
-from ops.run_state import RunState
+from wce_triage.lib.timeutil import *
+from wce_triage.ops.run_state import RunState
 
 class ops_ui(object):
   def __init__(self):
@@ -36,7 +36,6 @@ class ops_ui(object):
   def report_task_success(self, 
                           task_time_estimate,
                           elapsed_time,
-                          progress,
                           task):
     pass
 
@@ -149,7 +148,6 @@ class virtual_ui(ops_ui):
   def report_task_success(self, 
                           task_time_estimate,
                           elapsed_time,
-                          progress,
                           task):
     self.state = RunState.Success
     pass

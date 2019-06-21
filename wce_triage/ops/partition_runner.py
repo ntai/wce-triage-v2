@@ -12,13 +12,8 @@
 
 import datetime, re, subprocess, sys, os
 
-if __name__ == "__main__":
-  sys.path.append(os.path.split(os.getcwd())[0])
-  pass
-
-from ops.tasks import *
-from ops.ops_ui import *
-
+from wce_triage.ops.tasks import *
+from wce_triage.ops.ops_ui import *
 
 class PartPlan:
   attribs = ['no', 'name', 'filesys', 'start', 'size', 'parttype', 'flags']
@@ -91,8 +86,8 @@ def make_usb_stick_partition_plan(disk, partition_id='Linux'):
   return pplan
 
 
-from components.disk import Disk, Partition
-from runner import *
+from wce_triage.components.disk import Disk, Partition
+from wce_triage.ops.runner import *
 #
 # create a new gpt partition from partition plan
 #

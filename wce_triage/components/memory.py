@@ -1,5 +1,5 @@
 import re, subprocess, string, os
-from lib.util import *
+from wce_triage.lib.util import *
 
 from collections import namedtuple
 MemoryInfo = namedtuple('MemoryInfo', 'rams, ramtype, total, slots')
@@ -141,7 +141,6 @@ class dmi_type_handler_17(dmi_type_handler):
     if m:
       if m.group(1) != 'No Module Installed':
         try:
-          print("size = " + m.group(2))
           self.size = int(m.group(2))
         except:
           self.size = 0
