@@ -17,7 +17,7 @@ class ops_ui(object):
     pass
 
   @abc.abstractmethod
-  def report_task_progress(self, time_estimate, elapsed_time, progress, task):
+  def report_task_progress(self, total_time, time_estimate, task_elapsed_time, progress, task):
     '''report_task_progress is called at semi-regular interval to 
        report the current progress. 
        progress: 0-100
@@ -77,13 +77,13 @@ class console_ui(ops_ui):
     pass
 
   #
-  def report_task_progress(self, time_estimate, elapsed_time, progress, task):
+  def report_task_progress(self, total_time, time_estimate, elapsed_time, progress, task):
     current_time = datetime.datetime.now()
     dt =in_seconds( current_time - self.last_report_time )
     if dt < 0:
       return
     self.last_report_time = current_time
-    print("%d%% done. Time estimate for %s is %d" % (in_seconds(progress), task.description, task.estimate_time()))
+    print("%3d: %d%% done. Time estimate for %s is %d" % (in_seconds(total_time), in_seconds(progress), task.description, task.estimate_time()))
     pass
 
 
@@ -105,9 +105,9 @@ class console_ui(ops_ui):
                           tasks,
                           total_time_estimate,
                           elapsed_time):
-    print("(%d/%d) elapsed %d, estimate %d seconds." % (step, len(tasks),
-                                                        in_seconds(elapsed_time),
-                                                        in_seconds(total_time_estimate)))
+    print("%3d: (%d/%d) estimate %d seconds." % (in_seconds(elapsed_time),
+                                                 step, len(tasks),
+                                                 in_seconds(total_time_estimate)))
     pass
 
   # Used for explain. Probably needs better way
@@ -134,7 +134,7 @@ class virtual_ui(ops_ui):
     pass
 
   #
-  def report_task_progress(self, time_estimate, elapsed_time, progress, task):
+  def report_task_progress(self, total_time, time_estimate, elapsed_time, progress, task):
     pass
 
   def report_task_failure(self,

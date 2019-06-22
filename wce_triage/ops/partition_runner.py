@@ -121,7 +121,7 @@ class PartitionDiskRunner(Runner):
     self.tasks.append(op_task_process('Partition disk', argv=argv, time_estimate=5))
 
     for part in self.pplan:
-      partition = Partition(device_name=disk.device_name + str(part.no),
+      partition = Partition(device_name=self.disk.device_name + str(part.no),
                             file_system=part.filesys,
                             partition_type=part.parttype,
                             partition_number=part.no)

@@ -39,6 +39,10 @@ def print_progress(msg):
 
 def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
   #
+  for proc_name, process in processes:
+    print_progress("%s: %s PID=%d" % (name, proc_name, process.pid))
+    pass
+  #
   drive_process_retcode = 0
   
   # gatherer gathers pipe outs

@@ -13,6 +13,9 @@ from collections import deque
 from wce_triage.bin.process_driver import *
 
 def load_disk(source, dest_dev):
+  if not is_block_device(dest_dev):
+    return 1
+  bin_name = "LOADER"
 
   transport_scheme = get_transport_scheme(source)
   decomp = get_file_decompression_app(source)
@@ -28,6 +31,7 @@ def load_disk(source, dest_dev):
   else:
     pass
     
+  print("%s decomp %s" % (bin_name, str(decomp)))
   # When the source is still available, the decompressor
   # uses it as the source when decomp is needed
   if decomp:
@@ -84,7 +88,7 @@ def load_disk(source, dest_dev):
   pipes.append(PipeInfo("partclone", partclone, "stderr", partclone.stderr))
 
   # all the processes are up. Drive them.
-  return drive_process("LOADER", processes, pipes)
+  return drive_process(bin_name, processes, pipes)
 
 
 if __name__ == "__main__":
@@ -93,4 +97,9 @@ if __name__ == "__main__":
     sys.exit(1)
     pass
     
+  if not is_block_device(sys.argv[2]):
+    sys.stderr.write("%s is not a block device.\n" % sys.argv[2])
+    sys.exit(1)
+    pass
+
   sys.exit(load_disk(sys.argv[1], sys.argv[2]))

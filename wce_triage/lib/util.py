@@ -1,4 +1,4 @@
-import uuid, os, subprocess, datetime, select
+import uuid, os, subprocess, datetime, select, stat
 import urllib.parse
 
 def safe_string(piece):
@@ -127,7 +127,6 @@ def get_file_decompression_app(path):
     ext = os.path.splitext(path)[1]
   except:
     pass
-
   return decomps.get(ext)
 
 
@@ -191,6 +190,10 @@ def get_disk_images():
     pass
 
   return result
+
+def is_block_device(path):
+  path_stat = os.stat(path)
+  return stat.S_ISBLK(path_stat.st_mode)
 
 #
 if __name__ == "__main__":

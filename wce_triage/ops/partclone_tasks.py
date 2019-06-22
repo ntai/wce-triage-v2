@@ -125,7 +125,9 @@ class task_restore_disk_image(task_partclone):
 
   def setup(self):
     part = self.disk.find_partition(self.partition_id)
-    self.argv = ["python3", "-m", "wce_triage.bin.restore_volume", part.device_name, self.source ]
+    if part is None:
+      raise Exception("Partition %s is not found." % self.partition_id)
+    self.argv = ["python3", "-m", "wce_triage.bin.restore_volume", self.source, part.device_name]
     super().setup()
     pass
 

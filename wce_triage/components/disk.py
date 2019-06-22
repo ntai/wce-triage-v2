@@ -39,7 +39,7 @@ class Partition:
     self.mounted = mounted
     pass
 
-  def get_mount_point(self, root='/mnt'):
+  def get_mount_point(self, root='/tmp/mnt'):
     return os.path.join(root, self.fs_uuid)
   
   def __str__(self):

@@ -11,6 +11,8 @@ from wce_triage.lib.timeutil import *
 from wce_triage.bin.process_driver import *
 
 def save_disk(source, dest, encoding='iso-8859-1'):
+  if not is_block_device(source):
+    return 1
 
   # compressor to use (gzip!)
   comp = get_file_compression_app(dest)
@@ -112,5 +114,9 @@ if __name__ == "__main__":
     sys.exit(1)
     pass
     
+  if not is_block_device(sys.argv[1]):
+    sys.stderr.write("%s is not a block device.\n" % sys.argv[1])
+    sys.exit(1)
+    pass
   sys.exit(save_disk(sys.argv[1], sys.argv[2]))
   

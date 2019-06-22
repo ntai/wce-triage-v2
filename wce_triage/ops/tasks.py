@@ -11,6 +11,7 @@ import datetime, re, subprocess, abc, os, select, time, uuid
 import wce_triage.components.pci as _pci
 from wce_triage.components.disk import Disk, Partition
 from wce_triage.lib.util import drain_pipe, drain_pipe_completely
+import uuid
 
 class op_task(object, metaclass=abc.ABCMeta):
 
@@ -66,7 +67,7 @@ class op_task(object, metaclass=abc.ABCMeta):
 
   @abc.abstractmethod
   # This is called when the process is still running.
-  def _estimate_progress(self):
+  def _estimate_progress(self, total_seconds):
     pass
 
   def estimate_time(self):
@@ -81,6 +82,10 @@ class op_task(object, metaclass=abc.ABCMeta):
   def log(self, msg):
     self.runner.log(self, msg)
     pass
+
+  def _estimate_progress_from_time_estimate(self, total_seconds):
+    progress = 100 * total_seconds / self.time_estimate
+    return progress if progress < 100 else 99
 
   pass
 
@@ -122,7 +127,7 @@ class op_task_python_simple(op_task_python):
     pass
 
   def _estimate_progress(self, total_seconds):
-    return 50
+    return self._estimate_progress_from_time_estimate(total_seconds)
 
   def estimate_time(self):
     return self.time_estimate
@@ -215,7 +220,7 @@ class op_task_process(op_task):
     pass
 
   def _estimate_progress(self, total_seconds):
-    return int(100.0 * total_seconds / self.time_estimate)
+    return self._estimate_progress_from_time_estimate(total_seconds)
 
   def poll(self):
     self._poll_process()
@@ -236,7 +241,7 @@ class op_task_process_simple(op_task_process):
 
   # For simple process task, report this as half done
   def _estimate_progress(self, total_seconds):
-    return 50
+    return self._estimate_progress_from_time_estimate(total_seconds)
   pass
 
 
@@ -305,8 +310,8 @@ class task_mkdir(op_task_python_simple):
 #
 #
 #
-class task_mkfs(op_task_process):
-  def __init__(self, description, partition=None, time_estimate=10):
+class task_mkfs(op_task_process_simple):
+  def __init__(self, description, partition=None, time_estimate=None):
     super().__init__(description, encoding='iso-8859-1', time_estimate=time_estimate)
     self.success_returncodes = [0]
     self.success_msg = "Initializing file system succeeded."
@@ -321,7 +326,6 @@ class task_mkfs(op_task_process):
         pass
 
       self.argv = ["mkfs.vfat", "-n", partname, self.part.device_name]
-      # self.description = "Creating vfat partition"
     elif self.part.file_system == 'ext4':
       #
       partname = self.part.partition_name
@@ -333,16 +337,10 @@ class task_mkfs(op_task_process):
       if partuuid is None:
         partuuid = uuid.uuid4()
         pass
-      # I got the list from the ext4 standard installation with Ubuntu 18.04
       self.argv = ["mkfs.ext4", "-L", partname, "-U", str(partuuid), self.part.device_name]
     else:
       raise Exception("Unsuppoted partition type")
     pass
-    
-  #
-  def _estimate_progress(self, total_seconds):
-    return int(total_seconds) / 5
-
   pass
 
 #
@@ -404,7 +402,7 @@ class task_mount(op_task_process_simple):
 
     if not os.path.exists(mount_point):
       try:
-        os.mkdir(mount_point)
+        os.makedirs(mount_point)
       except:
         self.set_progress(999, "Creating mount point failed.")
         pass
@@ -426,7 +424,7 @@ class task_mount(op_task_process_simple):
 class task_assign_uuid_to_partition(op_task_process_simple):
 
   def __init__(self, description, disk=None, partition_id=None):
-    super().__init__(description)
+    super().__init__(description, time_estimate=1)
     self.disk = disk
     self.part_id = partition_id
     pass
@@ -448,13 +446,10 @@ class task_assign_uuid_to_partition(op_task_process_simple):
     super().setup()
     pass
 
-  def _estimate_progress(self, total_seconds):
-    return int(total_seconds * 0.2)
-
   pass
 
 
-def task_get_uuid_from_partition(op_task_process):
+def task_get_uuid_from_partition(op_task_process_simple):
   def __init__(self, description, partition=None):
     self.part = partition
     self.argv = ["/sbin/blkid", part.device_name]
@@ -464,10 +459,6 @@ def task_get_uuid_from_partition(op_task_process):
   def setup(self):
     self.part.partition_uuid = None
     pass
-
-  def _estimate_progress(self, total_seconds):
-    return int(total_seconds * 10)
-
 
   def poll(self):
     super().poll()
@@ -511,8 +502,8 @@ class task_expand_partition(op_task_process):
     self.disk = disk
     self.part_id = partition_id
     super().__init__(description,
-                     argv = ["resize2fs", "-p", disk.device_name + partition_id],
-                     time_estimate = self.disk.get_byte_size() / 2500000000+2) # FIXME time_estimate is bogus
+                     argv = ["resize2fs", disk.device_name + partition_id],
+                     time_estimate = self.disk.get_byte_size() / 5000000000+2) # FIXME time_estimate is bogus
     pass
 
   def setup(self):
@@ -522,16 +513,13 @@ class task_expand_partition(op_task_process):
       self.set_progress(999, "Partition %s does not exist on %s" % (self.part_id, self.disk.device_name))
       return
 
-    self.argv = ["resize2fs", "-p", (part1.device_name)]
+    self.argv = ["resize2fs", (part1.device_name)]
     super().setup()
     return
 
   def _estimate_progress(self, total_seconds):
-    progress = 100 * total_seconds / self.time_estimate
-    if progress > 99:
-      progress = 99
-      pass
-    return progress
+    return self._estimate_progress_from_time_estimate(total_seconds)
+
   pass
 
 
@@ -557,11 +545,8 @@ class task_shrink_partition(op_task_process):
     return
 
   def _estimate_progress(self, total_seconds):
-    progress = 100 * total_seconds / self.time_estimate
-    if progress > 99:
-      progress = 99
-      pass
-    return progress
+    return self._estimate_progress_from_time_estimate(total_seconds)
+
   pass
 
 
@@ -639,14 +624,14 @@ class task_install_mbr(op_task_process_simple):
 # file system UUID, so use following two tasks in
 # succession.
 #
-class task_fetch_partitions(op_task_process):
+class task_fetch_partitions(op_task_process_simple):
   #                          1:    2:           3:           4:           5:fs  6:name  7:flags   
   partline_re = re.compile('^(\d+):([\d\.]+)MiB:([\d\.]+)MiB:([\d\.]+)MiB:(\w*):([^:]*):(.*);')
 
   def __init__(self, description, disk=None):
     self.disk = disk
     argv = ["parted", "-m", disk.device_name, 'unit', 'MiB', 'print']
-    super().__init__(description, argv=argv, time_estimate=2)
+    super().__init__(description, argv=argv, time_estimate=1)
     pass
   
   def poll(self):
@@ -672,7 +657,6 @@ class task_fetch_partitions(op_task_process):
       pass
     pass
   pass
-
     
 
 class task_refresh_partitions(op_task_command):
@@ -735,7 +719,7 @@ class task_refresh_partitions(op_task_command):
     pass
 
   def _estimate_progress(self, total_seconds):
-    return int(100 / len(self.disk.partitions) * self.step)
+    return int(99 / len(self.disk.partitions) * self.step)
 
   pass
 
@@ -768,7 +752,7 @@ class task_install_grub(op_task_process):
     # FIXME: Time estimate is very different between USB stick and hard disk.
 
     # argv is a placeholder
-    super().__init__(description, argv=['/usr/sbin/grub-install', disk.device_name], time_estimate=10)
+    super().__init__(description, argv=['/usr/sbin/grub-install', disk.device_name], time_estimate=5)
     pass
 
   #
@@ -850,6 +834,12 @@ class task_install_grub(op_task_process):
   def teardown(self):
     # tear down the /dev for chroot
     subprocess.run("umount %s/dev" % self.mount_dir, shell=True)
+    if self.script_path:
+      try:
+        os.unlink(self.script_path)
+      except:
+        pass
+      pass
     pass
 
   pass
@@ -861,7 +851,7 @@ class task_install_grub(op_task_process):
 #
 class task_zero_partition(op_task_python_simple):
   def __init__(self, description, partition=None):
-    super().__init__(description)
+    super().__init__(description, time_estimate=1)
     self.partition = partition
     pass
 
@@ -897,10 +887,9 @@ UUID=%s none            swap    sw              0       0
 # Create various files for blessed installation
 #
 class task_finalize_disk(op_task_python_simple):
-  def __init__(self, description, disk=None, newhostname='wce', partition_id='Linux'):
+  def __init__(self, description, disk=None, newhostname=None, partition_id='Linux'):
     super().__init__(description, time_estimate=1)
     self.newhostname = newhostname
-
     self.disk = disk
     self.partition_id = partition_id
     pass

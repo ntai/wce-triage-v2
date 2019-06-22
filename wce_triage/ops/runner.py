@@ -48,7 +48,10 @@ class Runner:
   def _update_total_time_estimate(self):
     self.total_time_estimate = 0
     for task in self.tasks:
-      self.total_time_estimate = self.total_time_estimate + task.estimate_time()
+      task_time_estimate = task.estimate_time()
+      if task_time_estimate is None:
+        raise Exception( task.description + " has no time estimate")
+      self.total_time_estimate = self.total_time_estimate + task_time_estimate
       pass
     pass
   
@@ -61,6 +64,13 @@ class Runner:
       pass
     pass
   
+  def report_current_task(self):
+    self.current_time = datetime.datetime.now()
+    self.elapsed_time = self.current_time - self.start_time
+    self._update_total_time_estimate()
+    self.ui.report_run_progress(self.task_step, self.tasks, self.total_time_estimate, self.elapsed_time)
+    pass
+
   #
   def run(self):
     if self.state != RunState.Preflight:
@@ -68,6 +78,7 @@ class Runner:
     self.state = RunState.Running
 
     self.start_time = datetime.datetime.now()
+    self.report_current_task()
     while self.task_step < len(self.tasks):
       task = self.tasks[self.task_step]
 
@@ -83,11 +94,7 @@ class Runner:
         pass
 
       self.task_step = self.task_step + 1
-
-      self.current_time = datetime.datetime.now()
-      self.elapsed_time = self.current_time - self.start_time
-      self._update_total_time_estimate()
-      self.ui.report_run_progress(self.task_step, self.tasks, self.total_time_estimate, self.elapsed_time)
+      self.report_current_task()
       pass
 
     if self.state == RunState.Running:
@@ -99,26 +106,28 @@ class Runner:
 
   def _run_task(self, task, ui):
     task.setup()
-    ui.report_task_progress(task.time_estimate, 0, 0, task)
+    current_time = datetime.datetime.now()
+    ui.report_task_progress(current_time - self.start_time, task.time_estimate, 0, 0, task)
 
     while task.progress < 100:
       task.poll()
       current_time = datetime.datetime.now()
-      elapsed_time = current_time - task.start_time
-      ui.report_task_progress(task.time_estimate,
-                              elapsed_time,
+      task_elapsed_time = current_time - task.start_time
+      ui.report_task_progress(current_time - self.start_time,
+                              task.time_estimate,
+                              task_elapsed_time,
                               task.progress,
                               task)
       # Update the estimate time with actual elapsed time.
       if task.progress >= 100:
-        task.time_estimate = in_seconds(elapsed_time)
+        task.time_estimate = in_seconds(task_elapsed_time)
         pass
 
       if task.progress > 100:
         # something went wrong.
         self.state = RunState.Failed
         ui.report_task_failure(task.time_estimate,
-                               elapsed_time,
+                               task_elapsed_time,
                                task.progress,
                                task)
         task.teardown()
@@ -126,7 +135,7 @@ class Runner:
 
       if task.progress == 100:
         # done
-        ui.report_task_success(task.time_estimate, elapsed_time, task)
+        ui.report_task_success(task.time_estimate, task_elapsed_time, task)
         task.teardown()
         pass
       pass
