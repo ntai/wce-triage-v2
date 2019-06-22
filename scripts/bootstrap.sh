@@ -1,15 +1,19 @@
 #!/bin/sh
 
-sudo apt install -y python3-pip
-sudo apt install -y python3-parted
-sudo apt install -y dmidecode
-sudo apt install -y partclone
-sudo apt install -y mbr
-sudo apt install -y efibootmgr
-sudo apt install -y grub2-common grub-pc 
-sudo apt download grub-efi-amd64
-sudo apt install -y pigz
+rm /swapfile
 
-# This sets the console frame buffer things
-sudo apt install -y vbetool
-sudo apt install -y gfxboot
+export TRIAGE_SSID=wcetriage
+export TRIAGE_PASSWORD=thepasswordiswcetriage
+export PYTHONPATH=$PWD/wce-triage-v2
+
+python3 wce-triage-v2/wce_triage/bin/start_network.py
+sudo apt install -y python3-pip
+sudo -H pip3 install --no-cache-dir -i https://test.pypi.org/simple/ --no-deps wce_triage
+
+apt purge g++-7
+apt purge wamerican wbritish
+apt purge manpages-dev
+
+apt purge linux-headers-generic
+apt purge linux-headers-4.15.0-52
+linux-headers-4.15.0-52-generic

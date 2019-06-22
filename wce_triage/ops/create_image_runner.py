@@ -47,18 +47,19 @@ class ImageDisk(Runner):
 
 if __name__ == "__main__":
   if len(sys.argv) == 1:
-    print( 'devname part destdir')
+    print( 'devname part destdir stem')
     sys.exit(0)
     pass
   devname = sys.argv[1]
   part = sys.argv[2]
   destdir = sys.argv[3]
+  stem = sys.argv[4]
   disk = Disk(device_name=devname)
   ui = console_ui()
   if part == '1':
     part = 1
     pass
-  runner = ImageDisk(ui, disk, destdir, partition_id=part)
+  runner = ImageDisk(ui, disk, destdir, partition_id=part, stem_name=stem)
   runner.prepare()
   runner.preflight()
   runner.explain()

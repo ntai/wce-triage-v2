@@ -273,7 +273,7 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
   def route_play_sound(self, path, query):
     """Play music!"""
     # Start the pulseaudio daemon
-    pulseaudio = subprocess.Popen(['pulseaudio', '--start'])
+    pulseaudio = subprocess.Popen(['pulseaudio', '--start', '--system'])
     pulseaudio.communicate()
 
     asset_path = "/usr/local/share/wce/triage/assets"

@@ -1,4 +1,7 @@
 #!/bin/sh
+
+export GRUB_DISABLE_OS_PROBER=true
+
 #
 # Install gunpg
 for pkg in gnupg dmidecode partclone mbr efibootmgr grub2-common grub-pc pigz vbetool gfxboot alsa-utils pulseaudio pulseaudio-utils mpg123; do
