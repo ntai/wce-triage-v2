@@ -25,8 +25,6 @@ class task_partclone(op_task_process):
 
     self.start_re = []
     # If we don't skip the superblock part, the progress is totally messed up
-    self.start_re.append(re.compile(r'Reading Super Block')) # This is for reading superblock.
-    self.start_re.append(re.compile(r'done')) # This is for reading superblock.
     self.start_re.append(re.compile(r'File system:\s+EXTFS'))
     pass
 
@@ -49,7 +47,8 @@ class task_partclone(op_task_process):
         break
       line = self.out[:newline]
       self.out = self.out[newline+1:]
-        
+      current_time = datetime.datetime.now()
+
       # Look for the EXT parition cloning start marker
       while len(self.start_re) > 0:
         m = self.start_re[0].search(line)
@@ -58,7 +57,7 @@ class task_partclone(op_task_process):
         self.start_re = self.start_re[1:]
         if len(self.start_re) == 0:
           self.set_progress(5, "Start imaging")
-          self.imaging_start_seconds = in_seconds(datetime.datetime.now() - self.start_time)
+          self.imaging_start_seconds = in_seconds(current_time - self.start_time)
           pass
         pass
 
@@ -74,8 +73,10 @@ class task_partclone(op_task_process):
           dt_remaining = datetime.datetime.strptime(remaining, '%H:%M:%S') - self.t0
 
           # 10 is fudge - and partclone actually needs "disk sync" time
-          self.set_time_estimate(self.imaging_start_seconds + in_seconds(dt_elapsed) + in_seconds(dt_remaining) + 10)
-          self.set_progress(round(completed*0.95)+4, "elapsed: %s remaining: %s" % (elapsed, remaining))
+          self.set_time_estimate(self.imaging_start_seconds + in_seconds(dt_elapsed) + in_seconds(dt_remaining) + 140)
+          # Unfortunately, "completed" from partclone for usb stick is totally bogus.
+          dt = current_time - self.start_time
+          self.set_progress(self._estimate_progress_from_time_estimate(dt.total_seconds()), "elapsed: %s remaining: %s" % (elapsed, remaining))
           pass
         pass
       pass

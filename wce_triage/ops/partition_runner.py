@@ -65,14 +65,12 @@ def make_efi_partition_plan(disk):
   return pplan
 
 
-def make_usb_stick_partition_plan(disk, partition_id='Linux'):
+def make_usb_stick_partition_plan(disk, partition_id=None):
   diskmbsize = int(disk.get_byte_size() / (1024*1024))
   # This is for gpt/grub. Set aside the EFI partition so we can 
   # make this usb stick for EFI if needed.
   pplan = [PartPlan(0, None,         None,         0,        2, Partition.MBR, None),
-           PartPlan(1, 'BOOT',       None,         0,       32, Partition.BIOSBOOT, 'bios_grub'),
-           PartPlan(2, 'EFI',        'fat32',      0,      300, Partition.UEFI, None),
-           PartPlan(3, partition_id, 'ext4',       0,        0, Partition.EXT4, None) ]
+           PartPlan(1, partition_id, 'ext4',       0,        0, Partition.EXT4, 'boot') ]
   partion_start = 0
   for part in pplan:
     part.start = partion_start
@@ -92,8 +90,9 @@ from wce_triage.ops.runner import *
 # create a new gpt partition from partition plan
 #
 class PartitionDiskRunner(Runner):
-  def __init__(self, ui, disk, partition_plan):
+  def __init__(self, ui, disk, partition_plan, partition_map='gpt'):
     super().__init__(ui)
+    self.partition_map = partition_map # label is the parted's partition map type
     self.disk = disk
     self.pplan = partition_plan
     pass
@@ -101,7 +100,7 @@ class PartitionDiskRunner(Runner):
   def prepare(self):
     super().prepare()
     # Calling parted
-    argv = ['parted', '-s', '-a', 'optimal', self.disk.device_name, 'unit', 'MiB', 'mklabel', 'gpt']
+    argv = ['parted', '-s', '-a', 'optimal', self.disk.device_name, 'unit', 'MiB', 'mklabel', self.partition_map]
     for part in self.pplan:
       # Skip MBR
       if part.no == 0:
@@ -127,10 +126,10 @@ class PartitionDiskRunner(Runner):
                             partition_number=part.no)
 
       if part.filesys in ['fat32', 'ext4']:
-        mkfs_desc = "Create file system on %s" % (partition.device_name)
+        mkfs_desc = "Create file system %s on %s" % (part.filesys, partition.device_name)
         mkfs = task_mkfs(mkfs_desc,
                          partition=partition,
-                         time_estimate=part.size/4096 + 3)
+                         time_estimate=part.size/1024 + 3)
         self.tasks.append(mkfs)
         pass
       elif part.parttype in [Partition.BIOSBOOT, Partition.MBR]:
@@ -147,7 +146,7 @@ if __name__ == "__main__":
   devname = sys.argv[1]
   disk = Disk(device_name=devname)
   ui = console_ui()
-  runner = PartitionDiskRunner(ui, disk, make_usb_stick_partition_plan(disk))
+  runner = PartitionDiskRunner(ui, disk, make_usb_stick_partition_plan(disk), partition_map='msdos')
   runner.prepare()
   runner.preflight()
   runner.explain()

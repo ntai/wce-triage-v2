@@ -273,12 +273,9 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
   def route_play_sound(self, path, query):
     """Play music!"""
     # Start the pulseaudio daemon
-    pulseaudio = subprocess.Popen(['pulseaudio', '--start', '--system'])
-    pulseaudio.communicate()
-
     asset_path = "/usr/local/share/wce/triage/assets"
 
-    argv = ["mpg123", "-q"]
+    argv = ["sudo", "-u", "triage", "-H", "mpg123", "-q"]
     for asset in os.listdir(asset_path):
       if asset.endswith(".mp3"):
         argv.append(os.path.join(asset_path, asset))

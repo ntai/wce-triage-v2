@@ -79,11 +79,13 @@ class console_ui(ops_ui):
   #
   def report_task_progress(self, total_time, time_estimate, elapsed_time, progress, task):
     current_time = datetime.datetime.now()
-    dt =in_seconds( current_time - self.last_report_time )
+    dt = in_seconds( current_time - self.last_report_time )
     if dt < 0:
       return
+    
+    msg = (" " + task.message) if task and task.message else ""
     self.last_report_time = current_time
-    print("%3d: %d%% done. Time estimate for %s is %d" % (in_seconds(total_time), in_seconds(progress), task.description, task.estimate_time()))
+    print("%3d: %d%% done. Estimate for %s is %d.%s" % (in_seconds(total_time), in_seconds(progress), task.description, task.estimate_time(), msg))
     pass
 
 

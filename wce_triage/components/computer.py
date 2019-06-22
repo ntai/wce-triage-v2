@@ -65,7 +65,6 @@ class Computer:
   # list_mounted_disks is false for loading and imaging disk
   def detect_disks(self, list_mounted_disks = True):
     self.disks = []
-    self.usb_disks = []
 
     # Know what's mounted already
     self.detect_mounts()
@@ -82,11 +81,7 @@ class Computer:
       # Now, I do double check that this is really a disk
       disk = Disk(disk_name)
       if disk.detect_disk():
-        if disk.is_usb:
-          self.usb_disks.append(disk)
-        else:
-          self.disks.append(disk)
-          pass
+        self.disks.append(disk)
         pass
       pass
     pass

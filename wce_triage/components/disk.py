@@ -78,8 +78,15 @@ class Disk:
         if part.device_name == part_id or part.partition_name == part_id or part.partition_uuid == part_id:
           return part
         pass
+      if re.match("\d+", part_id):
+        try:
+          part_id = int(part_id)
+        except:
+          pass
+        pass
       pass
-    elif isinstance(part_id, int):
+
+    if isinstance(part_id, int):
       for part in self.partitions:
         if part.partition_number == part_id:
           return part

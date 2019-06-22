@@ -25,7 +25,7 @@ def make_random_hostname(stemname="wce"):
 #
 class RestoreDisk(PartitionDiskRunner):
 
-  def __init__(self, ui, disk, src, partition_id='Linux', pplan=None, newhostname=make_random_hostname()):
+  def __init__(self, ui, disk, src, partition_id='Linux', pplan=None, newhostname=make_random_hostname(), partition_map='gpt'):
 
     #
     self.partition_id = partition_id
@@ -33,7 +33,7 @@ class RestoreDisk(PartitionDiskRunner):
       pplan = make_efi_partition_plan(disk, partition_id=partition_id)
       pass
 
-    super().__init__(ui, disk, partition_plan=pplan)
+    super().__init__(ui, disk, partition_plan=pplan, partition_map=partition_map)
 
     self.disk = disk
     self.source = src
@@ -52,6 +52,9 @@ class RestoreDisk(PartitionDiskRunner):
 
     # load disk image
     self.tasks.append(task_restore_disk_image("Load disk image", disk=self.disk, partition_id=self.partition_id, source=self.source))
+    # Loading disk image resets the UUID. 
+    self.tasks.append(task_fsck("fsck partition", disk=self.disk, partition_id=self.partition_id))
+    self.tasks.append(task_set_partition_uuid("Set partition UUID", disk=self.disk, partition_id=self.partition_id))
 
     # mount it
     self.tasks.append(task_mount("Mount the target disk", disk=self.disk, partition_id=self.partition_id))
@@ -94,7 +97,7 @@ if __name__ == "__main__":
   if part == '1':
     part = 1
     pass
-  runner = RestoreDisk(ui, disk, src, partition_id=part, pplan=make_usb_stick_partition_plan(disk), newhostname="wcetriage2")
+  runner = RestoreDisk(ui, disk, src, partition_id=part, pplan=make_usb_stick_partition_plan(disk), newhostname="wcetriage2", partition_map='msdos')
   runner.prepare()
   runner.preflight()
   runner.explain()

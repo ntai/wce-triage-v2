@@ -341,6 +341,9 @@ class task_mkfs(op_task_process_simple):
     else:
       raise Exception("Unsuppoted partition type")
     pass
+
+  def _estimate_progress(self, total_seconds):
+    return self._estimate_progress_from_time_estimate(total_seconds)
   pass
 
 #
@@ -397,6 +400,9 @@ class task_mount(op_task_process_simple):
 
   def setup(self):
     self.part = self.disk.find_partition(self.partition_id)
+    if self.part is None:
+      self.set_progress(999, "Partition with %s does not exist." % str(self.partition_id))
+      return
     mount_point = self.part.get_mount_point()
     self.argv = ["/bin/mount", self.part.device_name, mount_point]
 
@@ -426,14 +432,14 @@ class task_assign_uuid_to_partition(op_task_process_simple):
   def __init__(self, description, disk=None, partition_id=None):
     super().__init__(description, time_estimate=1)
     self.disk = disk
-    self.part_id = partition_id
+    self.partition_id = partition_id
     pass
   
 
   def setup(self):
-    self.part = self.disk.find_partition(self.part_id)
+    self.part = self.disk.find_partition(self.partition_id)
     if self.part is None:
-      self.set_progress(999, "Partition %s on disk %d is not found." % (self.part_id, self.disk.device_name))
+      self.set_progress(999, "Partition %s on disk %d is not found." % (self.partition_id, self.disk.device_name))
       return
 
     if self.part.partition_type == "83":
@@ -482,17 +488,20 @@ class task_fsck(op_task_process):
   #
   def __init__(self, description, disk=None, partition_id=None):
     self.disk = disk
-    self.part_id = partition_id
+    self.partition_id = partition_id
     super().__init__(description, argv=["/sbin/e2fsck", "-f", "-y", partition_id], time_estimate=self.disk.get_byte_size()/5000000000+2)
     pass
 
   def setup(self):
     #
-    part1 = self.disk.find_partition(self.part_id)
+    part1 = self.disk.find_partition(self.partition_id)
     self.argv = ["/sbin/e2fsck", "-f", "-y", part1.device_name]
     super().setup()
     pass
    
+  def _estimate_progress(self, total_seconds):
+    return self._estimate_progress_from_time_estimate(total_seconds)
+
   pass
 
 
@@ -500,17 +509,17 @@ class task_expand_partition(op_task_process):
   #
   def __init__(self, description, disk=None, partition_id=None):
     self.disk = disk
-    self.part_id = partition_id
+    self.partition_id = partition_id
     super().__init__(description,
-                     argv = ["resize2fs", disk.device_name + partition_id],
+                     argv = ["resize2fs", disk.device_name, str(partition_id)],
                      time_estimate = self.disk.get_byte_size() / 5000000000+2) # FIXME time_estimate is bogus
     pass
 
   def setup(self):
     #
-    part1 = self.disk.find_partition(self.part_id)
+    part1 = self.disk.find_partition(self.partition_id)
     if part1 is None:
-      self.set_progress(999, "Partition %s does not exist on %s" % (self.part_id, self.disk.device_name))
+      self.set_progress(999, "Partition %s does not exist on %s" % (self.partition_id, self.disk.device_name))
       return
 
     self.argv = ["resize2fs", (part1.device_name)]
@@ -527,7 +536,7 @@ class task_shrink_partition(op_task_process):
   #
   def __init__(self, description, disk=None, partition_id=None):
     self.disk = disk
-    self.part_id = partition_id
+    self.partition_id = partition_id
     super().__init__(description,
                      time_estimate=self.disk.get_byte_size() / 1000000000, # FIXME: bogus estimate
                      argv=["resize2fs", "-M", disk.device_name+partition_id])
@@ -535,9 +544,9 @@ class task_shrink_partition(op_task_process):
 
   def setup(self):
     #
-    part1 = self.disk.find_partition(self.part_id)
+    part1 = self.disk.find_partition(self.partition_id)
     if part1 is None:
-      self.set_progress(999, "Partition %s does not exist on %s" % (self.part_id, self.disk.device_name))
+      self.set_progress(999, "Partition %s does not exist on %s" % (self.partition_id, self.disk.device_name))
       return
 
     self.argv = ["resize2fs", "-M", (part1.device_name)]
@@ -683,6 +692,7 @@ class task_refresh_partitions(op_task_command):
 
     part = self.disk.partitions[self.step]
     self.step = self.step + 1
+    part.partition_number = self.step
 
     result = subprocess.run([ '/sbin/blkid', part.device_name ],
                               timeout=10, encoding=self.encoding,
@@ -726,6 +736,30 @@ class task_refresh_partitions(op_task_command):
 #
 #
 #
+class task_set_partition_uuid(op_task_process_simple):
+  def __init__(self, description, disk=None, partition_id=None, time_estimate=6):
+    self.disk = disk
+    self.partition_id = partition_id
+    # argv is a placeholder
+    super().__init__(description, encoding='iso-8859-1', time_estimate=1, argv=["tune2fs", "-f", "-U"])
+    pass
+  
+  def setup(self):
+    #
+    part1 = self.disk.find_partition(self.partition_id)
+    if part1 is None:
+      self.set_progress(999, "Partition %s does not exist on %s" % (self.partition_id, self.disk.device_name))
+      return
+    self.argv = ["tune2fs", "-f", "-U", part1.fs_uuid, part1.device_name]
+    super().setup()
+    return
+
+  pass
+
+
+#
+#
+#
 class task_install_syslinux(op_task_process):
   '''Installs syslinux on the device'''
   def __init__(self, description, disk=None):
@@ -752,7 +786,7 @@ class task_install_grub(op_task_process):
     # FIXME: Time estimate is very different between USB stick and hard disk.
 
     # argv is a placeholder
-    super().__init__(description, argv=['/usr/sbin/grub-install', disk.device_name], time_estimate=5)
+    super().__init__(description, argv=['/usr/sbin/grub-install', disk.device_name], time_estimate=10)
     pass
 
   #
@@ -772,8 +806,7 @@ class task_install_grub(op_task_process):
     self.script_path = self.script_path_template % self.mount_dir
 
     #
-    # Probably running grub-install with target disk is enough but this
-    # leaves door open for adjusting the packages.
+    # grub-install doesn't work without chroot
     # For wifi and video drivers, it needs adding or removing packages.
     # To do so, you need the chroot and run apt.
     #
@@ -787,7 +820,7 @@ class task_install_grub(op_task_process):
     # Things to do is installing grub
     # Only see the mounted disk, and no other device
     self.script.append("export GRUB_DISABLE_OS_PROBER=true")
-    self.script.append("/usr/sbin/grub-install %s" % self.disk.device_name)
+    self.script.append("/usr/sbin/grub-install --target=i386-pc --force %s" % self.disk.device_name)
 
     if self.n_ati > 0:
       self.script.append('# If this machine has ATI video, get rid of other video drivers that can get in its way.')
@@ -823,8 +856,8 @@ class task_install_grub(op_task_process):
   # it takes 2x of time estmate.
   def _estimate_progress(self, total_seconds):
     progress = int(100.0 * total_seconds / self.time_estimate)
-    if progress > 200:
-      return progress
+    if progress > 1000:
+      return 999
     elif progress > 99:
       return 99
     else:
@@ -840,6 +873,18 @@ class task_install_grub(op_task_process):
       except:
         pass
       pass
+
+    bless_log=open("/tmp/bless.log", "w")
+    if self.out:
+      bless_log.write("stdout\n")
+      bless_log.write(self.out)
+      pass
+    
+    if self.err:
+      bless_log.write("stderr\n")
+      bless_log.write(self.err)
+      pass
+    bless_log.close()
     pass
 
   pass
@@ -898,6 +943,15 @@ class task_finalize_disk(op_task_python_simple):
   def run_python(self):
     #
     self.linuxpart = self.disk.find_partition(self.partition_id)
+    if self.linuxpart is None:
+      msg = "Partition with %s does not exist." % str(self.partition_id)
+      self.set_progress(999, msg)
+
+      print("part n = %d" % len(self.disk.partitions))
+      for part in self.disk.partitions:
+        print( str(part))
+        pass
+      raise Exception(msg)
     self.swappart = self.disk.find_partition_by_type(Partition.SWAP)
     self.mount_dir = self.linuxpart.get_mount_point()
 
