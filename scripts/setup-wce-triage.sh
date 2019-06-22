@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # Install gunpg
-for pkg in gnupg dmidecode partclone mbr efibootmgr grub2-common grub-pc pigz vbetool gfxboot mpg123 alsa-utils mpd; do
+for pkg in gnupg dmidecode partclone mbr efibootmgr grub2-common grub-pc pigz vbetool gfxboot alsa-utils pulseaudio pulseaudio-utils mpg123; do
     sudo apt install -y $pkg
 done
 

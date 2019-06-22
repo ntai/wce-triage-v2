@@ -211,11 +211,12 @@ class Computer:
 
     if len(self.networks) > 0:
       for netdev in self.networks:
+        connected = " and connected" if netdev.is_network_connected() else "not conntected"
         if netdev.is_wifi():
-          msg = "Wifi device '{dev}' detected".format(dev=netdev.device_name)
+          msg = "Wifi device '{dev}' detected{conn}. ".format(dev=netdev.device_name, conn=conntected)
           pass
         else:
-          msg = "Network device '{dev}' detected".format(dev=netdev.device_name)
+          msg = "Network device '{dev}' detected{conn}".format(dev=netdev.device_name, conn=conntected)
         self.decisions.append( ("Network", True, msg))
         pass
       pass

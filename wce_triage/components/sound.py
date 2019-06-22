@@ -1,4 +1,4 @@
-import os
+import os, subprocess
 
 def detect_sound_device():
   detected = False
@@ -13,3 +13,7 @@ def detect_sound_device():
     pass
   return detected
 
+
+def detect_sound_device_details():
+  pactl = subprocess.run(['pacmd', 'list-sinks'])
+  

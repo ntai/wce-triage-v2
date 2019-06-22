@@ -10,6 +10,7 @@ from contextlib import closing
 from json import dumps
 import os
 import sys
+import re
 import mimetypes
 import socket
 import subprocess
@@ -86,13 +87,15 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
     """
     self.routes = { "/": self.route_root,
                     "/index.html": self.route_index,
+                    "/dispatch/version.json": self.route_version,
                     "/dispatch/triage.json": self.route_triage,
                     "/dispatch/disks.json": self.route_disks,
                     "/dispatch/disk-images.json": self.route_disk_images,
                     "/dispatch/disk-load-status.json": self.route_disk_load_status,
                     "/dispatch/load": self.route_load_image,
                     "/dispatch/save": self.route_save_image,
-                    "/dispatch/play-sound.json": self.route_play_sound
+                    "/dispatch/play-sound.json": self.route_play_sound,
+                    "/dispatch/networks.json": self.route_network_device_status
     }
 
     self.computer = Computer()
@@ -185,6 +188,37 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
     """Handles routing for the application's entry point'"""
     return self.route_static_file(path, query)
 
+  def route_version(self, path, query):
+    """Get the version number of backend"""
+
+    wce_triage_parent_dir = None
+    for pa in sys.path:
+      p_wce_triage = os.path.join(pa, "wce_triage")
+      if os.path.exists(p_wce_triage) and os.path.isdir(p_wce_triage):
+        wce_triage_parent_dir = pa
+        break
+      pass
+
+    # hack alert
+    dist_info_re = re.compile(r'wce_triage-(\d+\.\d+.\d+).dist-info')
+    
+    version = "Unknown"
+    for adir in os.listdir(wce_triage_parent_dir):
+      matched = dist_info_re.match(adir)
+      if matched:
+        version = matched.group(1)
+        break
+      pass
+
+    # FIXME: Front end version is in manifest.
+    fversion = "0.0.1"
+    jsonified = { "version": [ {"backend": version },  {"frontend": fversion } ] }
+
+    return ResponseData(status=HTTP_STATUS["OK"],
+                        content_type="application/json",
+                        data_stream=make_bytestream(jsonified))
+
+
   def route_triage(self, path, query):
     """Handles requesting triage result"""
     
@@ -238,6 +272,10 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
 
   def route_play_sound(self, path, query):
     """Play music!"""
+    # Start the pulseaudio daemon
+    pulseaudio = subprocess.Popen(['pulseaudio', '--start'])
+    pulseaudio.communicate()
+
     asset_path = "/usr/local/share/wce/triage/assets"
 
     argv = ["mpg123", "-q"]
@@ -254,6 +292,22 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
                         content_type="application/json",
                         data_stream=make_bytestream(jsonified))
     pass
+
+
+  def route_network_device_status(self, path, query):
+    """Network status"""
+    
+    netstat = []
+    for netdev in detect_net_devices():
+      netstat.append( { "device": netdev.device_name, "carrier": netdev.is_network_connected() } )
+      pass
+
+    jsonified = { "network": netstat }
+    return ResponseData(status=HTTP_STATUS["OK"],
+                        content_type="application/json",
+                        data_stream=make_bytestream(jsonified))
+    pass
+
 
 
   def route_disk_images(self, path, query):
