@@ -48,6 +48,7 @@ HTTP_STATUS = {"OK": ResponseStatus(code=200, message="OK"),
                "INTERNAL_SERVER_ERROR": ResponseStatus(code=500, message="Internal server error")}
 PROTOCOL = "http"
 
+asset_path = "/usr/local/share/wce/triage/assets"
 
 def make_bytestream(data):
   json_data = dumps(data)
@@ -85,18 +86,22 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
     """
     HTTP request handler for triage
     """
-    self.routes = { "/": self.route_root,
-                    "/index.html": self.route_index,
-                    "/dispatch/version.json": self.route_version,
-                    "/dispatch/triage.json": self.route_triage,
-                    "/dispatch/disks.json": self.route_disks,
-                    "/dispatch/disk-images.json": self.route_disk_images,
-                    "/dispatch/disk-load-status.json": self.route_disk_load_status,
-                    "/dispatch/load": self.route_load_image,
-                    "/dispatch/save": self.route_save_image,
-                    "/dispatch/play-sound.json": self.route_play_sound,
-                    "/dispatch/networks.json": self.route_network_device_status
+    self.HTTP_GET_routes = { "/": self.route_root,
+                             "/index.html": self.route_index,
+                             "/dispatch/version.json": self.route_version,
+                             "/dispatch/triage.json": self.route_triage,
+                             "/dispatch/disks.json": self.route_disks,
+                             "/dispatch/disk-images.json": self.route_disk_images,
+                             "/dispatch/disk-load-status.json": self.route_disk_load_status,
+                             "/dispatch/load": self.route_load_image,
+                             "/dispatch/save": self.route_save_image,
+                             "/dispatch/play-sound": self.route_play_sound,
+                             "/dispatch/music": self.route_music,
+                             "/dispatch/networks.json": self.route_network_device_status
     }
+
+    self.HTTP_POST_routes = { "/dispatch/shutdown": self.route_shutdown }
+                           
 
     self.computer = Computer()
     self.overall_decision = None
@@ -106,57 +111,6 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
   def query_get(self, queryData, key, default=""):
     """Helper for getting values from a pre-parsed query string"""
     return queryData.get(key, [default])[0]
-
-  def do_GET(self):
-    """Handles GET requests"""
-
-    # Extract values from the query string
-    path, _, query_string = self.path.partition('?')
-    query = parse_qs(query_string)
-
-    response = None
-
-    print(u"[START]: Received GET for %s with query: %s" % (path, query))
-
-    handler = self.routes.get(path)
-    if handler is None:
-      filepath = os.path.join(rootdir, path[1:])
-      handler = self.route_static_file if os.path.exists(filepath) and os.path.isfile(filepath) else self.route_404
-      pass
-
-    try:
-      # Handle the possible request paths
-      response = handler(path, query)
-      if isinstance(response, ResponseData):
-        self.send_headers(response.status, response.content_type)
-        self.stream_data(response.data_stream)
-      elif isinstance(response, Redirect):
-        self.send_response(301)
-        self.send_header('Transfer-Encoding', 'utf-8')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Location', response.url)
-        self.end_headers()
-        pass
-      elif response is None:
-        raise Exception("Response is None. You bonehead!")
-      else:
-        raise Exception("Unknown response")
-      pass
-    except HTTPStatusError as err:
-      # Respond with an error and log debug
-      # information
-      if sys.version_info >= (3, 0):
-        self.send_error(err.code, err.message, err.explain)
-      else:
-        self.send_error(err.code, err.message)
-        pass
-      self.log_error(u"%s %s %s - [%d] %s", self.client_address[0],
-                     self.command, self.path, err.code, err.explain)
-      pass
-
-    print("[END]")
-    pass
-
 
   def route_404(self, path, query):
     """Handles routing for unexpected paths"""
@@ -273,7 +227,6 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
   def route_play_sound(self, path, query):
     """Play music!"""
     # Start the pulseaudio daemon
-    asset_path = "/usr/local/share/wce/triage/assets"
 
     argv = ["sudo", "-u", "triage", "-H", "mpg123", "-q"]
     for asset in os.listdir(asset_path):
@@ -288,6 +241,28 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
     return ResponseData(status=HTTP_STATUS["OK"],
                         content_type="application/json",
                         data_stream=make_bytestream(jsonified))
+    pass
+
+
+  def route_music(self, path, query):
+    """Send mp3 stream to chrome"""
+    # For now, return the first mp3 file. Triage usually has only one
+    # mp3 file for space reason.
+    
+    music_file = None
+    for asset in os.listdir(asset_path):
+      if asset.endswith(".mp3"):
+        music_file = os.path.join(asset_path, asset)
+        break
+      pass
+
+    if music_file:
+      return ResponseData(status=HTTP_STATUS["OK"],
+                          content_type="audio/mpeg",
+                          data_stream=open(music_file, "rb"))
+    # No music file.
+    err = "No music file found"
+    raise HTTPStatusError(HTTP_STATUS["INTERNAL_SERVER_ERROR"], str(err))
     pass
 
 
@@ -354,6 +329,22 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
     pass
 
 
+  def route_shutdown(self, path, query):
+    """shutdowns the computer."""
+    shutdown_mode = self.query_get(query, "mode", default="ignore")
+    if shutdown_mode == "poweroff":
+      subprocess.run(['poweroff'])
+    elif shutdown_mode == "reboot":
+      subprocess.run([''])
+    else:
+      self.route_404()
+      pass
+    return ResponseData(status=HTTP_STATUS["OK"],
+                        content_type="application/json",
+                        data_stream=make_bytestream(""))
+    pass
+  
+
   def stream_data(self, stream):
     """Consumes a stream in chunks to produce the response's output'"""
     if stream:
@@ -391,6 +382,78 @@ class TriageHTTPRequestHandler(BaseHTTPRequestHandler):
       self.wfile.write(b"\r\n\r\n")
       pass
     pass
+
+
+  def _do_dispatch(self, routes, http_action):
+    """Handles POST/GET requests"""
+    # Extract values from the query string
+    path, _, query_string = self.path.partition('?')
+    query = parse_qs(query_string)
+
+    response = None
+
+    print(u"[START]: Received GET for %s with query: %s" % (path, query))
+
+    handler = routes.get(path)
+    if handler is None:
+      if http_action == "GET":
+        filepath = os.path.join(rootdir, path[1:])
+        handler = self.route_static_file if os.path.exists(filepath) and os.path.isfile(filepath) else self.route_404
+      else:
+        handler = self.route_404
+        pass
+      pass
+
+    print("Found the handler for " + path)
+
+    try:
+      # Handle the possible request paths
+      print("calling handler")
+      response = handler(path, query)
+      print("got response")
+      if isinstance(response, ResponseData):
+        self.send_headers(response.status, response.content_type)
+        self.stream_data(response.data_stream)
+      elif isinstance(response, Redirect):
+        self.send_response(301)
+        self.send_header('Transfer-Encoding', 'utf-8')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Location', response.url)
+        self.end_headers()
+        pass
+      elif response is None:
+        raise Exception("Response is None. You bonehead!")
+      else:
+        raise Exception("Unknown response")
+      pass
+    except HTTPStatusError as err:
+      print ("something went wrong\n" + err.message + "\n" + err.explain)
+      # Respond with an error and log debug
+      # information
+      if sys.version_info >= (3, 0):
+        self.send_error(err.code, err.message, err.explain)
+      else:
+        self.send_error(err.code, err.message)
+        pass
+      self.log_error(u"%s %s %s - [%d] %s", self.client_address[0],
+                     self.command, self.path, err.code, err.explain)
+      pass
+
+    print("[END]")
+    pass
+
+
+  def do_GET(self):
+    """Handles GET requests"""
+    self._do_dispatch(self.HTTP_GET_routes, "GET")
+    pass
+
+
+  def do_POST(self):
+    """Handles POST requests"""
+    self._do_dispatch(self.HTTP_POST_routes, "POST")
+    pass
+
 
   def send_headers(self, status, content_type):
     """Send out the group of headers for a successful request"""
