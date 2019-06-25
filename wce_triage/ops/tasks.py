@@ -20,6 +20,7 @@ class op_task(object, metaclass=abc.ABCMeta):
       raise Exception("Description must be a string")
       pass
     self.runner = None
+    self.step_number = None # Runner assigns this. It's an ID for the task in the runner
     self.time_estimate = time_estimate
     self.encoding = encoding
     self.description = description
@@ -49,10 +50,9 @@ class op_task(object, metaclass=abc.ABCMeta):
   def poll(self):
     pass
 
-  @property
   def get_description(self):
     return self.description
-  
+
   def set_progress(self, progress, msg):
     self.progress = progress
     self.message = msg

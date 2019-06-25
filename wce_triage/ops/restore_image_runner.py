@@ -46,34 +46,38 @@ class RestoreDisk(PartitionDiskRunner):
 
     detected_videos = wce_triage.components.video.detect_video_cards()
 
+    # sugar
+    disk = self.disk
+    partition_id = self.partition_id
+
     # once the partitioning is done, refresh the partition
     self.tasks.append(task_fetch_partitions("Fetch disk information", disk))
     self.tasks.append(task_refresh_partitions("Refresh partition information", disk))
 
     # load disk image
-    self.tasks.append(task_restore_disk_image("Load disk image", disk=self.disk, partition_id=self.partition_id, source=self.source))
+    self.tasks.append(task_restore_disk_image("Load disk image", disk=disk, partition_id=partition_id, source=self.source))
     # Loading disk image resets the UUID. 
-    self.tasks.append(task_fsck("fsck partition", disk=self.disk, partition_id=self.partition_id))
-    self.tasks.append(task_set_partition_uuid("Set partition UUID", disk=self.disk, partition_id=self.partition_id))
+    self.tasks.append(task_fsck("fsck partition", disk=disk, partition_id=partition_id))
+    self.tasks.append(task_set_partition_uuid("Set partition UUID", disk=disk, partition_id=partition_id))
 
     # mount it
-    self.tasks.append(task_mount("Mount the target disk", disk=self.disk, partition_id=self.partition_id))
+    self.tasks.append(task_mount("Mount the target disk", disk=disk, partition_id=partition_id))
 
     # trim some files
-    self.tasks.append(task_remove_persistent_rules("Remove persistent rules", disk=self.disk, partition_id=self.partition_id))
+    self.tasks.append(task_remove_persistent_rules("Remove persistent rules", disk=disk, partition_id=partition_id))
 
     # set up some system files
-    self.tasks.append(task_finalize_disk("Finalize disk", disk=self.disk, partition_id=self.partition_id, newhostname=self.newhostname))
+    self.tasks.append(task_finalize_disk("Finalize disk", disk=disk, partition_id=partition_id, newhostname=self.newhostname))
 
     # Install GRUB
     self.tasks.append(task_install_grub('Install GRUB boot manager', disk, detected_videos))
 
     # unmount so I can run fsck and expand partition
-    self.tasks.append(task_unmount("Unmount target", disk=self.disk, partition_id=self.partition_id))
+    self.tasks.append(task_unmount("Unmount target", disk=disk, partition_id=partition_id))
 
     # fsck/expand partition
-    self.tasks.append(task_fsck("fsck partition", disk=self.disk, partition_id=self.partition_id))
-    self.tasks.append(task_expand_partition("Expand the partion back", disk=self.disk, partition_id=self.partition_id))
+    self.tasks.append(task_fsck("fsck partition", disk=disk, partition_id=partition_id))
+    self.tasks.append(task_expand_partition("Expand the partion back", disk=disk, partition_id=partition_id))
 
     pass
 

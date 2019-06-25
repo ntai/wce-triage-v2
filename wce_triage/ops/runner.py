@@ -36,8 +36,11 @@ class Runner:
       raise Exception("Run state is not Prepare")
 
     # Tell the tasks I'm the runner.
+    task_number = 0
     for task in self.tasks:
+      task.task_number = task_number
       task.runner = self
+      task_number += 1
       pass
 
     self.state = RunState.Preflight
@@ -57,11 +60,7 @@ class Runner:
   
   # Explaining what's going to happen
   def explain(self):
-    step = 0
-    for task in self.tasks:
-      step = step + 1
-      self.ui.print( "%d: %s %s" % (step, task.description, task.explain()))
-      pass
+    self.ui.describe_steps([ (task.description, task.explain()) for task in self.tasks ])
     pass
   
   def report_current_task(self):

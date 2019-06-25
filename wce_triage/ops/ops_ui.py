@@ -48,14 +48,12 @@ class ops_ui(object):
     pass
 
 
-  # print is a random chatter for the end user.
-  # depending on the ui, this can be suppressed.
   @abc.abstractmethod
-  def print(self, msg):
+  def describe_steps(self, steps):
     pass
 
-  # log is a little more interesting message.
-  # should be printed and shown somewhere.
+
+  # message be printed and shown somewhere.
   @abc.abstractmethod
   def log(self, msg):
     pass
@@ -113,9 +111,14 @@ class console_ui(ops_ui):
     pass
 
   # Used for explain. Probably needs better way
-  def print(self, msg):
-    print(msg)
+  def describe_steps(self, steps):
+    index = 0
+    for step in steps:
+      index = index + 1
+      print( "%d: %s %s" % (index, step[0], step[1]))
+      pass
     pass
+
 
   # Log message. Probably better to be stored in file so we can see it
   # FIXME: probably should use python's logging.
@@ -161,8 +164,7 @@ class virtual_ui(ops_ui):
                           elapsed_time):
     pass
 
-  # Used for explain.
-  def print(self, msg):
+  def describe_steps(self, steps):
     pass
 
   # Used for explain.
