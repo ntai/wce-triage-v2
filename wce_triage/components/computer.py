@@ -1,21 +1,18 @@
+from . import pci as _pci
+from . import cpu as _cpu
+from . import memory as _memory
+from . import network as _network
+from . import disk as _disk
+from . import video as _video
+from . import sound as _sound
+from . import optical_drive as _optical_drive
+
 import re, subprocess, os, sys
 
 re_socket_designation = re.compile(r'\s*Socket Designation: ([\w\d]+)')
 re_enabled_size = re.compile(r'\s*Enabled Size: (\d+) MB')
 re_error_status = re.compile(r'\sError Status: (\w+)')
 
-if __name__ == "__main__":
-  sys.path.append(os.path.split(os.getcwd())[0])
-  pass
-
-import wce_triage.components.pci as _pci
-import wce_triage.components.cpu as _cpu
-import wce_triage.components.memory as _memory
-import wce_triage.components.network as _network
-import wce_triage.components.disk as _disk
-import wce_triage.components.video as _video
-import wce_triage.components.sound as _sound
-import wce_triage.components.optical_drive as _optical_drive
 
 from wce_triage.lib.util import *
 from wce_triage.components.disk import Disk, Partition
@@ -224,12 +221,7 @@ class Computer:
       self.decisions.append( ("Sound", False, "Sound card: NOT DETECTED -- INSTALL SOUND CARD"))
       pass
     else:
-      try:
-        subprocess.Popen(["/usr/local/bin/wce-test-sound-device"])
-        self.decisions.append( ("Sound", True, "Please connect a speaker. Sound is playing."))
-      except:
-        self.decisions.append( ("Sound", True, "Sound device is present but music is not playing."))
-        pass
+      self.decisions.append( ("Sound", True, "Sound device is present. Hit [Play] button to test the sound."))
       pass
 
     self.decision = True

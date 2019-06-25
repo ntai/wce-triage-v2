@@ -6,9 +6,9 @@
 
 import datetime, re, subprocess, sys, os
 
-from wce_triage.ops.tasks import *
-from wce_triage.ops.ops_ui import *
-from wce_triage.ops.runner import *
+from .tasks import *
+from .ops_ui import *
+from .runner import *
 from wce_triage.components.disk import Disk, Partition
 
 #

@@ -4,7 +4,7 @@ export GRUB_DISABLE_OS_PROBER=true
 
 #
 # Install gunpg
-for pkg in gnupg dmidecode partclone mbr efibootmgr grub2-common grub-pc pigz vbetool gfxboot alsa-utils pulseaudio pulseaudio-utils mpg123; do
+for pkg in gnupg dmidecode partclone mbr efibootmgr grub2-common grub-pc pigz vbetool gfxboot alsa-utils pulseaudio pulseaudio-utils mpg123 python3-aiohttp python3-websockets python3-aiohttp-cors; do
     sudo apt install -y $pkg
 done
 
