@@ -113,9 +113,9 @@ class console_ui(ops_ui):
   # Used for explain. Probably needs better way
   def describe_steps(self, steps):
     index = 0
-    for step in steps:
+    for desc, details in steps:
       index = index + 1
-      print( "%d: %s %s" % (index, step[0], step[1]))
+      print( "%d: %s %s" % (index, desc, details))
       pass
     pass
 

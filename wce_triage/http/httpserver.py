@@ -13,7 +13,7 @@ from argparse import ArgumentParser
 from collections import namedtuple
 from contextlib import closing
 from json import dumps
-import os, sys, re, subprocess, datetime, asyncio, pathlib
+import os, sys, re, subprocess, datetime, asyncio, pathlib, traceback
 import logging, logging.handlers
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
@@ -26,10 +26,17 @@ import wce_triage.lib.util
 from wce_triage.ops.ops_ui import ops_ui
 from wce_triage.ops.partition_runner import make_usb_stick_partition_plan, make_efi_partition_plan
 
+def _describe_task(task):
+  return {"description": task.get_description(),
+          "progress": task.progress,
+          "time_estimate": task.time_estimate,
+          "step" : task.task_number}
+
+
 routes = aiohttp.web.RouteTableDef()
 
 import socketio
-wock = socketio.AsyncServer()
+wock = socketio.AsyncServer(async_mode='aiohttp', logger=True, cors_allowed_origins='*')
 
 @routes.get('/version.json')
 async def route_version(request):
@@ -75,13 +82,19 @@ class TriageWeb(object):
     """
     app.router.add_routes(routes)
     app.router.add_static("/", rootdir)
-
     for resource in app.router._resources:
-      cors.add(resource, { '*': aiohttp_cors.ResourceOptions(allow_credentials=True, expose_headers="*", allow_headers="*") })
+      if resource.raw_match("/socket.io/"):
+        continue
+      try:
+        cors.add(resource, { '*': aiohttp_cors.ResourceOptions(allow_credentials=True, expose_headers="*", allow_headers="*") })
+      except Exception as exc:
+        print(resource)
+        print(traceback.format_exc(exc))
+        pass
       pass
 
     self.computer = None
-    self.messages = [ '', '', 'WCE Triage Version 0.0.1']
+    self.messages = ['WCE Triage Version 0.0.1']
 
     # wock (web socket) channels.
     self.channels = {}
@@ -89,14 +102,12 @@ class TriageWeb(object):
 
 
   def note(self, message):
-    if len(self.messages) > 3:
-      self.messages = self.messages[1:]
-      pass
     self.messages.append(message)
 
-    wockid = 'messages'
-    if self.channels.get(wockid):
-      await wock.emit(message, room=wockid)
+    wock_ns = '/wock/message'
+    print (self.channels.keys())
+    if self.channels.get(wock_ns):
+      wock.emit(message, wock_ns)
       pass
     pass
 
@@ -215,22 +226,22 @@ class TriageWeb(object):
         pass
       pass
     else:
-      me.note("No image file selected.")
+      await me.note("No image file selected.")
       pass
     return aiohttp.web.json_response({ "pages": 1 })
   
-  def run_load_image(self, devname, imagefile):
+  async def run_load_image(self, devname, imagefile):
     self.note("Disk image started")
     disk = Disk(device_name = devname)
     runner = RestoreDisk(wock_ui(wock, self.note), disk, imagefile,
                          pplan=make_usb_stick_partition_plan(disk), partition_id=1, partition_map='msdos',
                          newhostname="triage20")
     runner.prepare()
-    runner.preflight()
-    runner.explain()
+    await runner.preflight()
+    await runner.explain()
     # FIXME: Don't run for now. See websock works.
     # runner.run()
-    self.note("Disk image finished")
+    await self.note("Disk image finished")
     pass
 
   @routes.get("/dispatch/disk-load-status.json")
@@ -299,36 +310,27 @@ class TriageWeb(object):
       pass
     return aiohttp.web.json_response({})
   
-  @wock.event
-  def connect(wockid, environ):
-    global me
-    me.channels[wockid] = environ
-    print("connect ", wockid)
-    pass
-
-  @wock.event
-  async def chat_message(wockid, data):
-    print("message ", data)
-    await wock.emit('reply', room=wockid)
-    pass
-
-  @wock.event
-  def disconnect(wockid):
-    del me.channels[wockid]
-    print('disconnect ', wockid)
-    pass
+  pass
   
+@wock.event
+def connect(wockid, environ):
+  global me
+  me.channels[wockid] = environ
+  print("************** connect ************* " +  wockid)
+  print(environ)
+  pass
+
+
+@wock.event
+def disconnect(wockid):
+  global me
+  del me.channels[wockid]
+  print('disconnect ' + wockid)
   pass
 
 #
 # WebScoket UI for Task Runner
 #
-def describe_step(task):
-  return {"description": task.get_description(),
-          "progress": task.progress,
-          "time_estimate": task.time_estimate,
-          "step" : task.task_number}
-
 
 class wock_ui(ops_ui):
   def __init__(self, wock, noter):
@@ -341,8 +343,9 @@ class wock_ui(ops_ui):
   # Called from preflight to just set up the flight plan
   async def report_tasks(self, total_time_estimate, tasks):
     print (tasks)
-    await self.wock.send_json({ "load": { "total_estimate" : total_time_estimate,
-                                          "steps" : [ describe_step(task) for task in tasks ] } })
+    await self.wock.emit("steps", { "load": { "total_estimate" : total_time_estimate,
+                                              "steps" : [ _describe_task(task) for task in tasks ] } },
+                         namespace="load")
     pass
 
   #
@@ -351,25 +354,27 @@ class wock_ui(ops_ui):
 
 
   async def report_task_failure(self,
-                          task_time_estimate,
-                          elapsed_time,
-                          progress,
-                          task):
+                                task_time_estimate,
+                                elapsed_time,
+                                progress,
+                                task):
     pass
 
   async def report_task_success(self, task_time_estimate, elapsed_time, task):
     pass
 
   async def report_run_progress(self, 
-                          step,
-                          tasks,
-                          total_time_estimate,
-                          elapsed_time):
+                                step,
+                                tasks,
+                                total_time_estimate,
+                                elapsed_time):
     pass
 
   # Used for explain. Probably needs better way
   async def describe_steps(self, steps):
-    await self.wock.send_json({ "load": { "steps" : [ describe_step(task) for task in steps ] } })
+    await self.wock.emit('steps', { "load": { "total_estimate": 0,
+                                              "steps" : [ { "description": desc, "details": details } for desc, details in steps ] } },
+                         namespace="load")
     pass
 
   # Log message. Probably better to be stored in file so we can see it
@@ -394,7 +399,7 @@ if __name__ == '__main__':
   logging.basicConfig(level=logging.DEBUG)
 
   fileout = logging.FileHandler("/tmp/httpserver.log")
-  for logkind in ['aiohttp.access', 'aiohttp.client', 'aiohttp.internal', 'aiohttp.server', 'aiohttp.web', 'aiohttp.websocket']:
+  for logkind in ['aiohttp.access', 'aiohttp.client', 'aiohttp.internal', 'aiohttp.server', 'aiohttp.web', 'aiohttp.websocket', 'socketio.server']:
     thing = logging.getLogger(logkind)
     thing.setLevel(logging.DEBUG)
     thing.addHandler(fileout)
@@ -410,8 +415,8 @@ if __name__ == '__main__':
 
   # Accept connection from everywhere
   app = aiohttp.web.Application(debug=True, loop=loop)
+  wock.attach(app)
   cors = aiohttp_cors.setup(app)
-  sio.attach(app)
   global me
   me = TriageWeb(app, arguments.rootdir, cors)
 
