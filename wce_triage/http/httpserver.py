@@ -28,6 +28,9 @@ from wce_triage.ops.partition_runner import make_usb_stick_partition_plan, make_
 
 routes = aiohttp.web.RouteTableDef()
 
+import socketio
+wock = socketio.AsyncServer()
+
 @routes.get('/version.json')
 async def route_version(request):
   """Get the version number of backend"""
@@ -58,7 +61,10 @@ async def route_version(request):
 
 
 #
-# 
+# TriageWeb
+#
+# NOTE: Unfortunately, aiohttp dispatch doesn't give me "self", so only alternative
+# is to use a singleton. IOW, this class is nothing more than a namespace.
 #
 class TriageWeb(object):
   asset_path = "/usr/local/share/wce/triage/assets"
@@ -74,19 +80,26 @@ class TriageWeb(object):
       cors.add(resource, { '*': aiohttp_cors.ResourceOptions(allow_credentials=True, expose_headers="*", allow_headers="*") })
       pass
 
-    self.wock = None
     self.computer = None
     self.messages = [ '', '', 'WCE Triage Version 0.0.1']
+
+    # wock (web socket) channels.
+    self.channels = {}
     pass
-  
+
 
   def note(self, message):
     if len(self.messages) > 3:
       self.messages = self.messages[1:]
       pass
     self.messages.append(message)
+
+    wockid = 'messages'
+    if self.channels.get(wockid):
+      await wock.emit(message, room=wockid)
+      pass
     pass
-  
+
 
   @routes.get("/")
   async def route_root(request):
@@ -97,25 +110,6 @@ class TriageWeb(object):
   async def route_messages(request):
     global me
     return aiohttp.web.json_response({ "messages": me.messages })
-
-
-  @routes.get("/dispatch/wock")
-  async def route_wock(request):
-    global me
-    wock = aiohttp.web.WebSocketResponse()
-    await wock.prepare(request)
-    me.wock = wock
-    async for msg in wock:
-      if msg.type == aiohttp.WSMsgType.TEXT:
-        if msg.data == "close":
-          me.wock = None
-          await wock.close()
-        else:
-          await wock.send_str("pong")
-          pass
-        pass
-      pass
-    return wock
 
 
   # triage being async is somewhat pedantic but it runs a couple of processes
@@ -228,7 +222,7 @@ class TriageWeb(object):
   def run_load_image(self, devname, imagefile):
     self.note("Disk image started")
     disk = Disk(device_name = devname)
-    runner = RestoreDisk(wock_ui(self.wock, self.note), disk, imagefile,
+    runner = RestoreDisk(wock_ui(wock, self.note), disk, imagefile,
                          pplan=make_usb_stick_partition_plan(disk), partition_id=1, partition_map='msdos',
                          newhostname="triage20")
     runner.prepare()
@@ -305,8 +299,26 @@ class TriageWeb(object):
       pass
     return aiohttp.web.json_response({})
   
-  pass
+  @wock.event
+  def connect(wockid, environ):
+    global me
+    me.channels[wockid] = environ
+    print("connect ", wockid)
+    pass
 
+  @wock.event
+  async def chat_message(wockid, data):
+    print("message ", data)
+    await wock.emit('reply', room=wockid)
+    pass
+
+  @wock.event
+  def disconnect(wockid):
+    del me.channels[wockid]
+    print('disconnect ', wockid)
+    pass
+  
+  pass
 
 #
 # WebScoket UI for Task Runner
@@ -399,6 +411,7 @@ if __name__ == '__main__':
   # Accept connection from everywhere
   app = aiohttp.web.Application(debug=True, loop=loop)
   cors = aiohttp_cors.setup(app)
+  sio.attach(app)
   global me
   me = TriageWeb(app, arguments.rootdir, cors)
 
