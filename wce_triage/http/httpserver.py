@@ -13,9 +13,9 @@ from argparse import ArgumentParser
 from collections import namedtuple
 from contextlib import closing
 from json import dumps
-import os, sys, re, subprocess, datetime, asyncio, pathlib, traceback
+import os, sys, re, subprocess, datetime, asyncio, pathlib, traceback, queue, time
 import logging, logging.handlers
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 
 from wce_triage.components.computer import Computer
 from wce_triage.ops.restore_image_runner import RestoreDisk
@@ -66,6 +66,57 @@ async def route_version(request):
   jsonified = { "version": [ {"backend": version },  {"frontend": fversion } ] }
   return aiohttp.web.json_response(jsonified)
 
+#
+#
+#
+class Emitter:
+  queue = None
+
+  def register(loop):
+    Emitter.queue = queue.Queue()
+    # asyncio.ensure_future(Emitter._task(), loop=loop)
+    # asyncio.ensure_future(Emitter._task2(), loop=loop)
+    # asyncio.ensure_future(Emitter._task3(), loop=loop)
+    pass
+
+  async def _task():
+    while True:
+      await Emitter.flush()
+      pass
+    pass
+
+  async def _task2():
+    while True:
+      time.sleep(3)
+      print("BAR!")
+      pass
+    pass
+
+  async def _task3():
+    while True:
+      time.sleep(6)
+      print("BAZ!")
+      pass
+    pass
+
+  async def flush():
+    running = True
+    while running:
+      #try:
+      # elem = Emitter.queue.get(block=False)
+      # await wock.emit(elem[0], elem[1])
+      # print("Emitter wock.emit %s" % elem[0])
+      time.sleep(5)
+      print("FOO!")
+      pass
+    pass
+
+
+  def send(event, data):
+    Emitter.queue.put((event, data))
+    pass
+  pass
+
 
 #
 # TriageWeb
@@ -88,8 +139,6 @@ class TriageWeb(object):
       try:
         cors.add(resource, { '*': aiohttp_cors.ResourceOptions(allow_credentials=True, expose_headers="*", allow_headers="*") })
       except Exception as exc:
-        print(resource)
-        print(traceback.format_exc(exc))
         pass
       pass
 
@@ -100,15 +149,8 @@ class TriageWeb(object):
     self.channels = {}
     pass
 
-
   def note(self, message):
-    self.messages.append(message)
-
-    wock_ns = '/wock/message'
-    print (self.channels.keys())
-    if self.channels.get(wock_ns):
-      wock.emit(message, wock_ns)
-      pass
+    Emitter.send('message', {"message": message})
     pass
 
 
@@ -130,6 +172,7 @@ class TriageWeb(object):
       self.computer = Computer()
       self.overall_decision = self.computer.triage()
       self.note("Triage result is %s." % "good" if self.overall_decision else "bad")
+      await Emitter.flush()
       pass
     return self.computer
 
@@ -137,7 +180,6 @@ class TriageWeb(object):
   @routes.get("/dispatch/triage.json")
   async def route_triage(request):
     """Handles requesting triage result"""
-    
     global me
     if me.computer is None:
       await me.triage()
@@ -219,29 +261,30 @@ class TriageWeb(object):
     global me
     devname = request.query.get("deviceName")
     imagefile = request.query.get("source")
+    await wock.emit("loadimage", { "device_name": devname, "total_estimate" : 0, "steps" : [] })
     if imagefile:
       loop = asyncio.get_event_loop()
-      with ThreadPoolExecutor() as execpool:
+      with ThreadPoolExecutor(1) as execpool:
         await loop.run_in_executor(execpool, me.run_load_image, devname, imagefile)
         pass
       pass
     else:
-      await me.note("No image file selected.")
+      me.note("No image file selected.")
+      await Emitter.flush()
       pass
     return aiohttp.web.json_response({ "pages": 1 })
   
-  async def run_load_image(self, devname, imagefile):
-    self.note("Disk image started")
+  # This runs in a thread
+  def run_load_image(self, devname, imagefile):
     disk = Disk(device_name = devname)
-    runner = RestoreDisk(wock_ui(wock, self.note), disk, imagefile,
+    runner = RestoreDisk(wock_ui(), disk, imagefile,
                          pplan=make_usb_stick_partition_plan(disk), partition_id=1, partition_map='msdos',
                          newhostname="triage20")
     runner.prepare()
-    await runner.preflight()
-    await runner.explain()
+    runner.preflight()
+    runner.explain()
     # FIXME: Don't run for now. See websock works.
     # runner.run()
-    await self.note("Disk image finished")
     pass
 
   @routes.get("/dispatch/disk-load-status.json")
@@ -280,6 +323,7 @@ class TriageWeb(object):
           pass
         except Exception as exc:
           me.note(exc.format_exc())
+          await Emitter.flush()
           pass
         pass
       pass
@@ -306,6 +350,7 @@ class TriageWeb(object):
       subprocess.run(['reboot'])
     else:
       me.note("Shutdown command needs a query and ?mode=poweroff or ?mode=reboot is accepted.")
+      await Emitter.flush()
       raise HTTPNotFound()
       pass
     return aiohttp.web.json_response({})
@@ -313,74 +358,87 @@ class TriageWeb(object):
   pass
   
 @wock.event
-def connect(wockid, environ):
+async def connect(wockid, environ):
   global me
   me.channels[wockid] = environ
   print("************** connect ************* " +  wockid)
   print(environ)
+  me.note("Connected")
+  await Emitter.flush()
   pass
 
+
+@wock.event()
+async def message(wockid, data):
+  print('message data: ' + data)
+  pass
 
 @wock.event
 def disconnect(wockid):
   global me
-  del me.channels[wockid]
-  print('disconnect ' + wockid)
+  if me.channels.get(wockid):
+    del me.channels[wockid]
+    print('disconnect ' + wockid)
+    pass
+  else:
+    print('unknown disconnect ' + wockid)
+    pass
   pass
 
 #
 # WebScoket UI for Task Runner
 #
-
+# This lives in a thread, and not coroutine.
+#
 class wock_ui(ops_ui):
-  def __init__(self, wock, noter):
-    self.wock = wock
-    self.noter = noter
+  def __init__(self):
     self.last_report_time = datetime.datetime.now()
     pass
 
 
   # Called from preflight to just set up the flight plan
-  async def report_tasks(self, total_time_estimate, tasks):
-    print (tasks)
-    await self.wock.emit("steps", { "load": { "total_estimate" : total_time_estimate,
-                                              "steps" : [ _describe_task(task) for task in tasks ] } },
-                         namespace="load")
+  def report_tasks(self, total_time_estimate, tasks):
+    print("report_tasks")
+    Emitter.send("loadimage", { "total_estimate" : total_time_estimate,
+                                "steps" : [ _describe_task(task) for task in tasks ] } )
     pass
 
   #
-  async def report_task_progress(self, total_time, time_estimate, elapsed_time, progress, task):
+  def report_task_progress(self, total_time, time_estimate, elapsed_time, progress, task):
     pass
 
-
-  async def report_task_failure(self,
+  def report_task_failure(self,
                                 task_time_estimate,
                                 elapsed_time,
                                 progress,
                                 task):
     pass
 
-  async def report_task_success(self, task_time_estimate, elapsed_time, task):
+  def report_task_success(self, task_time_estimate, elapsed_time, task):
     pass
 
-  async def report_run_progress(self, 
-                                step,
-                                tasks,
-                                total_time_estimate,
-                                elapsed_time):
+  def report_run_progress(self, 
+                          step,
+                          tasks,
+                          total_time_estimate,
+                          elapsed_time):
+    Emitter.send("loadimage", { "step": step,
+                                "total_estimate" : total_time_estimate,
+                                "elapsed_time": elapsed_time,
+                                "steps" : [ _describe_task(task) for task in tasks ] } )
     pass
 
   # Used for explain. Probably needs better way
-  async def describe_steps(self, steps):
-    await self.wock.emit('steps', { "load": { "total_estimate": 0,
-                                              "steps" : [ { "description": desc, "details": details } for desc, details in steps ] } },
-                         namespace="load")
+  def describe_steps(self, steps):
+    print('describe steps')
+    Emitter.send("loadimage", { "steps" : [ {"description": step[0],
+                                             "progress": 0,
+                                             "time_estimate": 0} for step in steps ] } )
     pass
 
   # Log message. Probably better to be stored in file so we can see it
   # FIXME: probably should use python's logging.
-  async def log(self, msg):
-    self.noter(msg)
+  def log(self, msg):
     pass
 
   pass
@@ -399,7 +457,7 @@ if __name__ == '__main__':
   logging.basicConfig(level=logging.DEBUG)
 
   fileout = logging.FileHandler("/tmp/httpserver.log")
-  for logkind in ['aiohttp.access', 'aiohttp.client', 'aiohttp.internal', 'aiohttp.server', 'aiohttp.web', 'aiohttp.websocket', 'socketio.server']:
+  for logkind in ['aiohttp.access', 'aiohttp.internal', 'aiohttp.server', 'aiohttp.web', 'asyncio']:
     thing = logging.getLogger(logkind)
     thing.setLevel(logging.DEBUG)
     thing.addHandler(fileout)
@@ -414,13 +472,16 @@ if __name__ == '__main__':
   loop.set_debug(True)
 
   # Accept connection from everywhere
+  print("Starting app.")
   app = aiohttp.web.Application(debug=True, loop=loop)
   wock.attach(app)
   cors = aiohttp_cors.setup(app)
   global me
   me = TriageWeb(app, arguments.rootdir, cors)
 
+
   print("Starting server, use <Ctrl-C> to stop...")
   print(u"Open {0} in a web browser.".format(the_root_url))
+  Emitter.register(loop)
   aiohttp.web.run_app(app, host="0.0.0.0", port=arguments.port)
   pass
