@@ -25,7 +25,7 @@ def make_random_hostname(stemname="wce"):
 #
 class RestoreDisk(PartitionDiskRunner):
 
-  def __init__(self, ui, disk, src, partition_id='Linux', pplan=None, newhostname=make_random_hostname(), partition_map='gpt'):
+  def __init__(self, ui, disk, src, src_size, partition_id='Linux', pplan=None, newhostname=make_random_hostname(), partition_map='gpt'):
 
     #
     self.partition_id = partition_id
@@ -37,6 +37,7 @@ class RestoreDisk(PartitionDiskRunner):
 
     self.disk = disk
     self.source = src
+    self.source_size = src_size
     self.newhostname = newhostname
     pass
 
@@ -56,6 +57,7 @@ class RestoreDisk(PartitionDiskRunner):
 
     # load disk image
     self.tasks.append(task_restore_disk_image("Load disk image", disk=disk, partition_id=partition_id, source=self.source))
+
     # Loading disk image resets the UUID. 
     self.tasks.append(task_fsck("fsck partition", disk=disk, partition_id=partition_id))
     self.tasks.append(task_set_partition_uuid("Set partition UUID", disk=disk, partition_id=partition_id))
@@ -84,6 +86,11 @@ class RestoreDisk(PartitionDiskRunner):
   pass
 
 
+def get_source_size(src):
+  srcst = os.stat(src)
+  return srcst.st_size
+
+
 if __name__ == "__main__":
   if len(sys.argv) == 1:
     print( 'USB Flasher: devname part imagesource')
@@ -101,7 +108,8 @@ if __name__ == "__main__":
   if part == '1':
     part = 1
     pass
-  runner = RestoreDisk(ui, disk, src, partition_id=part, pplan=make_usb_stick_partition_plan(disk), newhostname="wcetriage2", partition_map='msdos')
+  src_size = get_source_size(src)
+  runner = RestoreDisk(ui, disk, src, src_size, partition_id=part, pplan=make_usb_stick_partition_plan(disk), newhostname="wcetriage2", partition_map='msdos')
   runner.prepare()
   runner.preflight()
   runner.explain()

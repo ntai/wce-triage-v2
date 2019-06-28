@@ -13,9 +13,11 @@ from wce_triage.components.disk import Disk, Partition
 from wce_triage.lib.util import drain_pipe, drain_pipe_completely
 import uuid
 
+from .estimate import *
+
 class op_task(object, metaclass=abc.ABCMeta):
 
-  def __init__(self, description, encoding='utf-8', time_estimate=None):
+  def __init__(self, description, encoding='utf-8', time_estimate=None, estimate_factors=None):
     if not isinstance(description, str):
       raise Exception("Description must be a string")
       pass
@@ -31,13 +33,45 @@ class op_task(object, metaclass=abc.ABCMeta):
     self.start_time = None
     self.end_time = None
     self.teardown_task = False
+
+    self.estimate_factors = estimate_factors
     pass
 
+  # 0: not started
+  # 1: started - running
+  # 2: done - success
+  # 3: done - fail
+  def _get_status(self):
+    if self.is_done:
+      if self.progress > 100:
+        return 3
+      elif self.progress == 100:
+        return 2
+      else:
+        raise Exception("bone head!")
+      pass
+    elif self.is_started:
+      return 1
+    else:
+      return 0
+    pass
+  
+  # prepare is called from runner's prepare
+  def prepare(self, tasks):
+    '''prepare is called from runner's prepare. you get to know 
+       other tasks. task number is given so you know where your 
+       position is in the execution, and you can adjust your estimation.'''
+    pass
+  
+  # setup is called at the beginning of running.
   def setup(self):
+    '''setup is called at the beginning of running.'''
     self.start_time = datetime.datetime.now()
     pass
   
+  # teardown is called just after the run
   def teardown(self):
+    '''teardown is called just after the run'''
     self.end_time = datetime.datetime.now()
     pass
 
@@ -48,12 +82,14 @@ class op_task(object, metaclass=abc.ABCMeta):
 
   @abc.abstractmethod
   def poll(self):
+    '''poll is called while the execution is going on'''
     pass
 
   def get_description(self):
     return self.description
 
   def set_progress(self, progress, msg):
+    self.is_started = True
     self.progress = progress
     self.message = msg
     pass

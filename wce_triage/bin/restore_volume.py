@@ -3,10 +3,6 @@
 #
 import os, sys, subprocess, urllib, datetime
 
-if __name__ == "__main__":
-  sys.path.append(os.path.split(os.getcwd())[0])
-  pass
-
 from wce_triage.lib.util import *
 from wce_triage.lib.timeutil import *
 from collections import deque

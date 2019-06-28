@@ -9,6 +9,7 @@ from wce_triage.components.disk import Disk, Partition
 from wce_triage.ops.tasks import *
 from wce_triage.lib.timeutil import *
 import functools
+from .estimate import *
 
 #
 # Running partclone base class
@@ -88,11 +89,12 @@ class task_partclone(op_task_process):
 #
 class task_create_disk_image(task_partclone):
   
-  def __init__(self, description, disk=None, partition_id="Linux", imagename=None):
+  def __init__(self, description, disk=None, partition_id="Linux", imagename=None, partition_size=None):
     super().__init__(description, time_estimate=disk.get_byte_size() / 500000000)
     self.disk = disk
     self.partition_id = partition_id
     self.imagename = imagename
+    self.partition_size = partition_size
     pass
 
   # 
@@ -108,6 +110,7 @@ class task_create_disk_image(task_partclone):
   def explain(self):
     return "Create disk image of %s using WCE Triage's image_volume" % self.disk.device_name
 
+
   pass
 
 #
@@ -115,11 +118,12 @@ class task_create_disk_image(task_partclone):
 class task_restore_disk_image(task_partclone):
   
   # Restore partclone image file to the first partition
-  def __init__(self, description, disk=None, partition_id="Linux", source=None):
+  def __init__(self, description, disk=None, partition_id="Linux", source=None, source_size=None):
     super().__init__(description, time_estimate=disk.get_byte_size() / 500000000)
     self.disk = disk
     self.partition_id = partition_id
     self.source = source
+    self.source_size = source_size
     if self.source is None:
       raise Exception("bone head. it needs the source image.")
     pass

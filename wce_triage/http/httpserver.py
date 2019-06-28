@@ -26,11 +26,17 @@ import wce_triage.lib.util
 from wce_triage.ops.ops_ui import ops_ui
 from wce_triage.ops.partition_runner import make_usb_stick_partition_plan, make_efi_partition_plan
 
+#
+# 
+#
 def _describe_task(task):
-  return {"description": task.get_description(),
+  return {"category" : task.get_description(),
+          "status": ["waiting", "running", "done", "fail"][task._get_status()],
           "progress": task.progress,
-          "time_estimate": task.time_estimate,
-          "step" : task.task_number}
+          "timeEstimate": round(task.time_estimate, 1),
+          "elapseTime": round(in_seconds(datetime.datetime.now() - task.start_time) if task.start_time else 0, 1),
+          "details": task.explain(),
+          "step" : task.task_number if task.task_number else ""}
 
 
 routes = aiohttp.web.RouteTableDef()
@@ -74,40 +80,34 @@ class Emitter:
 
   def register(loop):
     Emitter.queue = queue.Queue()
-    # asyncio.ensure_future(Emitter._task(), loop=loop)
-    # asyncio.ensure_future(Emitter._task2(), loop=loop)
-    # asyncio.ensure_future(Emitter._task3(), loop=loop)
+    asyncio.ensure_future(Emitter._task(), loop=loop)
     pass
 
   async def _task():
     while True:
       await Emitter.flush()
-      pass
-    pass
-
-  async def _task2():
-    while True:
-      time.sleep(3)
-      print("BAR!")
-      pass
-    pass
-
-  async def _task3():
-    while True:
-      time.sleep(6)
-      print("BAZ!")
+      await asyncio.sleep(0.2)
       pass
     pass
 
   async def flush():
     running = True
     while running:
-      #try:
-      # elem = Emitter.queue.get(block=False)
-      # await wock.emit(elem[0], elem[1])
-      # print("Emitter wock.emit %s" % elem[0])
-      time.sleep(5)
-      print("FOO!")
+      try:
+        elem = Emitter.queue.get(block=False)
+        await wock.emit(elem[0], elem[1])
+
+        global me
+        # hack? Stealing the last loading status from the wock_ui
+        # so when browser asks with "get", I can answer the same
+        # result.
+        if elem[0] == "loadimage":
+          me.loading_status = elem[1]
+          pass
+        pass
+      except queue.Empty:
+        running = False
+        pass
       pass
     pass
 
@@ -145,6 +145,7 @@ class TriageWeb(object):
     self.computer = None
     self.messages = ['WCE Triage Version 0.0.1']
 
+    self.loading_status = { "pages": 1, "steps": [] }
     # wock (web socket) channels.
     self.channels = {}
     pass
@@ -261,11 +262,13 @@ class TriageWeb(object):
     global me
     devname = request.query.get("deviceName")
     imagefile = request.query.get("source")
+    imagefile_size = request.query.get("size") # This comes back in bytes from sending sources with size.
+      
     await wock.emit("loadimage", { "device_name": devname, "total_estimate" : 0, "steps" : [] })
     if imagefile:
       loop = asyncio.get_event_loop()
       with ThreadPoolExecutor(1) as execpool:
-        await loop.run_in_executor(execpool, me.run_load_image, devname, imagefile)
+        await loop.run_in_executor(execpool, me.run_load_image, devname, imagefile, imagefile_size/(1024.0*1024.0))
         pass
       pass
     else:
@@ -275,9 +278,9 @@ class TriageWeb(object):
     return aiohttp.web.json_response({ "pages": 1 })
   
   # This runs in a thread
-  def run_load_image(self, devname, imagefile):
+  def run_load_image(self, devname, imagefile, imagefile_mib):
     disk = Disk(device_name = devname)
-    runner = RestoreDisk(wock_ui(), disk, imagefile,
+    runner = RestoreDisk(wock_ui(), disk, imagefile, imagefile_mib, 
                          pplan=make_usb_stick_partition_plan(disk), partition_id=1, partition_map='msdos',
                          newhostname="triage20")
     runner.prepare()
@@ -290,14 +293,8 @@ class TriageWeb(object):
   @routes.get("/dispatch/disk-load-status.json")
   async def route_disk_load_status(request):
     """Load disk image to disk"""
-    # FIXME: needs actual implementation
-
-    fake_status = { "pages": 1,
-                    "steps": [ { "category": "Step-1", "progress": 100, "elapseTime": "100", "status": "done" },
-                               { "category": "Step-2", "progress": 30, "elapseTime": "30", "status": "running" },
-                               { "category": "Step-3", "progress": 0, "elapseTime": "0", "status": "waiting" },
-                               { "category": "Step-4", "progress": 0, "elapseTime": "0", "status": "waiting" } ] }
-    return aiohttp.web.json_response(fake_status)
+    global me
+    return aiohttp.web.json_response(me.loading_status)
 
   @routes.post("/dispatch/save")
   async def route_save_image(request):
@@ -395,11 +392,11 @@ class wock_ui(ops_ui):
     self.last_report_time = datetime.datetime.now()
     pass
 
-
   # Called from preflight to just set up the flight plan
   def report_tasks(self, total_time_estimate, tasks):
-    print("report_tasks")
-    Emitter.send("loadimage", { "total_estimate" : total_time_estimate,
+    Emitter.send("loadimage", { "step": 0,
+                                "total_estimate" : total_time_estimate,
+                                "elapsed_time": 0,
                                 "steps" : [ _describe_task(task) for task in tasks ] } )
     pass
 
@@ -426,14 +423,6 @@ class wock_ui(ops_ui):
                                 "total_estimate" : total_time_estimate,
                                 "elapsed_time": elapsed_time,
                                 "steps" : [ _describe_task(task) for task in tasks ] } )
-    pass
-
-  # Used for explain. Probably needs better way
-  def describe_steps(self, steps):
-    print('describe steps')
-    Emitter.send("loadimage", { "steps" : [ {"description": step[0],
-                                             "progress": 0,
-                                             "time_estimate": 0} for step in steps ] } )
     pass
 
   # Log message. Probably better to be stored in file so we can see it

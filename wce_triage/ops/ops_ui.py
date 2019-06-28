@@ -48,11 +48,6 @@ class ops_ui(object):
     pass
 
 
-  @abc.abstractmethod
-  def describe_steps(self, steps):
-    pass
-
-
   # message be printed and shown somewhere.
   @abc.abstractmethod
   def log(self, msg):
@@ -69,8 +64,12 @@ class console_ui(ops_ui):
     self.last_report_time = datetime.datetime.now()
     pass
 
-  #
+  # Used for explain. Probably needs better way
   def report_tasks(self, total_time_estimate, tasks):
+    for task in steps:
+      index = index + 1
+      print( "%d: %s %s" % (index, task.description, task.explain()))
+      pass
     print("Time estimate for %d tasks is %d" % (len(tasks), in_seconds(total_time_estimate)))
     pass
 
@@ -108,15 +107,6 @@ class console_ui(ops_ui):
     print("%3d: (%d/%d) estimate %d seconds." % (in_seconds(elapsed_time),
                                                  step, len(tasks),
                                                  in_seconds(total_time_estimate)))
-    pass
-
-  # Used for explain. Probably needs better way
-  def describe_steps(self, steps):
-    index = 0
-    for desc, details in steps:
-      index = index + 1
-      print( "%d: %s %s" % (index, desc, details))
-      pass
     pass
 
 
@@ -162,9 +152,6 @@ class virtual_ui(ops_ui):
                           tasks,
                           total_time_estimate,
                           elapsed_time):
-    pass
-
-  def describe_steps(self, steps):
     pass
 
   # Used for explain.
