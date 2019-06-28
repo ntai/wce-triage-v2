@@ -24,10 +24,25 @@ class Runner:
     pass
 
   def prepare(self):
+    '''prepare is for runner's preparation, not for tasks. during prepare,
+       runner should create tasks.'''
     if self.state != RunState.Initial:
       raise Exception("Run state is not initial")
     self.state = RunState.Prepare
     self.task_step = 0
+    pass
+
+
+  def preflight(self):
+    '''preflight is for tasks's preparation, not for runner. during prepare,
+       tasks should initalize all the necessary actions.
+       however, task has one more shot at set up which is run just before
+       polling starts.'''
+
+    if self.state != RunState.Prepare:
+      raise Exception("Run state is not Prepare")
+
+    self.state = RunState.Preflight
 
     # Tell the tasks I'm the runner.
     task_number = 0
@@ -37,16 +52,11 @@ class Runner:
       task_number += 1
       pass
 
+    # This gives a chance for tasks to know the neighbors.
     for task in self.tasks:
-      task.prepare(self.tasks)
+      task.preflight(self.tasks)
       pass
-    pass
 
-  def preflight(self):
-    if self.state != RunState.Prepare:
-      raise Exception("Run state is not Prepare")
-
-    self.state = RunState.Preflight
     self._update_total_time_estimate()
     self.ui.report_tasks(self.total_time_estimate, self.tasks)
     pass

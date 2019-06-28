@@ -56,9 +56,9 @@ class op_task(object, metaclass=abc.ABCMeta):
       return 0
     pass
   
-  # prepare is called from runner's prepare
-  def prepare(self, tasks):
-    '''prepare is called from runner's prepare. you get to know 
+  # preflight is called from runner's preflight
+  def preflight(self, tasks):
+    '''preflight is called from runner's preflight. you get to know 
        other tasks. task number is given so you know where your 
        position is in the execution, and you can adjust your estimation.'''
     pass

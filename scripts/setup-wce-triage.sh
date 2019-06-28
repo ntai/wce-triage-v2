@@ -1,19 +1,21 @@
 #!/bin/sh
 
 export GRUB_DISABLE_OS_PROBER=true
+export TRIAGEUSER=triage
 
 #
 # Install Ubunto packages (some are python packages)
 #
-for pkg in gnupg dmidecode partclone mbr efibootmgr grub2-common grub-pc pigz vbetool gfxboot alsa-utils pulseaudio pulseaudio-utils mpg123 python3-aiohttp python3-aiohttp-cors; do
+# xorg-legacy asks you to run x server user credential and it needs to run as root.
+#
+for pkg in python3-pip xserver-xorg-legacy xserver-xorg-video-all xserver-xorg-video-vmware gnupg dmidecode partclone mbr efibootmgr grub2-common grub-pc pigz vbetool gfxboot alsa-utils pulseaudio pulseaudio-utils mpg123 python3-aiohttp python3-aiohttp-cors; do
     sudo apt install -y $pkg
 done
 
 # install python packages
 for pkg in python-socketio; do
-    sudo pip3 install -y $pkg
+    sudo pip3 install $pkg
 done
-
 
 #
 # Add Google signing key
@@ -33,36 +35,38 @@ sudo apt install -y --no-install-recommends xorg openbox google-chrome-stable pu
 #
 sudo usermod -a -G audio $USER
 #
+# So, the X11 has to run as root, and chrome has to run as triage.
+#
 cat > /tmp/wce-kiosk.sh <<EOF
 #!/bin/bash
 xset -dpms
 xset s off
-openbox-session &
-start-pulseaudio-x11
-
+xhost + localhost SI:localuser:triage
+sudo -H -u $TRIAGEUSER DISPLAY=$DISPLAY openbox-session &
+sudo -H -u $TRIAGEUSER DISPLAY=$DISPLAY start-pulseaudio-x11
 while true; do
-  rm -rf ~/.{config,cache}/google-chrome/
-  google-chrome --kiosk --no-first-run  'http://localhost:8312'
+  sudo -H -u $TRIAGEUSER rm -rf /home/triage/.{config,cache}/google-chrome/
+  sudo -H -u $TRIAGEUSER google-chrome --display=$DISPLAY --kiosk --no-first-run  'http://localhost:8312'
 done
 EOF
 
 sudo install -m 0555 /tmp/wce-kiosk.sh /usr/local/bin
 
 #
-#
+# 
 #
 cat > /tmp/wce-kiosk.service <<EOF
 [Unit]
 Description=WCE Kiosk Web Browser
-After=dbus.target
+After=dbus.target network.target sound.target network-online.target wce-triage.target
 StartLimitIntervalSec=0
 
 [Service]
 Type=simple
 Restart=always
-RestartSec=1
-User=triage
-ExecStart=/usr/bin/sudo -u triage startx /etc/X11/Xsession /usr/local/bin/wce-kiosk.sh --
+RestartSec=30
+User=root
+ExecStart=/usr/bin/startx /etc/X11/Xsession /usr/local/bin/wce-kiosk.sh --
 
 [Install]
 WantedBy=multi-user.target
@@ -71,7 +75,10 @@ EOF
 sudo install -m 0755 /tmp/wce-kiosk.service /etc/systemd/system/wce-kiosk.service
 
 # Be able to start the tty by user
-sudo usermod -a -G tty $USER
+sudo usermod -a -G tty $TRIAGEUSER
+# 
+sudo usermod -a -G audio,pulse,pulse-access,video $TRIAGEUSER
+
 # and, be able to start X by user
 sudo chmod ug+s /usr/lib/xorg/Xorg
 
@@ -114,9 +121,10 @@ sudo systemctl enable wce-triage.service
 cat > /tmp/grub.cfg <<EOF
 GRUB_DEFAULT=0
 GRUB_TIMEOUT=10
-GRUB_DISTRIBUTOR=Ubuntu
+GRUB_DISTRIBUTOR=
 GRUB_CMDLINE_LINUX_DEFAULT=""
 GRUB_CMDLINE_LINUX=""
+GRUB_BACKGROUND="/usr/local/share/wce/triage/assets/wceboot.png"
 EOF
 
 sudo install /tmp/grub.cfg /etc/default/grub

@@ -119,13 +119,16 @@ class task_restore_disk_image(task_partclone):
   
   # Restore partclone image file to the first partition
   def __init__(self, description, disk=None, partition_id="Linux", source=None, source_size=None):
-    super().__init__(description, time_estimate=disk.get_byte_size() / 500000000)
+    #
+    super().__init__(description, time_estimate=source_size / 10000000)
     self.disk = disk
     self.partition_id = partition_id
     self.source = source
     self.source_size = source_size
     if self.source is None:
       raise Exception("bone head. it needs the source image.")
+
+    print( "source size %d" % source_size)
     pass
 
   def setup(self):

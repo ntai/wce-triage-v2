@@ -34,7 +34,7 @@ class DataPath:
     output_rate = min(output_rate, self.rate_limit) if self.rate_limit else output_rate
     my_throughput_time = output_size / output_rate
 
-    return (max(my_throughput_time, my_cpu_time, duration) + self.fixed_overhead
+    return (max(my_throughput_time, my_cpu_time, duration) + self.fixed_overhead)
   pass
 
 
@@ -82,5 +82,4 @@ if __name__ == "__main__":
   e2e.add_path(DataPath("e100", rate_limit=7 * MiB))
 
   print(e2e.compute(input_size=int(sys.argv[1]) * MiB))
-  
   pass

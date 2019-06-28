@@ -56,7 +56,7 @@ class RestoreDisk(PartitionDiskRunner):
     self.tasks.append(task_refresh_partitions("Refresh partition information", disk))
 
     # load disk image
-    self.tasks.append(task_restore_disk_image("Load disk image", disk=disk, partition_id=partition_id, source=self.source))
+    self.tasks.append(task_restore_disk_image("Load disk image", disk=disk, partition_id=partition_id, source=self.source, source_size=self.source_size))
 
     # Loading disk image resets the UUID. 
     self.tasks.append(task_fsck("fsck partition", disk=disk, partition_id=partition_id))

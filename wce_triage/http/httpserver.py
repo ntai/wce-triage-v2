@@ -144,6 +144,7 @@ class TriageWeb(object):
 
     self.computer = None
     self.messages = ['WCE Triage Version 0.0.1']
+    self.triage_timestamp = None
 
     self.loading_status = { "pages": 1, "steps": [] }
     # wock (web socket) channels.
@@ -169,9 +170,14 @@ class TriageWeb(object):
   # triage being async is somewhat pedantic but it runs a couple of processes
   # so it's slow enough.
   async def triage(self):
-    if self.computer is None:
+    current_time = datetime.datetime.now()
+    if self.triage_timestamp and in_seconds(current_time - self.triage_timestamp) > 5:
+      self.triage_timestamp = None
+      pass
+    if self.triage_timestamp is None:
       self.computer = Computer()
       self.overall_decision = self.computer.triage()
+      self.triage_timestamp = current_time
       self.note("Triage result is %s." % "good" if self.overall_decision else "bad")
       await Emitter.flush()
       pass
@@ -262,13 +268,13 @@ class TriageWeb(object):
     global me
     devname = request.query.get("deviceName")
     imagefile = request.query.get("source")
-    imagefile_size = request.query.get("size") # This comes back in bytes from sending sources with size.
+    imagefile_size = request.query.get("size") # This comes back in bytes from sending sources with size. value in query is always string.
       
     await wock.emit("loadimage", { "device_name": devname, "total_estimate" : 0, "steps" : [] })
     if imagefile:
       loop = asyncio.get_event_loop()
       with ThreadPoolExecutor(1) as execpool:
-        await loop.run_in_executor(execpool, me.run_load_image, devname, imagefile, imagefile_size/(1024.0*1024.0))
+        await loop.run_in_executor(execpool, me.run_load_image, devname, imagefile, int(imagefile_size))
         pass
       pass
     else:
@@ -278,9 +284,9 @@ class TriageWeb(object):
     return aiohttp.web.json_response({ "pages": 1 })
   
   # This runs in a thread
-  def run_load_image(self, devname, imagefile, imagefile_mib):
+  def run_load_image(self, devname, imagefile, imagefile_size):
     disk = Disk(device_name = devname)
-    runner = RestoreDisk(wock_ui(), disk, imagefile, imagefile_mib, 
+    runner = RestoreDisk(wock_ui(), disk, imagefile, imagefile_size, 
                          pplan=make_usb_stick_partition_plan(disk), partition_id=1, partition_map='msdos',
                          newhostname="triage20")
     runner.prepare()
@@ -336,14 +342,16 @@ class TriageWeb(object):
     return aiohttp.web.json_response(fake_status)
 
 
-  @routes.get("/dispatch/shutdown")
+  @routes.post("/dispatch/shutdown")
   async def route_shutdown(request):
     """shutdowns the computer."""
     global me
     shutdown_mode = request.query.get("mode", ["ignored"])
     if shutdown_mode == "poweroff":
+      me.note("Power off")
       subprocess.run(['poweroff'])
     elif shutdown_mode == "reboot":
+      me.note("Reboot")
       subprocess.run(['reboot'])
     else:
       me.note("Shutdown command needs a query and ?mode=poweroff or ?mode=reboot is accepted.")
@@ -443,12 +451,12 @@ arguments = cli.parse_args()
 
 # If the module is invoked directly, initialize the application
 if __name__ == '__main__':
-  logging.basicConfig(level=logging.DEBUG)
+  logging.basicConfig(level=logging.INFO)
 
   fileout = logging.FileHandler("/tmp/httpserver.log")
   for logkind in ['aiohttp.access', 'aiohttp.internal', 'aiohttp.server', 'aiohttp.web', 'asyncio']:
     thing = logging.getLogger(logkind)
-    thing.setLevel(logging.DEBUG)
+    # thing.setLevel(logging.DEBUG)
     thing.addHandler(fileout)
     pass
   
