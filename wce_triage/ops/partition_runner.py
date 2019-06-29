@@ -129,7 +129,7 @@ class PartitionDiskRunner(Runner):
         mkfs_desc = "Create file system %s on %s" % (part.filesys, partition.device_name)
         mkfs = task_mkfs(mkfs_desc,
                          partition=partition,
-                         time_estimate=part.size/1024 + 3)
+                         time_estimate=4*part.size/1024 + 3)
         self.tasks.append(mkfs)
         pass
       elif part.parttype in [Partition.BIOSBOOT, Partition.MBR]:

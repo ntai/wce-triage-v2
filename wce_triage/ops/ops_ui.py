@@ -66,7 +66,8 @@ class console_ui(ops_ui):
 
   # Used for explain. Probably needs better way
   def report_tasks(self, total_time_estimate, tasks):
-    for task in steps:
+    index = 0
+    for task in tasks:
       index = index + 1
       print( "%d: %s %s" % (index, task.description, task.explain()))
       pass

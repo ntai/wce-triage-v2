@@ -120,7 +120,7 @@ class task_restore_disk_image(task_partclone):
   # Restore partclone image file to the first partition
   def __init__(self, description, disk=None, partition_id="Linux", source=None, source_size=None):
     #
-    super().__init__(description, time_estimate=source_size / 10000000)
+    super().__init__(description, time_estimate=source_size / 3000000)
     self.disk = disk
     self.partition_id = partition_id
     self.source = source
@@ -141,5 +141,36 @@ class task_restore_disk_image(task_partclone):
 
   def explain(self):
     return "Restore disk image from %s to %s using WCE Triage's restore_volume" % (self.source, self.disk.device_name)
+
+  # ignore parsing partclone progress. for restore, it is 100$ wrong.
+  def parse_partclone_progress(self):
+    #
+    # Check the progress. driver prints everything to stdout
+    #
+    if len(self.out) == 0:
+      return
+    
+    # look for a line
+    while True:
+      newline = self.out.find('\n')
+      if newline < 0:
+        break
+      line = self.out[:newline]
+      self.out = self.out[newline+1:]
+      current_time = datetime.datetime.now()
+
+      # Look for the EXT parition cloning start marker
+      while len(self.start_re) > 0:
+        m = self.start_re[0].search(line)
+        if not m:
+          break
+        self.start_re = self.start_re[1:]
+        if len(self.start_re) == 0:
+          self.set_progress(5, "Start imaging")
+          self.imaging_start_seconds = in_seconds(current_time - self.start_time)
+          pass
+        pass
+      pass
+    pass
 
   pass

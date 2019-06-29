@@ -2,3 +2,5 @@
 build
 dist
 wce_triage.egg-info
+aiohttp
+socketio

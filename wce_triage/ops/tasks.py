@@ -373,7 +373,7 @@ class task_mkfs(op_task_process_simple):
       if partuuid is None:
         partuuid = uuid.uuid4()
         pass
-      self.argv = ["mkfs.ext4", "-L", partname, "-U", str(partuuid), self.part.device_name]
+      self.argv = ["mkfs.ext4", "-b", "4096", "-L", partname, "-U", str(partuuid), self.part.device_name]
     else:
       raise Exception("Unsuppoted partition type")
     pass
@@ -822,7 +822,7 @@ class task_install_grub(op_task_process):
     # FIXME: Time estimate is very different between USB stick and hard disk.
 
     # argv is a placeholder
-    super().__init__(description, argv=['/usr/sbin/grub-install', disk.device_name], time_estimate=10)
+    super().__init__(description, argv=['/usr/sbin/grub-install', disk.device_name], time_estimate=45)
     pass
 
   #
@@ -856,7 +856,7 @@ class task_install_grub(op_task_process):
     # Things to do is installing grub
     # Only see the mounted disk, and no other device
     self.script.append("export GRUB_DISABLE_OS_PROBER=true")
-    self.script.append("/usr/sbin/grub-install --target=i386-pc --force %s" % self.disk.device_name)
+    self.script.append("/usr/sbin/grub-install -v --target=i386-pc --force %s" % self.disk.device_name)
 
     if self.n_ati > 0:
       self.script.append('# If this machine has ATI video, get rid of other video drivers that can get in its way.')
