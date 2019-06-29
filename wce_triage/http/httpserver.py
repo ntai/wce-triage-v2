@@ -23,6 +23,7 @@ from wce_triage.ops.create_image_runner import ImageDisk
 from wce_triage.components.disk import Disk, Partition
 from wce_triage.ops.restore_image_runner import RestoreDisk
 import wce_triage.lib.util
+from wce_triage.lib.timeutil import *
 from wce_triage.ops.ops_ui import ops_ui
 from wce_triage.ops.partition_runner import make_usb_stick_partition_plan, make_efi_partition_plan
 
@@ -188,9 +189,7 @@ class TriageWeb(object):
   async def route_triage(request):
     """Handles requesting triage result"""
     global me
-    if me.computer is None:
-      await me.triage()
-      pass
+    await me.triage()
     computer = me.computer
 
     decisions = [ { "component": "Overall", "result": "Good" if me.overall_decision else "Bad" } ] + [ {"component": thing, "result": "Good" if good else "Bad", "details": dtl} for thing, good, dtl in computer.decisions ]
