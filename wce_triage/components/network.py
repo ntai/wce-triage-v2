@@ -6,6 +6,7 @@ import os, sys
 sys.path.append(os.path.split(os.getcwd())[0])
 from wce_triage.components.pci import *
 from wce_triage.lib.util import *
+from wce_triage.lib.hwinfo import *
 
 
 class NetworkDevice(object):
@@ -57,7 +58,25 @@ class NetworkDevice(object):
 #
 # FIXME: do something with iwconfig and rfkill
 #
-def detect_net_devices():
+def detect_net_devices(hw_info):
+  net_devices = []
+
+  if hw_info:
+    for netdev in hw_info.get_entries('network'):
+      devtype = NetworkDevice.Other
+      capabilities = netdev.get("capabilities")
+      if capabilities.get("ethernet"):
+        devtype = NetworkDevice.Ethernet
+        if capabilities.get("wireless"):
+          devtype = NetworkDevice.Wifi
+          pass
+        pass
+      else:
+        continue
+      net_devices.append(NetworkDevice(device_name=netdev.get("logicalname"), device_type=devtype))
+      pass
+    return net_devices
+
   ethernet_detected = False
   ip = subprocess.Popen(["ip", "addr", "show", "scope", "link"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   (out, err) = ip.communicate()
@@ -73,7 +92,6 @@ def detect_net_devices():
     pass
 
   net_entry_re = re.compile(r"\d+: (\w+):")
-  net_devices = []
   for line in out.splitlines():
     m = net_entry_re.match(line.strip())
     if m:
@@ -110,5 +128,7 @@ def get_router_ip_address():
 
 #
 if __name__ == "__main__":
-  print(detect_net_devices())
+  for netdev in detect_net_devices(hw_info()):
+    print(netdev.device_name)
+    pass
   pass

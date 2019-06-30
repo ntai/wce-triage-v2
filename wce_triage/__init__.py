@@ -4,16 +4,7 @@ import wce_triage.bin.image_volume
 import wce_triage.bin.restore_volume
 import wce_triage.bin.start_network
 
-import wce_triage.components.computer
-import wce_triage.components.cpu
-import wce_triage.components.disk
-import wce_triage.components.memory
-import wce_triage.components.network
-import wce_triage.components.optical_drive
-import wce_triage.components.pci
-import wce_triage.components.sensor
-import wce_triage.components.sound
-import wce_triage.components.video
+import wce_triage.components
 
 import wce_triage.lib.copyfile
 import wce_triage.lib.netplan

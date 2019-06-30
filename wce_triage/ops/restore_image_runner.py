@@ -45,7 +45,7 @@ class RestoreDisk(PartitionDiskRunner):
     # partition runner adds a few tasks to create new partition map.
     super().prepare()
 
-    detected_videos = wce_triage.components.video.detect_video_cards()
+    detected_videos = wce_triage.components.video.detect_video_cards(None)
 
     # sugar
     disk = self.disk

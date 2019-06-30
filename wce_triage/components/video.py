@@ -10,10 +10,11 @@ Videos = namedtuple('Videos', 'nvidia, ati, vga')
 #
 #
 #
-def detect_video_cards():
+def detect_video_cards(hw_info):
   n_nvidia = 0
   n_ati = 0
   n_vga = 0
+
   for pcidev in list_pci():
     if pcidev.device_class == 'video':
       if pcidev.vendor == PCI_VENDOR_NVIDIA:

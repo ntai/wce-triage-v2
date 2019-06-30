@@ -24,7 +24,7 @@ sudo apt install -y xserver-xorg-legacy
 # alsa-utils pulseaudio pulseaudio-utils mpg123 - the audio. mpg123 is no longer used but included. mpg123 plays mp3 from console
 # python3-aiohttp python3-aiohttp-cors - triage backend. yes, you can cross-domain
 #
-for pkg in xorg openbox aufs-tools python3-pip xserver-xorg-video-all xserver-xorg-video-vmware gnupg dmidecode partclone efibootmgr grub2-common grub-pc pigz vbetool gfxboot alsa-utils pulseaudio pulseaudio-utils mpg123 python3-aiohttp python3-aiohttp-cors; do
+for pkg in lshw hwinfo xorg openbox aufs-tools python3-pip xserver-xorg-video-all xserver-xorg-video-vmware gnupg dmidecode partclone efibootmgr grub2-common grub-pc pigz vbetool gfxboot alsa-utils pulseaudio pulseaudio-utils mpg123 python3-aiohttp python3-aiohttp-cors; do
     sudo apt install -y --no-install-recommends $pkg
 done
 

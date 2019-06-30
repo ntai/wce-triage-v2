@@ -1,13 +1,15 @@
-from . import pci as _pci
-from . import cpu as _cpu
-from . import memory as _memory
-from . import network as _network
-from . import disk as _disk
-from . import video as _video
-from . import sound as _sound
-from . import optical_drive as _optical_drive
+#!/usr/bin/env python3
 
-import re, subprocess, os, sys
+from wce_triage.components import pci as _pci
+from wce_triage.components import cpu as _cpu
+from wce_triage.components import memory as _memory
+from wce_triage.components import network as _network
+from wce_triage.components import disk as _disk
+from wce_triage.components import video as _video
+from wce_triage.components import sound as _sound
+from wce_triage.components import optical_drive as _optical_drive
+
+import re, subprocess, os, sys, json
 
 re_socket_designation = re.compile(r'\s*Socket Designation: ([\w\d]+)')
 re_enabled_size = re.compile(r'\s*Enabled Size: (\d+) MB')
@@ -15,6 +17,7 @@ re_error_status = re.compile(r'\sError Status: (\w+)')
 
 
 from wce_triage.lib.util import *
+from wce_triage.lib.hwinfo import *
 from wce_triage.components.disk import Disk, Partition
 
 class Computer:
@@ -88,15 +91,22 @@ class Computer:
   # 
 
   def gather_info(self):
-    self.cpu = _cpu.detect_cpu_type()
-    self.memory = _memory.detect_memory()
+    self.hw_info = hw_info()
+
+    self.cpu = _cpu.detect_cpu_type(self.hw_info)
+    self.memory = _memory.detect_memory(self.hw_info)
     self.detect_disks(list_mounted_disks=False)
     #
-    self.video = _video.detect_video_cards()
+    self.video = _video.detect_video_cards(self.hw_info)
     #
-    self.networks = _network.detect_net_devices()
-    self.sound_dev = _sound.detect_sound_device()
+    self.networks = _network.detect_net_devices(self.hw_info)
+    self.sound_dev = _sound.detect_sound_device(self.hw_info)
     pass
+
+  # lshw is far better!
+  def _run_lshw(self):
+    pass
+    
 
   def triage(self, live_system = False):
     self.gather_info();
@@ -131,7 +141,7 @@ class Computer:
       good_disk = False
       for disk in self.disks:
         # print ("%s = %d" % (disk.device_name, disk.get_byte_size()))
-        disk_gb = disk.get_byte_size() / 1000000
+        disk_gb = disk.get_byte_size() / 1000000000
         disk_msg = "     Device %s: size = %dGbytes  %s" % (disk.device_name, disk_gb, disk.model_name)
         if disk_gb >= 60:
           good_disk = True
@@ -145,7 +155,7 @@ class Computer:
       self.decisions.append( ( "Disk", good_disk, msg ) )
       pass
 
-    optical_drives = _optical_drive.detect_optical_drives()
+    optical_drives = _optical_drive.detect_optical_drives(self.hw_info)
     if len(optical_drives) == 0:
       self.decisions.append( ("Optical drive", False, "***** NO OPTICALS: INSTALL OPTICAL DRIVE *****"))
     else:
@@ -160,7 +170,7 @@ class Computer:
 
     blacklist = _pci.detect_blacklist_devices()
     #
-    videos = _video.detect_video_cards()
+    videos = _video.detect_video_cards(self.hw_info)
 
     if len(blacklist.videos) > 0:
       msg = "Remove or disable following video(s) because known to not work\n"
@@ -205,7 +215,7 @@ class Computer:
       for netdev in self.networks:
         connected = " and connected" if netdev.is_network_connected() else " not connected"
         if netdev.is_wifi():
-          msg = "Wifi device '{dev}' detected{conn}. ".format(dev=netdev.device_name, conn=connected)
+          msg = "WIFI device '{dev}' detected{conn}. ".format(dev=netdev.device_name, conn=connected)
           pass
         else:
           msg = "Network device '{dev}' detected{conn}".format(dev=netdev.device_name, conn=connected)

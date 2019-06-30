@@ -1,6 +1,6 @@
 import os, subprocess
 
-def detect_sound_device():
+def detect_sound_device(hw_info):
   detected = False
   try:
     for snd_dev in os.listdir("/dev/snd"):

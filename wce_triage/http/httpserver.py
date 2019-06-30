@@ -223,6 +223,20 @@ class TriageWeb(object):
     return aiohttp.web.json_response(jsonified)
 
 
+  @routes.get("/dispatch/disk.json")
+  async def route_disk(request):
+    """Disk detail info"""
+    global me
+    if me.computer is None:
+      await me.triage()
+      pass
+    computer = me.computer
+    disk_info = computer.hw_info.find_entry("storage", {"logicalname" : device_name})
+    if disk_info:
+      return aiohttp.web.json_response(disk_info)
+    return aiohttp.web.json_response({})
+    
+
   @routes.get("/dispatch/music")
   async def route_music(request):
     """Send mp3 stream to chrome"""

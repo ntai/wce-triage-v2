@@ -10,7 +10,9 @@ def parse_cpu_info_tag_value(line):
     return (elems[0].strip(), elems[1].strip())
   return (None, None)
 
-def detect_cpu_type():
+def detect_cpu_type(hw_info):
+  '''Detect cpu type. Ignoring hw_info.'''
+  
   max_processor = 0
   cpu_vendor = "other"
   model_name = ""

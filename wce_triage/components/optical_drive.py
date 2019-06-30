@@ -1,5 +1,6 @@
 import os, subprocess, string
 from wce_triage.lib.util import *
+from wce_triage.lib.hwinfo import *
 
 #
 # Find optical device files
@@ -24,13 +25,23 @@ def find_optical_device_files(devpath = None):
 # Optical drive class
 #
 class OpticalDrive(object):
-  def __init__(self, device_name="unknown"):
-    self.device_name = device_name
-    self.features = []
-    self.model_name = ""
-    self.vendor = ""
-    self.is_cd = False
-    self.is_dvd = False
+  def __init__(self, device_name="unknown", is_cd=True, is_dvd=False, model_name="", vendor="", features=[]):
+    if isinstance(device_name, list):
+      for devname in device_name:
+        if os.path.islink(devname):
+          continue
+        self.device_name = devname
+        break
+      pass
+    else:
+      self.device_name = device_name
+      pass
+
+    self.features = features
+    self.model_name = model_name
+    self.vendor = vendor
+    self.is_cd = is_cd
+    self.is_dvd = is_dvd
     pass
 
   def __getattribute__(self, key):
@@ -167,8 +178,38 @@ class OpticalDrive(object):
   pass
 
 
-def detect_optical_drives():
+def detect_optical_drives(hw_info):
   drives = []
+  if hw_info:
+    storages = hw_info.get_entries('storage')
+    if storages is None:
+      print("no storage")
+      return drives
+      
+    for storage in storages:
+      children = storage.get('children')
+      if children is None:
+        continue
+      for child in children:
+        if child.get("class") != "disk":
+          continue
+        capabilities = child.get("capabilities")
+        if capabilities is None:
+          continue
+        # If disk that cannot read cd-r, this is not optical drive.
+        if not capabilities.get('cd-r'):
+          continue
+        disc = child
+        logicalname = child.get("logicalname")
+        drives.append(OpticalDrive(logicalname,
+                                 is_dvd=capabilities.get("dvd") is not None,
+                                 vendor=disc.get("vendor"),
+                                 model_name=disc.get("product"),
+                                 features = [feature.upper() for feature in capabilities.keys() ]))
+        break
+      pass
+    return drives
+  
   for optical in find_optical_device_files():
     current_optical = OpticalDrive(optical)
     if current_optical.detect():
@@ -179,9 +220,13 @@ def detect_optical_drives():
 
   
 if __name__ == "__main__":
+  for opt in detect_optical_drives(hw_info()):
+    opt.debug_print()
+    pass
+
   for optical in find_optical_device_files():
-    current_optical = OpticalDrive()
-    is_optical = current_optical.detect(optical)
+    current_optical = OpticalDrive(optical)
+    is_optical = current_optical.detect()
     current_optical.debug_print()
     pass
   pass
