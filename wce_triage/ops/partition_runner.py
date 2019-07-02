@@ -49,7 +49,7 @@ def make_efi_partition_plan(disk):
   pplan = [PartPlan(0, None,    None,         0,        2, Partition.MBR,  None),
            PartPlan(1, 'BOOT',  None,         0,       32, Partition.BIOSBOOT, 'boot'),
            PartPlan(2, 'EFI',   'fat32',      0,      300, Partition.UEFI, None),
-           PartPlan(3, 'SWAP'   'linux-swap', 0, swapsize, Partition.SWAP, None),
+           PartPlan(3, 'SWAP',  'linux-swap', 0, swapsize, Partition.SWAP, None),
            PartPlan(4, 'Linux', 'ext4',       0,        0, Partition.EXT4, None) ]
   partion_start = 0
   for part in pplan:
@@ -90,8 +90,8 @@ from wce_triage.ops.runner import *
 # create a new gpt partition from partition plan
 #
 class PartitionDiskRunner(Runner):
-  def __init__(self, ui, disk, partition_plan, partition_map='gpt'):
-    super().__init__(ui)
+  def __init__(self, ui, runner_id, disk, partition_plan, partition_map='gpt'):
+    super().__init__(ui, runner_id)
     self.partition_map = partition_map # label is the parted's partition map type
     self.disk = disk
     self.pplan = partition_plan
@@ -120,7 +120,8 @@ class PartitionDiskRunner(Runner):
     self.tasks.append(op_task_process('Partition disk', argv=argv, time_estimate=5))
 
     for part in self.pplan:
-      partition = Partition(device_name=self.disk.device_name + str(part.no),
+      partdevname = self.disk.device_name + str(part.no)
+      partition = Partition(device_name=partdevname,
                             file_system=part.filesys,
                             partition_type=part.parttype,
                             partition_number=part.no)
@@ -133,7 +134,7 @@ class PartitionDiskRunner(Runner):
         self.tasks.append(mkfs)
         pass
       elif part.parttype in [Partition.BIOSBOOT, Partition.MBR]:
-        zeropart = task_zero_partition("Clear partition",
+        zeropart = task_zero_partition("Clear partition on %s" % partdevname,
                                        partition=partition)
         self.tasks.append(zeropart)
         pass
@@ -146,7 +147,7 @@ if __name__ == "__main__":
   devname = sys.argv[1]
   disk = Disk(device_name=devname)
   ui = console_ui()
-  runner = PartitionDiskRunner(ui, disk, make_usb_stick_partition_plan(disk), partition_map='msdos')
+  runner = PartitionDiskRunner(ui, disk.device_name, disk, make_usb_stick_partition_plan(disk), partition_map='msdos')
   runner.prepare()
   runner.preflight()
   runner.explain()

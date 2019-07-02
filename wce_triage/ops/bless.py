@@ -13,9 +13,9 @@ import wce_triage.ops.ops_ui as ops_ui
 from wce_triage.components.disk import Disk, Partition
 
 #
-class BlessDisk(runner.Runner):
-  def __init__(self, ui, disk, partition_id='Linux'):
-    super().__init__(ui)
+class BlessDiskRunner(runner.Runner):
+  def __init__(self, ui, runner_id, disk, partition_id='Linux'):
+    super().__init__(ui, runner_id)
     self.disk = disk
     # FIXME: may become a task
     self.disk.detect_disk()
@@ -46,7 +46,7 @@ if __name__ == "__main__":
     pass
   disk = Disk(device_name=devname)
   ui = ops_ui.console_ui()
-  runner = BlessDisk(ui, disk, partition_id=partition_id)
+  runner = BlessDiskRunner(ui, disk.device_name, disk, partition_id=partition_id)
   runner.prepare()
   runner.preflight()
   runner.explain()

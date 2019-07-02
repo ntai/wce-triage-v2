@@ -12,15 +12,20 @@
 import datetime, re, subprocess, traceback
 from wce_triage.ops.run_state import RunState
 from wce_triage.lib.timeutil import *
+import functools
 
 #
 # Base class for runner
 #
 class Runner:
-  def __init__(self, ui):
+  
+  def __init__(self, ui, runner_id):
     self.state = RunState.Initial
     self.ui = ui
+    self.runner_id = runner_id
     self.tasks = []
+    self.run_estimate = 0
+    self.run_time = 0
     pass
 
   def prepare(self):
@@ -57,30 +62,30 @@ class Runner:
       task.preflight(self.tasks)
       pass
 
-    self._update_total_time_estimate()
-    self.ui.report_tasks(self.total_time_estimate, self.tasks)
+    self._update_run_estimate()
+    self.ui.report_tasks(self.runner_id, self.run_estimate, self.tasks)
     pass
 
-  def _update_total_time_estimate(self):
-    self.total_time_estimate = 0
+  def _update_run_estimate(self):
+    self.run_estimate = 0
     for task in self.tasks:
       task_time_estimate = task.estimate_time()
       if task_time_estimate is None:
         raise Exception( task.description + " has no time estimate")
-      self.total_time_estimate += task_time_estimate
+      self.run_estimate += task_time_estimate
       pass
     pass
   
   # Explaining what's going to happen
   def explain(self):
-    self.ui.report_tasks(self.total_time_estimate, self.tasks)
+    self.ui.report_tasks(self.runner_id, self.run_estimate, self.tasks)
     pass
 
   def report_current_task(self):
     self.current_time = datetime.datetime.now()
-    self.elapsed_time = self.current_time - self.start_time
-    self._update_total_time_estimate()
-    self.ui.report_run_progress(self.task_step, self.tasks, self.total_time_estimate, self.elapsed_time)
+    self.run_time = self.current_time - self.start_time
+    self._update_run_estimate()
+    self.ui.report_run_progress(self.runner_id, self.task_step, self.tasks, self.run_estimate, self.run_time)
     pass
 
   #
@@ -91,6 +96,7 @@ class Runner:
 
     self.start_time = datetime.datetime.now()
     self.report_current_task()
+    
     while self.task_step < len(self.tasks):
       task = self.tasks[self.task_step]
 
@@ -99,7 +105,7 @@ class Runner:
           self._run_task(task, self.ui)
         except Exception as exc:
           self.state = RunState.Failed;
-          self.ui.log("Task: " + task.description + "\n" + traceback.format_exc())
+          self.ui.log(self.runner_id, "Task: " + task.description + "\n" + traceback.format_exc())
           pass
         pass
       else:
@@ -119,13 +125,17 @@ class Runner:
   def _run_task(self, task, ui):
     task.setup()
     current_time = datetime.datetime.now()
-    ui.report_task_progress(current_time - self.start_time, task.time_estimate, 0, 0, task)
+    run_time = current_time - self.start_time
+    ui.report_task_progress(self.runner_id, self.run_estimate, run_time, task.time_estimate, 0, 0, task)
 
     while task.progress < 100:
       task.poll()
       current_time = datetime.datetime.now()
       task_elapsed_time = current_time - task.start_time
-      ui.report_task_progress(current_time - self.start_time,
+      self._update_run_estimate()
+      ui.report_task_progress(self.runner_id,
+                              self.run_estimate,
+                              current_time - self.start_time,
                               task.time_estimate,
                               task_elapsed_time,
                               task.progress,
@@ -138,23 +148,24 @@ class Runner:
       if task.progress > 100:
         # something went wrong.
         self.state = RunState.Failed
-        ui.report_task_failure(task.time_estimate,
+        task.teardown()
+        ui.report_task_failure(self.runner_id,
+                               task.time_estimate,
                                task_elapsed_time,
                                task.progress,
                                task)
-        task.teardown()
         break
 
       if task.progress == 100:
         # done
-        ui.report_task_success(task.time_estimate, task_elapsed_time, task)
         task.teardown()
+        ui.report_task_success(self.runner_id, task.time_estimate, task_elapsed_time, task)
         pass
       pass
     pass
 
   def log(self, task, msg):
-    self.ui.task_log(task, msg)
+    self.ui.task_log(self.runner_id, task, msg)
     pass
 
   pass

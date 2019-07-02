@@ -10,6 +10,7 @@ if __name__ == "__main__":
 
 from wce_triage.lib.util import *
 from wce_triage.lib.timeutil import *
+from wce_triage.lib.pipereader import *
 from collections import deque
 import urllib.parse
 import os
@@ -55,7 +56,7 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
     pass
 
   # Things to remember
-  pipe_fragments = {}
+  pipe_readers = {}
 
   # do something once in a while.
   report_time = datetime.datetime.now()
@@ -83,7 +84,11 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
       for proc_name, process in processes:
         retcode = process.poll() # retcode should be 0 so test it against None
         if retcode is not None:
-          print_progress("%s: %s exited with %d" % (name, proc_name, retcode))
+          if retcode == 0:
+            print_progress("%s: %s exited with %d" % (name, proc_name, retcode))
+          else:
+            print_progress("%s-ERROR: %s exited with %d" % (name, proc_name, retcode))
+            pass
           processes.remove((proc_name, process))
           driver_state = DriverState.Done if len(processes) == 0 else driver_state
           
@@ -100,52 +105,31 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
     
       for fd, event in receiving:
         (proc_name, process, pipe_name, pipe) = fd_map.get(fd)
+        pipe_name = proc_name + "." + pipe_name
         if event & (select.POLLIN | select.POLLPRI):
-          data = pipe.read(1)
-          if data == b'':
-            print_progress("%s: %s.%s closed." % (name, proc_name, pipe_name))
+          reader = pipe_readers.get(pipe_name, pipe_reader(pipe))
+          line = reader.readline
+          if line == b'':
+            # print_progress("%s: %s.%s closed." % (name, proc_name, pipe_name))
             # this fd closed.
             gatherer.unregister(fd)
             del fd_map[fd]
+            del pipe_readers[pipe_name]
             pass
-          elif len(data) > 0:
-            pipe_name = proc_name + "." + pipe_name
-            if not pipe_name in pipe_fragments:
-              pipe_fragments[pipe_name] = deque()
-              pass
-            queue = pipe_fragments[pipe_name]
-            while True:
-              newline = data.find(b'\n')
-              if newline < 0:
-                newline = data.find(b'\r')
-                pass
-              if newline < 0:
-                if data:
-                  queue.append(data)
-                  pass
-                break
-              leftover = b""
-              while len(queue) > 0:
-                leftover = leftover + queue.popleft()
-                pass
-              leftover = leftover + data[:newline]
-              text = leftover.decode(encoding).strip()
-              if text:
-                print_progress(pipe_name + ":" + text)
-                pass
-              data = data[newline+1:]
-              pass
+          elif line is not None:
+            print_progress(pipe_name + ":" + line)
             pass
           # Skip checking the closed fd until nothing to read
           continue
       
         # 
         if event & (select.POLLHUP | select.POLLNVAL | select.POLLERR):
-          print_progress("%s: %s.%s closed." % (name, proc_name, pipe_name))
+          # print_progress("%s: %s.%s closed." % (name, proc_name, pipe_name))
           # this fd closed.
           pipe.close()
           gatherer.unregister(fd)
           del fd_map[fd]
+          del pipe_readers[pipe_name]
           pass
         pass
       pass

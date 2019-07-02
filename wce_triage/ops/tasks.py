@@ -33,6 +33,8 @@ class op_task(object, metaclass=abc.ABCMeta):
     self.start_time = None
     self.end_time = None
     self.teardown_task = False
+    # file descriptors
+    self.read_set = None 
 
     self.estimate_factors = estimate_factors
     pass
@@ -73,6 +75,7 @@ class op_task(object, metaclass=abc.ABCMeta):
   def teardown(self):
     '''teardown is called just after the run'''
     self.end_time = datetime.datetime.now()
+    self.is_done = True
     pass
 
   # This is to declare the task is teardown task.
@@ -116,6 +119,8 @@ class op_task(object, metaclass=abc.ABCMeta):
     pass
 
   def log(self, msg):
+    # This is the only place using runner. I probably switch to use a
+    # callback funtion for logging and/or use Python logging.
     self.runner.log(self, msg)
     pass
 
@@ -205,36 +210,48 @@ class op_task_process(op_task):
     pass
 
   def _poll_process(self):
+    # check the process but not be blocked.
     self.process.poll()
-    selecting = True
-    while selecting:
-      selecting = False
-      try:
-        rlist, wlist, xlist = select.select(self.read_set, [], [], self.select_timeout)
-      except select.error as exc:
-        if exc.args[0] == errno.EINTR:
-          selecting = True
-          pass
-        raise
-      pass
-      
-    for pipe in self.read_set:
-      if pipe in rlist:
-        data = os.read(pipe.fileno(), 1024)
-        if data == b'':
-          self.read_set.remove(pipe)
-          pass
-        else:
-          data = data.decode(self.encoding)
-          if pipe == self.stdout:
-            self.out = self.out + data
-          else:
-            self.err = self.err + data
+    current_time = time.time()
+    poll_end_time = current_time + self.select_timeout
+    while poll_end_time > current_time:
+      current_time = time.time()
+
+      selecting = True
+      while selecting:
+        selecting = False
+        try:
+          rlist, wlist, xlist = select.select(self.read_set, [], [], 0.01)
+        except select.error as exc:
+          if exc.args[0] == errno.EINTR:
+            selecting = True
             pass
+          raise
+        pass
+      
+      for pipe in self.read_set:
+        if pipe in rlist:
+          self._read_from_pipe(pipe)
           pass
         pass
       pass
     pass
+
+
+  def _read_from_pipe(self, pipe):
+    data = os.read(pipe.fileno(), 1024)
+    if data == b'':
+      self.read_set.remove(pipe)
+      pass
+    data = data.decode(self.encoding)
+    if pipe == self.stdout:
+      self.out = self.out + data
+    else:
+      self.err = self.err + data
+      pass
+    pass
+
+
 
   def _update_progress(self):
     if self.process.returncode is None:
@@ -298,7 +315,6 @@ class op_task_command(op_task):
       raise Exception("Time estimate is not provided.")
     return self.time_estimate
 
-  @abc.abstractmethod
   def poll(self):
     pass
 
@@ -548,7 +564,7 @@ class task_expand_partition(op_task_process):
     self.partition_id = partition_id
     super().__init__(description,
                      argv = ["resize2fs", disk.device_name, str(partition_id)],
-                     time_estimate = self.disk.get_byte_size() / 5000000000+2) # FIXME time_estimate is bogus
+                     time_estimate = self.disk.get_byte_size() / 500000000+2) # FIXME time_estimate is bogus
     pass
 
   def setup(self):
@@ -901,6 +917,7 @@ class task_install_grub(op_task_process):
     pass
 
   def teardown(self):
+    super().teardown()
     # tear down the /dev for chroot
     subprocess.run("umount %s/dev" % self.mount_dir, shell=True)
     if self.script_path:
@@ -1166,17 +1183,5 @@ class task_uninstall_bcmwl(task_uninstall_package):
       self._noop()
       pass
     pass
-  pass
-
-#
-if __name__ == "__main__":
-  task = task_sleep('test', 5)
-  task.setup()
-  
-  while task.progress < 99:
-    task.poll()
-    print("FOO")
-    pass
-  print('done')
   pass
 

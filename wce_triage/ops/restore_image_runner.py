@@ -2,11 +2,7 @@
 # Restore disk
 #
 
-import datetime, re, subprocess, sys, os
-
-if __name__ == "__main__":
-  sys.path.append(os.path.split(os.getcwd())[0])
-  pass
+import datetime, re, subprocess, sys, os, uuid, traceback
 
 from wce_triage.ops.tasks import *
 from wce_triage.ops.ops_ui import *
@@ -15,17 +11,17 @@ from wce_triage.ops.runner import *
 from wce_triage.ops.partition_runner import *
 import wce_triage.components.video
 from wce_triage.ops.partclone_tasks import *
-import uuid
 from wce_triage.lib.util import is_block_device
+from wce_triage.ops.json_ui import *
 
 #
 def make_random_hostname(stemname="wce"):
   return stemname + uuid.uuid4().hex[:8]
 #
 #
-class RestoreDisk(PartitionDiskRunner):
+class RestoreDiskRunner(PartitionDiskRunner):
 
-  def __init__(self, ui, disk, src, src_size, partition_id='Linux', pplan=None, newhostname=make_random_hostname(), partition_map='gpt'):
+  def __init__(self, ui, runner_id, disk, src, src_size, partition_id='Linux', pplan=None, newhostname=make_random_hostname(), partition_map='gpt'):
 
     #
     self.partition_id = partition_id
@@ -33,7 +29,7 @@ class RestoreDisk(PartitionDiskRunner):
       pplan = make_efi_partition_plan(disk, partition_id=partition_id)
       pass
 
-    super().__init__(ui, disk, partition_plan=pplan, partition_map=partition_map)
+    super().__init__(ui, runner_id, disk, partition_plan=pplan, partition_map=partition_map)
 
     self.disk = disk
     self.source = src
@@ -91,27 +87,57 @@ def get_source_size(src):
   return srcst.st_size
 
 
-if __name__ == "__main__":
-  if len(sys.argv) == 1:
-    print( 'USB Flasher: devname part imagesource')
-    sys.exit(0)
+
+def run_load_image(ui, devname, imagefile, imagefile_size, newhostname, restore_type):
+  disk = Disk(device_name = devname)
+
+  if restore_type == "triage":
+    pplan = make_usb_stick_partition_plan(disk)
+    partition_id=1
+    partition_map='msdos'
+  else:
+    pplan = make_efi_partition_plan(disk)
+    partition_id='Linux'
+    partition_map='gpt'
     pass
-  devname = sys.argv[1]
-  if not is_block_device(devname):
-    print( '%s is not a block device.' % devname)
-    sys.exit(1)
-    pass
-  part = sys.argv[2]
-  src = sys.argv[3]
-  disk = Disk(device_name=devname)
-  ui = console_ui()
-  if part == '1':
-    part = 1
-    pass
-  src_size = get_source_size(src)
-  runner = RestoreDisk(ui, disk, src, src_size, partition_id=part, pplan=make_usb_stick_partition_plan(disk), newhostname="wcetriage2", partition_map='msdos')
+
+  runner = RestoreDiskRunner(ui, disk.device_name, disk, imagefile, imagefile_size, 
+                             pplan=pplan, partition_id=partition_id, partition_map=partition_map,
+                             newhostname=newhostname)
   runner.prepare()
   runner.preflight()
   runner.explain()
   runner.run()
+  pass
+
+
+if __name__ == "__main__":
+  if len(sys.argv) == 1:
+    print( 'Flasher: devname imagesource imagesize hostname [wce|triage]')
+    sys.exit(0)
+    # NOTREACHED
+    pass 
+  devname = sys.argv[1]
+  if not is_block_device(devname):
+    print( '%s is not a block device.' % devname)
+    sys.exit(1)
+    # NOTREACHED
+    pass
+  src = sys.argv[2]
+  src_size = int(sys.argv[3])
+  if src_size == 0:
+    src_size = get_source_size(src)
+  hostname = sys.argv[4]
+  restore_type = sys.argv[5]
+
+  ui = json_ui()
+  try:
+    run_load_image(ui, devname, src, src_size, hostname, restore_type)
+    sys.exit(0)
+    # NOTREACHED
+  except Exception as exc:
+    sys.stderr.write(traceback.format_exc(exc) + "\n")
+    sys.exit(1)
+    # NOTREACHED
+    pass
   pass

@@ -12,9 +12,9 @@ from wce_triage.ops.runner import *
 
 #
 #
-class ImageDisk(Runner):
-  def __init__(self, ui, disk, destdir, partition_id = 'Linux', stem_name="wce-mate"):
-    super().__init__(ui)
+class ImageDiskRunner(Runner):
+  def __init__(self, ui, runner_id, disk, destdir, partition_id = 'Linux', stem_name="wce-mate"):
+    super().__init__(ui, runner_id)
     self.disk = disk
     self.time_estimate = 600
     self.destdir = destdir
@@ -59,7 +59,7 @@ if __name__ == "__main__":
   if part == '1':
     part = 1
     pass
-  runner = ImageDisk(ui, disk, destdir, partition_id=part, stem_name=stem)
+  runner = ImageDiskRunner(ui, disk.device_name, disk, destdir, partition_id=part, stem_name=stem)
   runner.prepare()
   runner.preflight()
   runner.explain()

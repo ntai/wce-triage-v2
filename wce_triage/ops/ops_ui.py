@@ -10,14 +10,15 @@ class ops_ui(object):
 
   
   @abc.abstractmethod
-  def report_tasks(self, total_time_estimate, tasks):
+  def report_tasks(self, runner_id, run_estimate, tasks):
     '''report_tasks is called at preflight to report the total
        estimate time for all of tasks.
+       runner_id: unique runner ID - often device name
     '''
     pass
 
   @abc.abstractmethod
-  def report_task_progress(self, total_time, time_estimate, task_elapsed_time, progress, task):
+  def report_task_progress(self, runner_id, run_estimate, run_time, task_estimate, task_elapsed_time, progress, task):
     '''report_task_progress is called at semi-regular interval to 
        report the current progress. 
        progress: 0-100
@@ -26,7 +27,8 @@ class ops_ui(object):
 
   @abc.abstractmethod
   def report_task_failure(self,
-                          task_time_estimate,
+                          runner_id, 
+                          task_estimate,
                           elapsed_time,
                           progress,
                           task):
@@ -34,6 +36,7 @@ class ops_ui(object):
 
   @abc.abstractmethod
   def report_task_success(self, 
+                          runner_id,
                           task_time_estimate,
                           elapsed_time,
                           task):
@@ -41,20 +44,21 @@ class ops_ui(object):
 
   @abc.abstractmethod
   def report_run_progress(self,
+                          runner_id, 
                           step,
                           tasks,
-                          task_time_estimate,
-                          elapsed_time):
+                          run_estimate,
+                          run_time):
     pass
 
 
   # message be printed and shown somewhere.
   @abc.abstractmethod
-  def log(self, msg):
+  def log(self, runner_id, msg):
     pass
 
-  def task_log(self, task, msg):
-    self.log("%s: %s" % (task.description, msg))
+  def task_log(self, runner_id, task, msg):
+    self.log(runner_id, "%s: (%s) %s" % (runner_id, task.description, msg))
     pass
   pass
 
@@ -65,17 +69,17 @@ class console_ui(ops_ui):
     pass
 
   # Used for explain. Probably needs better way
-  def report_tasks(self, total_time_estimate, tasks):
+  def report_tasks(self, runner_id, run_estimate, tasks):
     index = 0
     for task in tasks:
       index = index + 1
-      print( "%d: %s %s" % (index, task.description, task.explain()))
+      print( "%s %d: %s %s" % (runner_id, index, task.description, task.explain()))
       pass
-    print("Time estimate for %d tasks is %d" % (len(tasks), in_seconds(total_time_estimate)))
+    print("Time estimate for %d tasks is %d" % (len(tasks), in_seconds(run_estimate)))
     pass
 
   #
-  def report_task_progress(self, total_time, time_estimate, elapsed_time, progress, task):
+  def report_task_progress(self, runner_id, run_estimate, run_time, time_estimate, elapsed_time, progress, task):
     current_time = datetime.datetime.now()
     dt = in_seconds( current_time - self.last_report_time )
     if dt < 0:
@@ -83,38 +87,41 @@ class console_ui(ops_ui):
     
     msg = (" " + task.message) if task and task.message else ""
     self.last_report_time = current_time
-    print("%3d: %d%% done. Estimate for %s is %d.%s" % (in_seconds(total_time), in_seconds(progress), task.description, task.estimate_time(), msg))
+    print("%s %3d: %d%% done. Estimate for %s is %d.%s" % (runner_id, in_seconds(run_time), in_seconds(progress), task.description, time_estimate, msg))
     pass
 
 
   def report_task_failure(self,
-                          task_time_estimate,
+                          runner_id,
+                          task_estimate,
                           elapsed_time,
                           progress,
                           task):
-    print("%s failed in %d seconds. Aborting." % (task.description, in_seconds(elapsed_time)))
+    print("%s %s failed in %d seconds. Aborting." % (runner_id, task.description, in_seconds(elapsed_time)))
     print(task.message)
     pass
 
-  def report_task_success(self, task_time_estimate, elapsed_time, task):
-    print("%s finised in %d seconds." % (task.description, in_seconds(elapsed_time)))
+  def report_task_success(self, runner_id, task_time_estimate, elapsed_time, task):
+    print("%s %s finised in %d seconds." % (runner_id, task.description, in_seconds(elapsed_time)))
     pass
 
   def report_run_progress(self, 
+                          runner_id,
                           step,
                           tasks,
-                          total_time_estimate,
-                          elapsed_time):
-    print("%3d: (%d/%d) estimate %d seconds." % (in_seconds(elapsed_time),
-                                                 step, len(tasks),
-                                                 in_seconds(total_time_estimate)))
+                          run_estimate,
+                          run_time):
+    print("%s %3d: (%d/%d) estimate %d seconds." % (runner_id,
+                                                    in_seconds(run_time),
+                                                    step, len(tasks),
+                                                    in_seconds(run_estimate)))
     pass
 
 
   # Log message. Probably better to be stored in file so we can see it
   # FIXME: probably should use python's logging.
-  def log(self, msg):
-    print(msg)
+  def log(self, runner_id, msg):
+    print(runner_id + ": " + msg)
     pass
 
   pass
@@ -126,15 +133,16 @@ class virtual_ui(ops_ui):
     pass
 
   #
-  def report_tasks(self, total_time_estimate, tasks):
+  def report_tasks(self, runner_id, run_estimate, tasks):
     pass
 
   #
-  def report_task_progress(self, total_time, time_estimate, elapsed_time, progress, task):
+  def report_task_progress(self, runner_id, run_estimate, run_time, time_estimate, elapsed_time, progress, task):
     pass
 
   def report_task_failure(self,
-                          task_time_estimate,
+                          runner_id,
+                          task_estimate,
                           elapsed_time,
                           progress,
                           task):
@@ -142,6 +150,7 @@ class virtual_ui(ops_ui):
     pass
 
   def report_task_success(self, 
+                          runner_id,
                           task_time_estimate,
                           elapsed_time,
                           task):
@@ -149,14 +158,15 @@ class virtual_ui(ops_ui):
     pass
 
   def report_run_progress(self, 
+                          runner_id,
                           step,
                           tasks,
-                          total_time_estimate,
-                          elapsed_time):
+                          run_estimate,
+                          run_time):
     pass
 
   # Used for explain.
-  def log(self, msg):
+  def log(self, runner_id, msg):
     pass
 
   pass

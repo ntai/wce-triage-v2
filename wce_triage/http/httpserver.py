@@ -12,33 +12,20 @@ import aiohttp_cors
 from argparse import ArgumentParser
 from collections import namedtuple
 from contextlib import closing
-from json import dumps
-import os, sys, re, subprocess, datetime, asyncio, pathlib, traceback, queue, time
+import json
+import os, sys, re, subprocess, datetime, asyncio, pathlib, traceback, queue, time, uuid
 import logging, logging.handlers
-from concurrent.futures import ThreadPoolExecutor
+import functools
 
 from wce_triage.components.computer import Computer
-from wce_triage.ops.restore_image_runner import RestoreDisk
-from wce_triage.ops.create_image_runner import ImageDisk
+from wce_triage.ops.restore_image_runner import RestoreDiskRunner
+from wce_triage.ops.create_image_runner import ImageDiskRunner
 from wce_triage.components.disk import Disk, Partition
-from wce_triage.ops.restore_image_runner import RestoreDisk
 import wce_triage.lib.util
 from wce_triage.lib.timeutil import *
 from wce_triage.ops.ops_ui import ops_ui
 from wce_triage.ops.partition_runner import make_usb_stick_partition_plan, make_efi_partition_plan
-
-#
-# 
-#
-def _describe_task(task):
-  return {"category" : task.get_description(),
-          "status": ["waiting", "running", "done", "fail"][task._get_status()],
-          "progress": task.progress,
-          "timeEstimate": round(task.time_estimate, 1),
-          "elapseTime": round(in_seconds(datetime.datetime.now() - task.start_time) if task.start_time else 0, 1),
-          "details": task.explain(),
-          "step" : task.task_number if task.task_number else ""}
-
+from wce_triage.lib.pipereader import *
 
 routes = aiohttp.web.RouteTableDef()
 
@@ -78,6 +65,7 @@ async def route_version(request):
 #
 class Emitter:
   queue = None
+  item_count = 0
 
   def register(loop):
     Emitter.queue = queue.Queue()
@@ -96,14 +84,14 @@ class Emitter:
     while running:
       try:
         elem = Emitter.queue.get(block=False)
-        await wock.emit(elem[0], elem[1])
+        print("EMITTER: sending %d  %s" % (elem[0], elem[1]))
+        await wock.emit(elem[1], elem[2])
 
         global me
-        # hack? Stealing the last loading status from the wock_ui
         # so when browser asks with "get", I can answer the same
         # result.
-        if elem[0] == "loadimage":
-          me.loading_status = elem[1]
+        if elem[1] == "loadimage":
+          me.loading_status = elem[2]
           pass
         pass
       except queue.Empty:
@@ -114,7 +102,9 @@ class Emitter:
 
 
   def send(event, data):
-    Emitter.queue.put((event, data))
+    print("EMITTER: queueing %d  %s" % (Emitter.item_count, event))
+    Emitter.queue.put((Emitter.item_count, event, data))
+    Emitter.item_count += 1
     pass
   pass
 
@@ -150,6 +140,8 @@ class TriageWeb(object):
     self.loading_status = { "pages": 1, "steps": [] }
     # wock (web socket) channels.
     self.channels = {}
+
+    self.pipe_readers = {}
     pass
 
   def note(self, message):
@@ -211,12 +203,12 @@ class TriageWeb(object):
     
     disks = [ {"target": 0,
                "deviceName": disk.device_name,
-               "progress": 0,
-               "elapseTime": 0,
+               "runTime": 0,
+               "runEstimate": 0,
                "mounted": "y" if disk.mounted else "n",
-               "size": int(disk.get_byte_size() / 1073741824.0 + 0.5),
+               "size": round(disk.get_byte_size() / 1000000),
                "bus": "usb" if disk.is_usb else "ata",
-               "model": disk.model_name }
+               "model": disk.vendor + " " + disk.model_name }
               for disk in computer.disks ]
 
     jsonified = { "diskPages": 1, "disks": disks }
@@ -274,40 +266,87 @@ class TriageWeb(object):
     return aiohttp.web.json_response({ "sources": wce_triage.lib.util.get_disk_images() })
 
 
+  # Restore types
+  #  content - content loading for disk
+  #  triage - USB stick flashing
+  #  clone - cloning 
+  @routes.get("/dispatch/restore-types.json")
+  async def route_restore_types(request):
+    """Returning supported restore types."""
+    return aiohttp.web.json_response({ "restoreTypes": [{ "id": "wce",
+                                                          "name" : "WCE content loading"},
+                                                        { "id" : "triage",
+                                                          "name" : "Triage USB flash drive" },
+                                                        { "id" : "clone",
+                                                          "name": "Disk restore" } ] })
+
   @routes.post("/dispatch/load")
   async def route_load_image(request):
     """Load disk image to disk"""
-    # FIXME: needs actual implementation
     global me
     devname = request.query.get("deviceName")
     imagefile = request.query.get("source")
     imagefile_size = request.query.get("size") # This comes back in bytes from sending sources with size. value in query is always string.
-      
-    await wock.emit("loadimage", { "device_name": devname, "total_estimate" : 0, "steps" : [] })
-    if imagefile:
-      loop = asyncio.get_event_loop()
-      with ThreadPoolExecutor(1) as execpool:
-        await loop.run_in_executor(execpool, me.run_load_image, devname, imagefile, int(imagefile_size))
-        pass
+    newhostname = request.query.get("newhostname")
+    restore_type = request.query.get("restoretype")
+
+    if newhostname is None:
+      newhostname = {'triage': 'wcetriage2', 'wce': 'wce' + uuid.uuid4().hex[:8]}.get(restore_type, 'host' + uuid.uuid4().hex[:8])
       pass
-    else:
+    
+    await wock.emit("loadimage", { "device": devname, "totalEstimate" : 0, "steps" : [] })
+    if not imagefile:
       me.note("No image file selected.")
       await Emitter.flush()
-      pass
+      return aiohttp.web.json_response({ "pages": 1 })
+
+    # restore image runs its own course, and output will be monitored by a call back
+    me.restore = subprocess.Popen( ['python3', '-m', 'wce_triage.ops.restore_image_runner', devname, imagefile, imagefile_size, newhostname, restore_type],
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    asyncio.get_event_loop().add_reader(me.restore.stdout, functools.partial(me.restore_progress_report, me.restore.stdout))
+    asyncio.get_event_loop().add_reader(me.restore.stderr, functools.partial(me.restore_progress_report, me.restore.stderr))
     return aiohttp.web.json_response({ "pages": 1 })
-  
-  # This runs in a thread
-  def run_load_image(self, devname, imagefile, imagefile_size):
-    disk = Disk(device_name = devname)
-    runner = RestoreDisk(wock_ui(), disk, imagefile, imagefile_size, 
-                         pplan=make_usb_stick_partition_plan(disk), partition_id=1, partition_map='msdos',
-                         newhostname="triage20")
-    runner.prepare()
-    runner.preflight()
-    runner.explain()
-    # FIXME: Don't run for now. See websock works.
-    # runner.run()
+
+
+  def restore_progress_report(self, pipe):
+    reader = self.pipe_readers.get(pipe)
+    if reader is None:
+      reader = PipeReader(pipe)
+      self.pipe_readers[pipe] = reader
+      pass
+
+    line = reader.readline()
+    if line == b'':
+      asyncio.get_event_loop().remove_reader(pipe)
+      del self.pipe_readers[pipe]
+      if self.restore:
+        self.restore.poll()
+        if self.restore.returncode:
+          returncode = self.restore.returncode
+          self.restore = None
+          if returncode is not 0:
+            Emitter.send('message', "Restore failed.")
+            pass
+          pass
+        pass
+      pass
+    elif line is not None:
+      print(line)
+      if self.restore and pipe == self.restore.stdout:
+        # This is a message from loader
+        try:
+          packet = json.loads(line)
+          Emitter.send(packet['event'], packet['message'])
+        except Exception as exc:
+          print("BAD LINE " + str(exc) + "\n" + line)
+          pass
+        pass
+      else:
+        Emitter.send('message', line)
+        pass
+      pass
     pass
+
 
   @routes.get("/dispatch/disk-load-status.json")
   async def route_disk_load_status(request):
@@ -380,7 +419,6 @@ async def connect(wockid, environ):
   global me
   me.channels[wockid] = environ
   print("************** connect ************* " +  wockid)
-  print(environ)
   me.note("Connected")
   await Emitter.flush()
   pass
@@ -402,57 +440,6 @@ def disconnect(wockid):
     print('unknown disconnect ' + wockid)
     pass
   pass
-
-#
-# WebScoket UI for Task Runner
-#
-# This lives in a thread, and not coroutine.
-#
-class wock_ui(ops_ui):
-  def __init__(self):
-    self.last_report_time = datetime.datetime.now()
-    pass
-
-  # Called from preflight to just set up the flight plan
-  def report_tasks(self, total_time_estimate, tasks):
-    Emitter.send("loadimage", { "step": 0,
-                                "total_estimate" : total_time_estimate,
-                                "elapsed_time": 0,
-                                "steps" : [ _describe_task(task) for task in tasks ] } )
-    pass
-
-  #
-  def report_task_progress(self, total_time, time_estimate, elapsed_time, progress, task):
-    pass
-
-  def report_task_failure(self,
-                                task_time_estimate,
-                                elapsed_time,
-                                progress,
-                                task):
-    pass
-
-  def report_task_success(self, task_time_estimate, elapsed_time, task):
-    pass
-
-  def report_run_progress(self, 
-                          step,
-                          tasks,
-                          total_time_estimate,
-                          elapsed_time):
-    Emitter.send("loadimage", { "step": step,
-                                "total_estimate" : total_time_estimate,
-                                "elapsed_time": elapsed_time,
-                                "steps" : [ _describe_task(task) for task in tasks ] } )
-    pass
-
-  # Log message. Probably better to be stored in file so we can see it
-  # FIXME: probably should use python's logging.
-  def log(self, msg):
-    pass
-
-  pass
-
 
 # Define and parse the command line arguments
 import socket

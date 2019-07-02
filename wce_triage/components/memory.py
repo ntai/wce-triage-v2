@@ -1,5 +1,6 @@
 import re, subprocess, string, os
 from wce_triage.lib.util import *
+from wce_triage.lib.hwinfo import *
 
 from collections import namedtuple
 MemoryInfo = namedtuple('MemoryInfo', 'rams, ramtype, total, slots')
@@ -258,12 +259,16 @@ def detect_memory(hw_info):
       children = memory.get("children")
       if id == "memory":
         if children: # this is a slot
-          total_memory = int(memory.get('size')) / 2**20
+          total_memory = int(int(memory.get('size')) / 2**20)
 
           for child in children:
-            size = int(child.get('size')) / 2**20
+            size = int(int(child.get('size')) / 2**20)
             ram_type = child.get('description')
-            slots.append(MemorySlot(slot=child.get('id'), size=size, status=size>0, memtype=child.get('description')))
+            socket_designation = child.get('slot')
+            slots.append(MemorySlot(slot=socket_designation, size=size, status=size>0, memtype=child.get('description')))
+            if size>0:
+              rams.append(RAM(socket=socket_designation, size=size, status=True))
+              pass
             pass
           pass
         else:
@@ -297,5 +302,6 @@ def detect_memory(hw_info):
 
 #
 if __name__ == "__main__":
-  print( str(detect_memory()))
+  print( str(detect_memory(hw_info())))
+  print( str(detect_memory(None)))
   pass

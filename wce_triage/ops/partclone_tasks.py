@@ -19,6 +19,7 @@ class task_partclone(op_task_process):
 
   # This needs to match with process driver's output format.
   progress_re = re.compile(r'^partclone\.stderr:Elapsed: (\d\d:\d\d:\d\d), Remaining: (\d\d:\d\d:\d\d), Completed:\s+(\d+.\d*)%,\s+[^\/]+/min,')
+  output_re = re.compile(r'^partclone\.stderr:(.*)')
 
   def __init__(self, description, **kwargs):
     # 
@@ -63,6 +64,7 @@ class task_partclone(op_task_process):
         pass
 
       # passed the start marke
+
       if len(self.start_re) == 0:
         m = self.progress_re.search(line)
         if m:
@@ -78,6 +80,12 @@ class task_partclone(op_task_process):
           # Unfortunately, "completed" from partclone for usb stick is totally bogus.
           dt = current_time - self.start_time
           self.set_progress(self._estimate_progress_from_time_estimate(dt.total_seconds()), "elapsed: %s remaining: %s" % (elapsed, remaining))
+          pass
+        else:
+          m = output_re.match(line)
+          if m:
+            self.message = m.group(1)
+            pass
           pass
         pass
       pass
@@ -127,8 +135,6 @@ class task_restore_disk_image(task_partclone):
     self.source_size = source_size
     if self.source is None:
       raise Exception("bone head. it needs the source image.")
-
-    print( "source size %d" % source_size)
     pass
 
   def setup(self):

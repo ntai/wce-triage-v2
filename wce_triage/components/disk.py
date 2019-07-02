@@ -64,6 +64,7 @@ class Disk:
     self.is_ata_or_scsi = None
     self.is_usb = None
     self.bus = None
+    self.vendor = ""
     self.model_name = ""
     self.serial_no = ""
     self.mount_dir = "/mnt/wce_install_target.%d" % os.getpid()
@@ -192,6 +193,9 @@ class Disk:
             if value.lower() == "disk":
               self.is_disk = True
               pass
+            pass
+          elif tag == "ID_VENDOR":
+            self.vendor = value
             pass
           elif tag == "ID_MODEL":
             self.model_name = value
