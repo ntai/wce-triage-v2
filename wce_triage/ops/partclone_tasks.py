@@ -10,6 +10,8 @@ from wce_triage.ops.tasks import *
 from wce_triage.lib.timeutil import *
 import functools
 from .estimate import *
+import logging
+tlog = logging.getLogger('triage')
 
 #
 # Running partclone base class
@@ -18,8 +20,9 @@ class task_partclone(op_task_process):
   t0 = datetime.datetime.strptime('00:00:00', '%H:%M:%S')
 
   # This needs to match with process driver's output format.
-  progress_re = re.compile(r'^partclone\.stderr:Elapsed: (\d\d:\d\d:\d\d), Remaining: (\d\d:\d\d:\d\d), Completed:\s+(\d+.\d*)%,\s+[^\/]+/min,')
-  output_re = re.compile(r'^partclone\.stderr:(.*)')
+  progress_re = re.compile(r'^\w+: partclone\.stderr:Elapsed: (\d\d:\d\d:\d\d), Remaining: (\d\d:\d\d:\d\d), Completed:\s+(\d+.\d*)%,\s+[^\/]+/min,')
+  output_re = re.compile(r'^\w+: partclone\.stderr:(.*)')
+  error_re = re.compile(r'^(\w+\.ERROR): (.*)')
 
   def __init__(self, description, **kwargs):
     # 
@@ -28,6 +31,9 @@ class task_partclone(op_task_process):
     self.start_re = []
     # If we don't skip the superblock part, the progress is totally messed up
     self.start_re.append(re.compile(r'File system:\s+EXTFS'))
+
+    # 15 - fudge - partclone needs "disk sync" time
+    self.fudge = kwargs.get('fudge', 15)
     pass
 
   def poll(self):
@@ -63,7 +69,7 @@ class task_partclone(op_task_process):
           pass
         pass
 
-      # passed the start marke
+      # passed the start marker
 
       if len(self.start_re) == 0:
         m = self.progress_re.search(line)
@@ -75,8 +81,7 @@ class task_partclone(op_task_process):
           dt_elapsed = datetime.datetime.strptime(elapsed, '%H:%M:%S') - self.t0
           dt_remaining = datetime.datetime.strptime(remaining, '%H:%M:%S') - self.t0
 
-          # 10 is fudge - and partclone actually needs "disk sync" time
-          self.set_time_estimate(self.imaging_start_seconds + in_seconds(dt_elapsed) + in_seconds(dt_remaining) + 140)
+          self.set_time_estimate(self.imaging_start_seconds + in_seconds(dt_elapsed) + in_seconds(dt_remaining) + self.fudge)
           # Unfortunately, "completed" from partclone for usb stick is totally bogus.
           dt = current_time - self.start_time
           self.set_progress(self._estimate_progress_from_time_estimate(dt.total_seconds()), "elapsed: %s remaining: %s" % (elapsed, remaining))
@@ -85,6 +90,11 @@ class task_partclone(op_task_process):
           m = output_re.match(line)
           if m:
             self.message = m.group(1)
+            pass
+
+          m = error_re.match(line)
+          if m:
+            self.verdict.append(m.group(2))
             pass
           pass
         pass
@@ -97,8 +107,8 @@ class task_partclone(op_task_process):
 #
 class task_create_disk_image(task_partclone):
   
-  def __init__(self, description, disk=None, partition_id="Linux", imagename=None, partition_size=None):
-    super().__init__(description, time_estimate=disk.get_byte_size() / 500000000)
+  def __init__(self, description, disk=None, partition_id="Linux", imagename=None, partition_size=None, **kwargs):
+    super().__init__(description, time_estimate=disk.get_byte_size() / 500000000, **kwargs)
     self.disk = disk
     self.partition_id = partition_id
     self.imagename = imagename
@@ -117,8 +127,6 @@ class task_create_disk_image(task_partclone):
 
   def explain(self):
     return "Create disk image of %s using WCE Triage's image_volume" % self.disk.device_name
-
-
   pass
 
 #
@@ -126,9 +134,9 @@ class task_create_disk_image(task_partclone):
 class task_restore_disk_image(task_partclone):
   
   # Restore partclone image file to the first partition
-  def __init__(self, description, disk=None, partition_id="Linux", source=None, source_size=None):
+  def __init__(self, description, disk=None, partition_id="Linux", source=None, source_size=None, **kwargs):
     #
-    super().__init__(description, time_estimate=source_size / 3000000)
+    super().__init__(description, time_estimate=source_size / 3000000, **kwargs)
     self.disk = disk
     self.partition_id = partition_id
     self.source = source
@@ -164,6 +172,9 @@ class task_restore_disk_image(task_partclone):
       line = self.out[:newline]
       self.out = self.out[newline+1:]
       current_time = datetime.datetime.now()
+
+      tlog.debug("Restore progress: %s" % line)
+      print("Restore progress: %s" % line)
 
       # Look for the EXT parition cloning start marker
       while len(self.start_re) > 0:

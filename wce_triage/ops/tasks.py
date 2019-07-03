@@ -12,15 +12,18 @@ import wce_triage.components.pci as _pci
 from wce_triage.components.disk import Disk, Partition
 from wce_triage.lib.util import drain_pipe, drain_pipe_completely
 import uuid
+import logging
+tlog = logging.getLogger('triage')
 
 from .estimate import *
 
 class op_task(object, metaclass=abc.ABCMeta):
 
-  def __init__(self, description, encoding='utf-8', time_estimate=None, estimate_factors=None):
+  def __init__(self, description, encoding='utf-8', time_estimate=None, estimate_factors=None, **kwargs):
     if not isinstance(description, str):
       raise Exception("Description must be a string")
       pass
+    self.kwargs = kwargs
     self.runner = None
     self.step_number = None # Runner assigns this. It's an ID for the task in the runner
     self.time_estimate = time_estimate
@@ -30,6 +33,7 @@ class op_task(object, metaclass=abc.ABCMeta):
     self.is_done = False
     self.progress = 0
     self.message = None # Progress message
+    self.verdict = [] # Important messages
     self.start_time = None
     self.end_time = None
     self.teardown_task = False
@@ -95,6 +99,9 @@ class op_task(object, metaclass=abc.ABCMeta):
     self.is_started = True
     self.progress = progress
     self.message = msg
+    if progress >= 100:
+      self.verdict.append(msg)
+      pass
     pass
 
   def _noop(self):
@@ -126,7 +133,10 @@ class op_task(object, metaclass=abc.ABCMeta):
 
   def _estimate_progress_from_time_estimate(self, total_seconds):
     progress = 100 * total_seconds / self.time_estimate
-    return progress if progress < 100 else 99
+    if progress > 99:
+      self.time_estimate = total_seconds+1
+      return 99
+    return progress
 
   pass
 
@@ -212,31 +222,25 @@ class op_task_process(op_task):
   def _poll_process(self):
     # check the process but not be blocked.
     self.process.poll()
-    current_time = time.time()
-    poll_end_time = current_time + self.select_timeout
-    while poll_end_time > current_time:
-      current_time = time.time()
 
-      selecting = True
-      while selecting:
-        selecting = False
-        try:
-          rlist, wlist, xlist = select.select(self.read_set, [], [], 0.01)
-        except select.error as exc:
-          if exc.args[0] == errno.EINTR:
-            selecting = True
-            pass
-          raise
-        pass
-      
-      for pipe in self.read_set:
-        if pipe in rlist:
-          self._read_from_pipe(pipe)
+    selecting = True
+    while selecting:
+      selecting = False
+      try:
+        rlist, wlist, xlist = select.select(self.read_set, [], [], self.select_timeout)
+      except select.error as exc:
+        if exc.args[0] == errno.EINTR:
+          selecting = True
           pass
+        raise
+      pass
+      
+    for pipe in self.read_set:
+      if pipe in rlist:
+        self._read_from_pipe(pipe)
         pass
       pass
     pass
-
 
   def _read_from_pipe(self, pipe):
     data = os.read(pipe.fileno(), 1024)
@@ -260,15 +264,15 @@ class op_task_process(op_task):
       dt = wallclock - self.start_time
       progress = self._estimate_progress(dt.total_seconds())
       if progress > 99:
-        self.set_progress(999, "timed out")
+        self.set_progress(999, self.kwargs.get('progress_timeout', "Timed out after %d seconds" % dt.total_seconds()))
       else:
-        self.set_progress(progress, "running" )
+        self.set_progress(progress, self.kwargs.get('progress_running', "Running" ))
         pass
       pass
     elif self.process.returncode in self.good_returncode:
-      self.set_progress(100, "finished" )
+      self.set_progress(100, self.kwargs.get('progress_finished', "Finished" ) )
     else:
-      self.set_progress(999, "failed with return code %d\n%s" % (self.process.returncode, self.err))
+      self.set_progress(999, "Failed with return code %d\n%s" % (self.process.returncode, self.err))
       pass
     pass
 
@@ -328,14 +332,14 @@ class op_task_command(op_task):
 #
 class task_mkdir(op_task_python_simple):
 
-  def __init__(self, description, dir_path):
+  def __init__(self, description, dir_path, **kwargs):
     '''
     :param op: diskop instance
     :param description: description of operation
     :param dir_path: path to do mkdir
 
     '''
-    super().__init__(description, time_estimate=1)
+    super().__init__(description, time_estimate=1, **kwargs)
     self.dir_path = dir_path
     pass
 
@@ -363,8 +367,8 @@ class task_mkdir(op_task_python_simple):
 #
 #
 class task_mkfs(op_task_process_simple):
-  def __init__(self, description, partition=None, time_estimate=None):
-    super().__init__(description, encoding='iso-8859-1', time_estimate=time_estimate)
+  def __init__(self, description, partition=None, time_estimate=None, **kwargs):
+    super().__init__(description, encoding='iso-8859-1', time_estimate=time_estimate, **kwargs)
     self.success_returncodes = [0]
     self.success_msg = "Initializing file system succeeded."
     self.failure_msg = "Initializing file system failed."
@@ -402,11 +406,11 @@ class task_mkfs(op_task_process_simple):
 #
 #
 class task_unmount(op_task_process_simple):
-  def __init__(self, description, disk=None, partition_id='Linux', force_unmount=False):
+  def __init__(self, description, disk=None, partition_id='Linux', force_unmount=False, **kwargs):
     self.disk = disk
     self.partition_id = partition_id
     self.force = force_unmount
-    super().__init__(description, argv=["/bin/umount"], time_estimate=1)
+    super().__init__(description, argv=["/bin/umount"], time_estimate=1, **kwargs)
     pass
 
 
@@ -442,11 +446,11 @@ class task_unmount(op_task_process_simple):
 class task_mount(op_task_process_simple):
   '''mount a partition on disk'''
 
-  def __init__(self, description, disk=None, partition_id='Linux'):
+  def __init__(self, description, disk=None, partition_id='Linux', **kwargs):
     self.disk = disk
     self.partition_id = partition_id
 
-    super().__init__(description, argv = ["/bin/mount"], time_estimate=2)
+    super().__init__(description, argv = ["/bin/mount"], time_estimate=2, **kwargs)
     pass
   
 
@@ -481,8 +485,8 @@ class task_mount(op_task_process_simple):
 #
 class task_assign_uuid_to_partition(op_task_process_simple):
 
-  def __init__(self, description, disk=None, partition_id=None):
-    super().__init__(description, time_estimate=1)
+  def __init__(self, description, disk=None, partition_id=None, **kwargs):
+    super().__init__(description, time_estimate=1, **kwargs)
     self.disk = disk
     self.partition_id = partition_id
     pass
@@ -508,10 +512,10 @@ class task_assign_uuid_to_partition(op_task_process_simple):
 
 
 def task_get_uuid_from_partition(op_task_process_simple):
-  def __init__(self, description, partition=None):
+  def __init__(self, description, partition=None, **kwargs):
     self.part = partition
     self.argv = ["/sbin/blkid", part.device_name]
-    super().__init__(description, argv, time_estimate=2)
+    super().__init__(description, argv, time_estimate=2, **kwargs)
     pass
 
   def setup(self):
@@ -538,10 +542,10 @@ def task_get_uuid_from_partition(op_task_process_simple):
 #
 class task_fsck(op_task_process):
   #
-  def __init__(self, description, disk=None, partition_id=None):
+  def __init__(self, description, disk=None, partition_id=None, **kwargs):
     self.disk = disk
     self.partition_id = partition_id
-    super().__init__(description, argv=["/sbin/e2fsck", "-f", "-y", partition_id], time_estimate=self.disk.get_byte_size()/5000000000+2)
+    super().__init__(description, argv=["/sbin/e2fsck", "-f", "-y", partition_id], time_estimate=self.disk.get_byte_size()/5000000000+2, **kwargs)
     pass
 
   def setup(self):
@@ -559,12 +563,12 @@ class task_fsck(op_task_process):
 
 class task_expand_partition(op_task_process):
   #
-  def __init__(self, description, disk=None, partition_id=None):
+  def __init__(self, description, disk=None, partition_id=None, **kwargs):
     self.disk = disk
     self.partition_id = partition_id
     super().__init__(description,
                      argv = ["resize2fs", disk.device_name, str(partition_id)],
-                     time_estimate = self.disk.get_byte_size() / 500000000+2) # FIXME time_estimate is bogus
+                     time_estimate = self.disk.get_byte_size() / 500000000+2, **kwargs) # FIXME time_estimate is bogus
     pass
 
   def setup(self):
@@ -586,12 +590,12 @@ class task_expand_partition(op_task_process):
 
 class task_shrink_partition(op_task_process):
   #
-  def __init__(self, description, disk=None, partition_id=None):
+  def __init__(self, description, disk=None, partition_id=None, **kwargs):
     self.disk = disk
     self.partition_id = partition_id
     super().__init__(description,
                      time_estimate=self.disk.get_byte_size() / 1000000000, # FIXME: bogus estimate
-                     argv=["resize2fs", "-M", disk.device_name+partition_id])
+                     argv=["resize2fs", "-M", disk.device_name+partition_id], **kwargs)
     pass
 
   def setup(self):
@@ -612,8 +616,8 @@ class task_shrink_partition(op_task_process):
 
 
 class task_create_wce_tag(op_task_python_simple):
-  def __init__(self, description, disk=None, source=None):
-    super().__init__(description, time_estimate=1)
+  def __init__(self, description, disk=None, source=None, **kwargs):
+    super().__init__(description, time_estimate=1, **kwargs)
     self.disk = disk
     self.source = source
     pass
@@ -635,8 +639,8 @@ class task_create_wce_tag(op_task_python_simple):
 # installation will have correct device names
 class task_remove_persistent_rules(op_task_python_simple):
     #
-  def __init__(self, description, disk=None, partition_id='Linux'):
-    super().__init__(description, time_estimate=1)
+  def __init__(self, description, disk=None, partition_id='Linux', **kwargs):
+    super().__init__(description, time_estimate=1, **kwargs)
     self.disk = disk
     self.partition_id = partition_id
     pass
@@ -671,10 +675,10 @@ class task_remove_persistent_rules(op_task_python_simple):
 
 # Installing MBR on disk
 class task_install_mbr(op_task_process_simple):
-  def __init__(self, description, disk=None):
+  def __init__(self, description, disk=None, **kwargs):
     self.disk = disk
     argv = ["/sbin/install-mbr", "-r", "-e3", self.disk.device_name]
-    super().__init__(description, argv, time_estimate=1)
+    super().__init__(description, argv, time_estimate=1, **kwargs)
     pass
   pass
 
@@ -689,10 +693,10 @@ class task_fetch_partitions(op_task_process_simple):
   #                          1:    2:           3:           4:           5:fs  6:name  7:flags   
   partline_re = re.compile('^(\d+):([\d\.]+)MiB:([\d\.]+)MiB:([\d\.]+)MiB:(\w*):([^:]*):(.*);')
 
-  def __init__(self, description, disk=None):
+  def __init__(self, description, disk=None, **kwargs):
     self.disk = disk
     argv = ["parted", "-m", disk.device_name, 'unit', 'MiB', 'print']
-    super().__init__(description, argv=argv, time_estimate=1)
+    super().__init__(description, argv=argv, time_estimate=1, **kwargs)
     pass
   
   def poll(self):
@@ -729,8 +733,8 @@ class task_refresh_partitions(op_task_command):
            }
   tagvalre = re.compile('\s*(\w+)="([^"]+)"')
 
-  def __init__(self, description, disk=None):
-    super().__init__(description, encoding='iso-8859-1')
+  def __init__(self, description, disk=None, **kwargs):
+    super().__init__(description, encoding='iso-8859-1', **kwargs)
     self.disk = disk
     self.time_estimate = 2
     pass
@@ -789,11 +793,11 @@ class task_refresh_partitions(op_task_command):
 #
 #
 class task_set_partition_uuid(op_task_process_simple):
-  def __init__(self, description, disk=None, partition_id=None, time_estimate=6):
+  def __init__(self, description, disk=None, partition_id=None, time_estimate=6, **kwargs):
     self.disk = disk
     self.partition_id = partition_id
     # argv is a placeholder
-    super().__init__(description, encoding='iso-8859-1', time_estimate=1, argv=["tune2fs", "-f", "-U"])
+    super().__init__(description, encoding='iso-8859-1', time_estimate=1, argv=["tune2fs", "-f", "-U"], **kwargs)
     pass
   
   def setup(self):
@@ -814,10 +818,10 @@ class task_set_partition_uuid(op_task_process_simple):
 #
 class task_install_syslinux(op_task_process):
   '''Installs syslinux on the device'''
-  def __init__(self, description, disk=None):
+  def __init__(self, description, disk=None, **kwargs):
     argv = ["/usr/bin/syslinux", "-maf", disk.device_name]
     self.disk = disk
-    super().__init__(description, argv, time_estimate=1)
+    super().__init__(description, argv, time_estimate=1, **kwargs)
     pass
   pass
 
@@ -829,7 +833,7 @@ class task_install_syslinux(op_task_process):
 class task_install_grub(op_task_process):
   script_path_template = "%s/tmp/bless.sh"
 
-  def __init__(self, description, disk, detected_video, partition_id='Linux'):
+  def __init__(self, description, disk, detected_video, partition_id='Linux', **kwargs):
     # Disk to bless
     self.disk = disk
     self.partition_id = partition_id
@@ -838,7 +842,7 @@ class task_install_grub(op_task_process):
     # FIXME: Time estimate is very different between USB stick and hard disk.
 
     # argv is a placeholder
-    super().__init__(description, argv=['/usr/sbin/grub-install', disk.device_name], time_estimate=45)
+    super().__init__(description, argv=['/usr/sbin/grub-install', disk.device_name], time_estimate=45, **kwargs)
     pass
 
   #
@@ -948,8 +952,8 @@ class task_install_grub(op_task_process):
 # can be very confused.
 #
 class task_zero_partition(op_task_python_simple):
-  def __init__(self, description, partition=None):
-    super().__init__(description, time_estimate=1)
+  def __init__(self, description, partition=None, **kwargs):
+    super().__init__(description, time_estimate=1, **kwargs)
     self.partition = partition
     pass
 
@@ -985,8 +989,8 @@ UUID=%s none            swap    sw              0       0
 # Create various files for blessed installation
 #
 class task_finalize_disk(op_task_python_simple):
-  def __init__(self, description, disk=None, newhostname=None, partition_id='Linux'):
-    super().__init__(description, time_estimate=1)
+  def __init__(self, description, disk=None, newhostname=None, partition_id='Linux', **kwargs):
+    super().__init__(description, time_estimate=1, **kwargs)
     self.newhostname = newhostname
     self.disk = disk
     self.partition_id = partition_id
@@ -1000,9 +1004,9 @@ class task_finalize_disk(op_task_python_simple):
       msg = "Partition with %s does not exist." % str(self.partition_id)
       self.set_progress(999, msg)
 
-      print("part n = %d" % len(self.disk.partitions))
+      tlog.debug("part n = %d" % len(self.disk.partitions))
       for part in self.disk.partitions:
-        print( str(part))
+        tlog.debug( str(part))
         pass
       raise Exception(msg)
     self.swappart = self.disk.find_partition_by_type(Partition.SWAP)
@@ -1063,8 +1067,8 @@ class task_finalize_disk(op_task_python_simple):
 
 
 class task_finalize_disk_aux(op_task_python):
-  def __init__(self, description, disk=None, newhostname=None, partition_id='Linux'):
-    super().__init__(description, time_estimate=1)
+  def __init__(self, description, disk=None, newhostname=None, partition_id='Linux', **kwargs):
+    super().__init__(description, time_estimate=1, **kwargs)
     self.disk = disk
     self.linuxpart = self.disk.find_partition(partition_id)
     self.newhostname = newhostname
@@ -1101,7 +1105,7 @@ class task_finalize_disk_aux(op_task_python):
 #
 class task_mount_nfs_destination(op_task_process):
 
-  def __init__(self, description):
+  def __init__(self, description, **kwargs):
     pass
   
   def setup(self):
@@ -1135,8 +1139,8 @@ class task_mount_nfs_destination(op_task_process):
 # Sleep task - for testing
 #
 class task_sleep(op_task_process):
-  def __init__(self, description, duration):
-    super().__init__(description)
+  def __init__(self, description, duration, **kwargs):
+    super().__init__(description, **kwargs)
     self.duration = duration
     self.argv = ['sleep', str(duration)]
     pass
@@ -1151,8 +1155,8 @@ class task_sleep(op_task_process):
 # Package uninsall base class
 class task_uninstall_package(op_task_process):
 
-  def __init__(self, op, description, packages=None):
-    super().__init__(op, description)
+  def __init__(self, op, description, packages=None, **kwargs):
+    super().__init__(op, description, **kwargs)
     self.packages = packages
     pass
   
@@ -1170,8 +1174,8 @@ class task_uninstall_package(op_task_process):
 #
 class task_uninstall_bcmwl(task_uninstall_package):
   
-  def __init__(self, op, description, packages=None):
-    super().__init__(op, description)
+  def __init__(self, op, description, packages=None, **kwargs):
+    super().__init__(op, description, **kwargs)
     pass
   
   def setup(self):

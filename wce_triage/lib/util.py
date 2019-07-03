@@ -1,6 +1,7 @@
 import uuid, os, subprocess, datetime, select, stat
 import urllib.parse
 
+
 def safe_string(piece):
   if piece:
     if isinstance(piece, bytes):
@@ -194,6 +195,7 @@ def get_disk_images():
 def is_block_device(path):
   path_stat = os.stat(path)
   return stat.S_ISBLK(path_stat.st_mode)
+
 
 #
 if __name__ == "__main__":

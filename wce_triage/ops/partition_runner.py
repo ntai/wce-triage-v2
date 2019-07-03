@@ -117,7 +117,8 @@ class PartitionDiskRunner(Runner):
         pass
       pass
 
-    self.tasks.append(op_task_process('Partition disk', argv=argv, time_estimate=5))
+    self.tasks.append(op_task_process('Partition disk', argv=argv, time_estimate=5,
+                                      progress_finished="Paritions created on %s" % self.disk.device_name))
 
     for part in self.pplan:
       partdevname = self.disk.device_name + str(part.no)
@@ -130,6 +131,7 @@ class PartitionDiskRunner(Runner):
         mkfs_desc = "Create file system %s on %s" % (part.filesys, partition.device_name)
         mkfs = task_mkfs(mkfs_desc,
                          partition=partition,
+                         progress_finished="mkfs %s on %s completed." % (part.filesys, partition.device_name),
                          time_estimate=4*part.size/1024 + 3)
         self.tasks.append(mkfs)
         pass

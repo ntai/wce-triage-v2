@@ -20,6 +20,10 @@ from wce_triage.lib.util import *
 from wce_triage.lib.hwinfo import *
 from wce_triage.components.disk import Disk, Partition
 
+import logging
+tlog = logging.getLogger('triage')
+
+
 class Computer:
   def __init__(self):
     self.opticals = []
@@ -140,7 +144,7 @@ class Computer:
       msg = "Hard Drive:\n"
       good_disk = False
       for disk in self.disks:
-        # print ("%s = %d" % (disk.device_name, disk.get_byte_size()))
+        tlog.debug("%s = %d" % (disk.device_name, disk.get_byte_size()))
         disk_gb = disk.get_byte_size() / 1000000000
         disk_msg = "     Device %s: size = %dGbytes  %s" % (disk.device_name, disk_gb, disk.model_name)
         if disk_gb >= 60:

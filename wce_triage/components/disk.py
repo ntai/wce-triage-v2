@@ -1,4 +1,6 @@
 import re, sys, os, subprocess, traceback
+import logging
+tlog = logging.getLogger('triage')
 
 from wce_triage.lib.util import *
 
@@ -111,7 +113,7 @@ class Disk:
     installed = False
     for partition in self.partitions:
       if partition.partition_name == part1 and partition.partition_type == '83':
-        ## print("# %s Partition %s has the linux partition type" % (self.device_name, partition.partition_name))
+        tlog.debug("%s Partition %s has the linux partition type" % (self.device_name, partition.partition_name))
         # The parition 
         try:
           self.mount_disk()
@@ -120,14 +122,14 @@ class Disk:
             pass
           pass
         except:
-          traceback.print_exc(sys.stdout)
+          tlog.debug(traceback.format_exc())
           pass
         
         try:
           self.unmount_disk()
           time.sleep(2)
         except:
-          traceback.print_exc(sys.stdout)
+          tlog.debug(traceback.format_exc())
           pass
         break
       pass
@@ -171,7 +173,7 @@ class Disk:
       out = udevadm.stdout
       err = udevadm.stderr
     except Exception as exc:
-      traceback.print_exc(sys.stdout)
+      tlog.debug(traceback.format_exc())
       pass
       
     if out:
@@ -205,12 +207,11 @@ class Disk:
             pass
           pass
         except:
-          traceback.print_exc(sys.stdout)
+          tlog.debug(traceback.format_exc())
           pass
         pass
       pass
     else:
-      print ()
       self.is_disk = False
       pass
       
@@ -224,7 +225,7 @@ class Disk:
 #
 #
 #
-def run_detect():
+def quick_test_detect():
   import computer
   machine = computer.Computer()
   machine.detect_disks()
@@ -235,5 +236,5 @@ def run_detect():
 
 if __name__ == "__main__":
   sys.path.append(os.path.join(os.getcwd(), ".."))
-  run_detect()
+  quick_test_detect()
   pass

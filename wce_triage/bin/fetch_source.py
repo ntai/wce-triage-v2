@@ -1,5 +1,6 @@
-
-# 
+#
+# WIP:
+# Getting the file list and size using curl
 #
 import os, sys, subprocess, urllib, datetime
 from wce_triage.lib.util import *

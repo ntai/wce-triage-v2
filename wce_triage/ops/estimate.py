@@ -2,6 +2,8 @@
 #
 #
 import os, sys
+import logging
+tlog = logging.getLogger('triage')
 
 MiB = 2**20
 
@@ -53,7 +55,7 @@ class E2E:
     input_rate = 2**31 # something big enough
     for path in self.paths:
       output_duration, output_size, output_rate = path.passthrough(duration, input_size, input_rate)
-      # print( "%8s: %6d (size: %6.1d, rate: %6.1d) --> %6d (size: %6.1d, rate: %6.1d)" % (path.name, duration, input_size/MiB, input_rate/MiB, output_duration, output_size/MiB, output_rate/MiB))
+      tlog.debug( "%8s: %6d (size: %6.1d, rate: %6.1d) --> %6d (size: %6.1d, rate: %6.1d)" % (path.name, duration, input_size/MiB, input_rate/MiB, output_duration, output_size/MiB, output_rate/MiB))
       duration = output_duration
       input_size = output_size
       input_rate = output_rate

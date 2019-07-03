@@ -15,6 +15,10 @@ from collections import deque
 import urllib.parse
 import os
 
+import logging
+tlog = logging.getLogger('triage')
+
+
 from collections import namedtuple
 PipeInfo = namedtuple('PipeInfo', 'app, process, pipetag, pipe')
 
@@ -32,16 +36,33 @@ def _kill_all(processes):
     pass
   pass
 
-def print_progress(msg):
-  print(msg)
-  sys.stdout.flush()
+class Printer:
+  def __init__(self, name):
+    self.name = name
+    self.prefix = name + ": "
+    self.error_prefix = name + ".ERROR: "
+    pass
+  
+  def print_progress(self, msg):
+    tlog.debug(self.prefix + msg)
+    print(self.prefix + msg)
+    sys.stdout.flush()
+    pass
+
+  def print_error(self, msg):
+    tlog.debug(self.error_prefix + msg)
+    sys.stdout.write('\n'.join([ self.error_prefix + line for line in msg.split('\n') ]))
+    sys.stdout.flush()
+    pass
   pass
 
 
 def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
   #
+  printer = Printer(name)
+  
   for proc_name, process in processes:
-    print_progress("%s: %s PID=%d" % (name, proc_name, process.pid))
+    printer.print_progress("%s PID=%d" % (proc_name, process.pid))
     pass
   #
   drive_process_retcode = 0
@@ -76,7 +97,7 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
       if dt > 5:
         report_time = current_time
         for proc_name, process in processes:
-          print_progress("%s: %s PID=%d retcode %s" % (name, proc_name, process.pid, str(process.returncode)))
+          printer.print_progress("%s PID=%d retcode %s" % (proc_name, process.pid, str(process.returncode)))
           pass
         pass
 
@@ -85,9 +106,9 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
         retcode = process.poll() # retcode should be 0 so test it against None
         if retcode is not None:
           if retcode == 0:
-            print_progress("%s: %s exited with %d" % (name, proc_name, retcode))
+            printer.print_progress("%s exited with %d" % (proc_name, retcode))
           else:
-            print_progress("%s-ERROR: %s exited with %d" % (name, proc_name, retcode))
+            printer.print_error("%s exited with %d" % (proc_name, retcode))
             pass
           processes.remove((proc_name, process))
           driver_state = DriverState.Done if len(processes) == 0 else driver_state
@@ -107,35 +128,41 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
         (proc_name, process, pipe_name, pipe) = fd_map.get(fd)
         pipe_name = proc_name + "." + pipe_name
         if event & (select.POLLIN | select.POLLPRI):
-          reader = pipe_readers.get(pipe_name, pipe_reader(pipe))
-          line = reader.readline
+          reader = pipe_readers.get(pipe_name)
+          if reader is None:
+            reader = PipeReader(pipe)
+            pipe_readers[pipe_name] = reader
+            pass
+
+          line = reader.readline()
           if line == b'':
-            # print_progress("%s: %s.%s closed." % (name, proc_name, pipe_name))
+            # printer.print_progress(name, "%s.%s closed." % (proc_name, pipe_name))
             # this fd closed.
             gatherer.unregister(fd)
             del fd_map[fd]
-            del pipe_readers[pipe_name]
+            pipe_readers[pipe_name] = None
             pass
           elif line is not None:
-            print_progress(pipe_name + ":" + line)
+            printer.print_progress(pipe_name + ":" + line)
             pass
           # Skip checking the closed fd until nothing to read
           continue
       
         # 
         if event & (select.POLLHUP | select.POLLNVAL | select.POLLERR):
-          # print_progress("%s: %s.%s closed." % (name, proc_name, pipe_name))
+          # printer.print_progress("%s: %s.%s closed." % (name, proc_name, pipe_name))
           # this fd closed.
           pipe.close()
           gatherer.unregister(fd)
           del fd_map[fd]
-          del pipe_readers[pipe_name]
+          # I tried to del and seems to be not very happy.
+          pipe_readers[pipe_name] = None
           pass
         pass
       pass
 
     except KeyboardInterrupt as exc:
-      print_progress("%s: Stop requested." % (name))
+      printer.print_progress("Stop requested.")
       drive_process_retcode = 0
       exit_request_time = datetime.datetime.now() + datetime.timedelta(0, 10, 0)
       driver_state = DriverState.Stopping
@@ -143,8 +170,7 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
       pass
 
     except Exception as exc:
-      printt("%s: Aborting due to exception.\n%s" % (name, traceback.format_exc()))
-        
+      printer.print_error("Aborting due to exception. -- %s" % (traceback.format_exc()))
       drive_process_retcode = 1
       # Wait max of 10 seconds
       exit_request_time = datetime.datetime.now() + datetime.timedelta(0, 10, 0)

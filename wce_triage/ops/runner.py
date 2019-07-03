@@ -126,20 +126,30 @@ class Runner:
     task.setup()
     current_time = datetime.datetime.now()
     run_time = current_time - self.start_time
+    last_progress_time = current_time
+
     ui.report_task_progress(self.runner_id, self.run_estimate, run_time, task.time_estimate, 0, 0, task)
 
     while task.progress < 100:
       task.poll()
       current_time = datetime.datetime.now()
       task_elapsed_time = current_time - task.start_time
-      self._update_run_estimate()
-      ui.report_task_progress(self.runner_id,
-                              self.run_estimate,
-                              current_time - self.start_time,
-                              task.time_estimate,
-                              task_elapsed_time,
-                              task.progress,
-                              task)
+
+      if in_seconds(current_time - last_progress_time) >= 0.75:
+        last_progress_time = current_time
+        self._update_run_estimate()
+
+        # When the poll comes back too fast, this creates a lot of traffic.
+        # Need to tame down a little
+        ui.report_task_progress(self.runner_id,
+                                self.run_estimate,
+                                current_time - self.start_time,
+                                task.time_estimate,
+                                task_elapsed_time,
+                                task.progress,
+                                task)
+        pass
+
       # Update the estimate time with actual elapsed time.
       if task.progress >= 100:
         task.time_estimate = in_seconds(task_elapsed_time)

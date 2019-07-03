@@ -2,6 +2,9 @@ import os, subprocess, string
 from wce_triage.lib.util import *
 from wce_triage.lib.hwinfo import *
 
+import logging
+tlog = logging.getLogger('triage')
+
 #
 # Find optical device files
 #
@@ -183,7 +186,7 @@ def detect_optical_drives(hw_info):
   if hw_info:
     storages = hw_info.get_entries('storage')
     if storages is None:
-      print("no storage")
+      tlog.debug("hw_info: no storage")
       return drives
       
     for storage in storages:

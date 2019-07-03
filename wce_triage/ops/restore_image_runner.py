@@ -123,6 +123,9 @@ if __name__ == "__main__":
     sys.exit(1)
     # NOTREACHED
     pass
+
+  logging.basicConfig(level=logging.DEBUG)
+
   src = sys.argv[2]
   src_size = int(sys.argv[3])
   if src_size == 0:

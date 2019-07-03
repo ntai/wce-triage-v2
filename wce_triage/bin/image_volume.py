@@ -1,5 +1,10 @@
 #
-# 
+# Image volume (aka unloading)
+#
+# This is used by runner.
+#
+# The status goes to the stdout. To make things simple, all of status
+# is prefixed and each status is a single line.
 #
 import os, sys, subprocess, urllib, datetime
 

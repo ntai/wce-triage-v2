@@ -32,6 +32,11 @@ routes = aiohttp.web.RouteTableDef()
 import socketio
 wock = socketio.AsyncServer(async_mode='aiohttp', logger=True, cors_allowed_origins='*')
 
+#
+import logging
+tlog = logging.getLogger('triage')
+
+
 @routes.get('/version.json')
 async def route_version(request):
   """Get the version number of backend"""
@@ -84,7 +89,7 @@ class Emitter:
     while running:
       try:
         elem = Emitter.queue.get(block=False)
-        print("EMITTER: sending %d  %s" % (elem[0], elem[1]))
+        tlog.debug("EMITTER: sending %d  %s" % (elem[0], elem[1]))
         await wock.emit(elem[1], elem[2])
 
         global me
@@ -101,8 +106,8 @@ class Emitter:
     pass
 
 
-  def send(event, data):
-    print("EMITTER: queueing %d  %s" % (Emitter.item_count, event))
+  def _send(event, data):
+    tlog.debug("EMITTER: queueing %d  %s" % (Emitter.item_count, event))
     Emitter.queue.put((Emitter.item_count, event, data))
     Emitter.item_count += 1
     pass
@@ -145,7 +150,7 @@ class TriageWeb(object):
     pass
 
   def note(self, message):
-    Emitter.send('message', {"message": message})
+    Emitter._send('message', {"message": message})
     pass
 
 
@@ -308,6 +313,19 @@ class TriageWeb(object):
     return aiohttp.web.json_response({ "pages": 1 })
 
 
+  def check_restore_process(self):
+    if self.restore:
+      self.restore.poll()
+      if self.restore.returncode:
+        returncode = self.restore.returncode
+        self.restore = None
+        if returncode is not 0:
+          self.note("Restore failed with error code %d" % returncode)
+          pass
+        pass
+      pass
+    pass
+
   def restore_progress_report(self, pipe):
     reader = self.pipe_readers.get(pipe)
     if reader is None:
@@ -319,32 +337,24 @@ class TriageWeb(object):
     if line == b'':
       asyncio.get_event_loop().remove_reader(pipe)
       del self.pipe_readers[pipe]
-      if self.restore:
-        self.restore.poll()
-        if self.restore.returncode:
-          returncode = self.restore.returncode
-          self.restore = None
-          if returncode is not 0:
-            Emitter.send('message', "Restore failed.")
-            pass
-          pass
-        pass
       pass
     elif line is not None:
-      print(line)
+      tlog.debug("FromRestore: '%s'" % line)
       if self.restore and pipe == self.restore.stdout:
         # This is a message from loader
         try:
           packet = json.loads(line)
-          Emitter.send(packet['event'], packet['message'])
+          Emitter._send(packet['event'], packet['message'])
         except Exception as exc:
-          print("BAD LINE " + str(exc) + "\n" + line)
+          tlog.info("FromRestore: BAD LINE '%s'" % line)
           pass
         pass
       else:
-        Emitter.send('message', line)
+        self.note(line)
         pass
       pass
+
+    self.check_restore_process()
     pass
 
 
@@ -418,15 +428,15 @@ class TriageWeb(object):
 async def connect(wockid, environ):
   global me
   me.channels[wockid] = environ
-  print("************** connect ************* " +  wockid)
-  me.note("Connected")
+  tlog.debug("WOCK: %s connected" % wockid)
+  me.note("Hello from Triage service.")
   await Emitter.flush()
   pass
 
 
 @wock.event()
 async def message(wockid, data):
-  print('message data: ' + data)
+  tlog.debug("WOCK: %s incoming %s" % (wockid, data))
   pass
 
 @wock.event
@@ -434,10 +444,10 @@ def disconnect(wockid):
   global me
   if me.channels.get(wockid):
     del me.channels[wockid]
-    print('disconnect ' + wockid)
+    tlog.debug("WOCK: %s disconnect" % (wockid))
     pass
   else:
-    print('unknown disconnect ' + wockid)
+    tlog.debug("WOCK: %s disconnect from stranger" % (wockid))
     pass
   pass
 
@@ -453,11 +463,11 @@ arguments = cli.parse_args()
 if __name__ == '__main__':
   logging.basicConfig(level=logging.INFO)
 
-  fileout = logging.FileHandler("/tmp/httpserver.log")
-  for logkind in ['aiohttp.access', 'aiohttp.internal', 'aiohttp.server', 'aiohttp.web', 'asyncio']:
-    thing = logging.getLogger(logkind)
-    # thing.setLevel(logging.DEBUG)
-    thing.addHandler(fileout)
+  fileout = logging.FileHandler("/tmp/triage.log")
+  for logkind in ['triage', 'aiohttp.access', 'aiohttp.internal', 'aiohttp.server', 'aiohttp.web']:
+    lgr = logging.getLogger(logkind)
+    lgr.setLevel(logging.DEBUG)
+    lgr.addHandler(fileout)
     pass
   
   # Create and configure the HTTP server instance
@@ -466,10 +476,10 @@ if __name__ == '__main__':
                                             arguments.port,
                                             "/index.html")
   loop = asyncio.get_event_loop()
-  loop.set_debug(True)
+  # loop.set_debug(True)
 
   # Accept connection from everywhere
-  print("Starting app.")
+  tlog.info("Starting app.")
   app = aiohttp.web.Application(debug=True, loop=loop)
   wock.attach(app)
   cors = aiohttp_cors.setup(app)
@@ -477,8 +487,8 @@ if __name__ == '__main__':
   me = TriageWeb(app, arguments.rootdir, cors)
 
 
-  print("Starting server, use <Ctrl-C> to stop...")
-  print(u"Open {0} in a web browser.".format(the_root_url))
+  tlog.info("Starting server, use <Ctrl-C> to stop...")
+  tlog.info(u"Open {0} in a web browser.".format(the_root_url))
   Emitter.register(loop)
   aiohttp.web.run_app(app, host="0.0.0.0", port=arguments.port)
   pass

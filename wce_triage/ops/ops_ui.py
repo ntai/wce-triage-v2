@@ -1,4 +1,12 @@
-
+#
+# Operation UI
+#
+# FIXME: The signature change is painful
+# It probably means keyword based arguments is easier.
+# However, that makes it error prone.
+# I think making the argument as namedtuple may solve the
+# strictness and flexibility.
+#
 import abc
 import datetime
 from wce_triage.lib.timeutil import *

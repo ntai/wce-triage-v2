@@ -1,4 +1,6 @@
 import os, subprocess, json
+import logging
+tlog = logging.getLogger('triage')
 
 # lshw is far better!
 def run_lshw():
@@ -8,7 +10,7 @@ def run_lshw():
   if out == b'':
     return None
   if err != b'':
-    print(err)
+    tlog.debug(err)
     pass
   return json.loads(out)
 
