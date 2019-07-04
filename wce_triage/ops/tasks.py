@@ -220,6 +220,7 @@ class op_task_process(op_task):
     return self.time_estimate
 
   def setup(self):
+    tlog.debug( "op_task_process Poepn: " + repr(self.argv))
     self.process = subprocess.Popen(self.argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     self.stdout = self.process.stdout
     self.stderr = self.process.stderr
@@ -561,6 +562,11 @@ class task_fsck(op_task_process):
   def setup(self):
     #
     part1 = self.disk.find_partition(self.partition_id)
+    if part1 == None:
+      error_message = "fsck: disk %s partition %s is not found" % (self.disk.device_name, self.partition_id)
+      tlog.warn(error_message)
+      self.set_progress(999, error_message)
+      pass
     self.argv = ["/sbin/e2fsck", "-f", "-y", part1.device_name]
     super().setup()
     pass

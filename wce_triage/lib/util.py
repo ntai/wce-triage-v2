@@ -172,20 +172,30 @@ def get_disk_images():
   # Dedup the same file name
   images = {}
   for dir in get_disk_image_directories():
-    for file in os.listdir(dir):
-      if file.endswith(".partclone.gz"):
-        images[file] = os.path.join(dir, file)
+    for direntry in os.listdir(dir):
+      longpath = os.path.join(dir, direntry)
+      if direntry.endswith(".partclone.gz"):
+        images[direntry] = (direntry, "", longpath)
+        pass
+      if os.path.isdir(longpath):
+        for direntryinsubdir in os.listdir(longpath):
+          if direntryinsubdir.endswith(".partclone.gz"):
+            images[direntryinsubdir] = (direntryinsubdir, direntry, os.path.join(longpath, direntryinsubdir))
+            pass
+          pass
         pass
       pass
     pass
 
   result = []
-  for file, filepath in images.items():
-    filestat = os.stat(filepath)
+  for filename, image in images.items():
+    fname, subdir, fullpath = image
+    filestat = os.stat(fullpath)
     mtime = datetime.datetime.fromtimestamp(filestat.st_mtime)
     fattr = { "mtime": mtime.strftime('%Y-%m-%d %H:%M'),
-              "name": file,
-              "fullpath": filepath,
+              "restoreType" : subdir,
+              "name": filename,
+              "fullpath": fullpath,
               "size": filestat.st_size }
     result.append(fattr)
     pass
