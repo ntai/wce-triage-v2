@@ -41,6 +41,7 @@ class RestoreDiskRunner(PartitionDiskRunner):
     # partition runner adds a few tasks to create new partition map.
     super().prepare()
 
+    # This is not true for content loading
     detected_videos = wce_triage.components.video.detect_video_cards(None)
 
     # sugar
@@ -68,7 +69,7 @@ class RestoreDiskRunner(PartitionDiskRunner):
     self.tasks.append(task_finalize_disk("Finalize disk", disk=disk, partition_id=partition_id, newhostname=self.newhostname))
 
     # Install GRUB
-    self.tasks.append(task_install_grub('Install GRUB boot manager', disk, detected_videos))
+    self.tasks.append(task_install_grub('Install GRUB boot manager', disk=disk, detected_videos=detected_videos, partition_id=partition_id))
 
     # unmount so I can run fsck and expand partition
     self.tasks.append(task_unmount("Unmount target", disk=disk, partition_id=partition_id))
@@ -88,7 +89,7 @@ def get_source_size(src):
 
 
 
-def run_load_image(ui, devname, imagefile, imagefile_size, newhostname, restore_type):
+def run_load_image(ui, devname, imagefile, imagefile_size, newhostname, restore_type, do_it=True):
   disk = Disk(device_name = devname)
 
   if restore_type == "triage":
@@ -107,13 +108,15 @@ def run_load_image(ui, devname, imagefile, imagefile_size, newhostname, restore_
   runner.prepare()
   runner.preflight()
   runner.explain()
-  runner.run()
+  if do_it:
+    runner.run()
+    pass
   pass
 
 
 if __name__ == "__main__":
   if len(sys.argv) == 1:
-    print( 'Flasher: devname imagesource imagesize hostname [wce|triage]')
+    print( 'Flasher: devname imagesource imagesize hostname [wce|triage|preflight]')
     sys.exit(0)
     # NOTREACHED
     pass 
@@ -124,8 +127,6 @@ if __name__ == "__main__":
     # NOTREACHED
     pass
 
-  logging.basicConfig(level=logging.DEBUG)
-
   src = sys.argv[2]
   src_size = int(sys.argv[3])
   if src_size == 0:
@@ -133,9 +134,18 @@ if __name__ == "__main__":
   hostname = sys.argv[4]
   restore_type = sys.argv[5]
 
-  ui = json_ui()
+  do_it = True
+  if restore_type == "preflight":
+    restore_type = sys.argv[6]
+    ui = console_ui()
+    do_it = False
+    pass
+  else:
+    ui = json_ui()
+    pass
+
   try:
-    run_load_image(ui, devname, src, src_size, hostname, restore_type)
+    run_load_image(ui, devname, src, src_size, hostname, restore_type, do_it=do_it)
     sys.exit(0)
     # NOTREACHED
   except Exception as exc:

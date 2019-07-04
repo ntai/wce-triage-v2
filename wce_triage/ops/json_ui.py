@@ -4,6 +4,7 @@
 import sys, os
 from wce_triage.ops.ops_ui import *
 import json
+from wce_triage.ops.run_state import *
 
 TASK_STATUS = ["waiting", "running", "done", "fail"]
 
@@ -11,7 +12,7 @@ TASK_STATUS = ["waiting", "running", "done", "fail"]
 # 
 #
 def _describe_task(task):
-  if task.is_done:
+  if task.is_done and task.end_time:
     elapsed_time = round(in_seconds(task.end_time - task.start_time), 1)
   else:
     elapsed_time = round(in_seconds(datetime.datetime.now() - task.start_time) if task.start_time else 0, 1)
@@ -24,6 +25,7 @@ def _describe_task(task):
           "details": task.explain(),
           "step" : task.task_number if task.task_number else "",
           "message" : task.message,
+          "explain" : task.explain(),
           "verdict": task.verdict }
 
 
@@ -41,15 +43,17 @@ class json_ui(ops_ui):
   # Called from preflight to just set up the flight plan
   def report_tasks(self, runner_id, run_estimate, tasks):
     self.send("loadimage", { "device" : runner_id, 
+                             "runStatus" : "Prearing",
                              "runEstimate" : round(in_seconds(run_estimate)),
                              "runTime": 0,
                              "steps" : [ _describe_task(task) for task in tasks ] } )
     pass
 
   #
-  def report_task_progress(self, runner_id, run_estimate, run_time, time_estimate, elapsed_time, progress, task):
+  def report_task_progress(self, runner_id, run_estimate, run_time, time_estimate, elapsed_time, progress, task, tasks):
     self.send("loadimage", { "step": task.task_number,
                              "device": runner_id,
+                             "runStatus": "Running step %d of %d tasks" % (task.task_number+1, len(tasks)),
                              "runEstimate": round(run_estimate),
                              "runTime": round(in_seconds(run_time)),
                              "timeEstimate" : round(in_seconds(time_estimate)),
@@ -65,8 +69,14 @@ class json_ui(ops_ui):
                           elapsed_time,
                           progress,
                           task):
+    if task.verdict:
+      verdict = " ".join(task.verdict)
+    else:
+      verdict = task.message
+      pass
     self.send("loadimage", { "step": task.task_number,
                              "device": runner_id,
+                             "runStatus": verdict,
                              "timeEstimate": round(in_seconds(task_estimate)),
                              "elapseTime": round(in_seconds(elapsed_time)),
                              "message": task.message,
@@ -75,21 +85,44 @@ class json_ui(ops_ui):
     pass
 
   def report_task_success(self, runner_id, task_time_estimate, elapsed_time, task):
+    if task.verdict:
+      verdict = " ".join(task.verdict)
+    else:
+      verdict = task.message
+      pass
     self.send("loadimage", { "step": task.task_number,
-                                "device": runner_id,
-                                "message": task.message,
-                                "progress" : 100,
-                                "status": "done",
-                                "elapseTime": round(in_seconds(elapsed_time)) } )
+                             "device": runner_id,
+                             "runStatus": verdict,
+                             "message": task.message,
+                             "progress" : 100,
+                             "status": "done",
+                             "elapseTime": round(in_seconds(elapsed_time)) } )
     pass
 
   def report_run_progress(self,
                           runner_id,
+                          runner_state,
                           step,
                           tasks,
                           run_estimate,
                           run_time):
+
+    status_message = runner_state
+
+    if runner_state == "Success":
+      status_message = "Loading disk image completed successfully."
+    elif runner_state == "Failed":
+      status_message = "Loading disk image failed."
+    elif runner_state != "Running":
+      status_message = "Start loading."
+    elif step < len(tasks):
+      this_task = tasks[step]
+      description = this_task.description
+      status_message = "Running task (%d of %d): %s" % (step+1, len(tasks), description)
+      pass
+
     self.send("loadimage", { "device" : runner_id,
+                             "runStatus": status_message,
                              "runEstimate" : round(in_seconds(run_estimate), 1),
                              "runTime": round(in_seconds(run_time), 1),
                              "steps" : [ _describe_task(task) for task in tasks ] } )

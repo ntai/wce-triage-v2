@@ -10,10 +10,10 @@
 import datetime, re, subprocess, abc, os, select, time, uuid
 import wce_triage.components.pci as _pci
 from wce_triage.components.disk import Disk, Partition
-from wce_triage.lib.util import drain_pipe, drain_pipe_completely
+from wce_triage.lib.util import drain_pipe, drain_pipe_completely, get_triage_logger
 import uuid
-import logging
-tlog = logging.getLogger('triage')
+
+tlog = get_triage_logger()
 
 from .estimate import *
 
@@ -48,6 +48,7 @@ class op_task(object, metaclass=abc.ABCMeta):
   # 2: done - success
   # 3: done - fail
   def _get_status(self):
+
     if self.is_done:
       if self.progress > 100:
         return 3
@@ -73,6 +74,16 @@ class op_task(object, metaclass=abc.ABCMeta):
   def setup(self):
     '''setup is called at the beginning of running.'''
     self.start_time = datetime.datetime.now()
+    pass
+  
+  # setup failed
+  def _setup_failed(self, msg):
+    '''setup failed is called during setup.'''
+    self.progress = 999
+    self.messages = msg
+    self.verdict.append(msg)
+    self.end_time = datetime.datetime.now()
+    self.is_done = True
     pass
   
   # teardown is called just after the run
@@ -126,8 +137,7 @@ class op_task(object, metaclass=abc.ABCMeta):
     pass
 
   def log(self, msg):
-    # This is the only place using runner. I probably switch to use a
-    # callback funtion for logging and/or use Python logging.
+    tlog.info(msg)
     self.runner.log(self, msg)
     pass
 
@@ -545,7 +555,7 @@ class task_fsck(op_task_process):
   def __init__(self, description, disk=None, partition_id=None, **kwargs):
     self.disk = disk
     self.partition_id = partition_id
-    super().__init__(description, argv=["/sbin/e2fsck", "-f", "-y", partition_id], time_estimate=self.disk.get_byte_size()/5000000000+2, **kwargs)
+    super().__init__(description, argv=["/sbin/e2fsck", "-f", "-y", disk.device_name, partition_id], time_estimate=self.disk.get_byte_size()/5000000000+2, **kwargs)
     pass
 
   def setup(self):
@@ -743,11 +753,14 @@ class task_refresh_partitions(op_task_command):
     super().poll()
 
     if self.step >= len(self.disk.partitions):
-      self.set_progress(100, "%s finished" % self.description)
+      self.set_progress(100, "%s finished." % self.description)
+      for part in self.disk.partitions:
+        self.verdict.append("Partition %d %s (%s) - UUID %s." % (part.partition_number, part.partition_type, part.partition_name, part.fs_uuid))
+        pass
       return
 
     part = self.disk.partitions[self.step]
-    self.step = self.step + 1
+    self.step += 1
     part.partition_number = self.step
 
     result = subprocess.run([ '/sbin/blkid', part.device_name ],
@@ -781,7 +794,6 @@ class task_refresh_partitions(op_task_command):
 
     #
     self.log("Partition %d %s (%s) - UUID %s." % (part.partition_number, part.partition_type, part.partition_name, part.fs_uuid))
-    self.set_progress(int(100 / len(self.disk.partitions) * self.step), "fetching")
     pass
 
   def _estimate_progress(self, total_seconds):
@@ -797,7 +809,7 @@ class task_set_partition_uuid(op_task_process_simple):
     self.disk = disk
     self.partition_id = partition_id
     # argv is a placeholder
-    super().__init__(description, encoding='iso-8859-1', time_estimate=1, argv=["tune2fs", "-f", "-U"], **kwargs)
+    super().__init__(description, encoding='iso-8859-1', time_estimate=3, argv=["tune2fs", "-f", "-U", disk.device_name, partition_id], **kwargs)
     pass
   
   def setup(self):
@@ -833,11 +845,11 @@ class task_install_syslinux(op_task_process):
 class task_install_grub(op_task_process):
   script_path_template = "%s/tmp/bless.sh"
 
-  def __init__(self, description, disk, detected_video, partition_id='Linux', **kwargs):
+  def __init__(self, description, disk=None, detected_videos=None, partition_id='Linux', **kwargs):
     # Disk to bless
     self.disk = disk
     self.partition_id = partition_id
-    (self.n_nvidia, self.n_ati, self.n_vga) = detected_video
+    (self.n_nvidia, self.n_ati, self.n_vga) = detected_videos
 
     # FIXME: Time estimate is very different between USB stick and hard disk.
 
@@ -850,11 +862,12 @@ class task_install_grub(op_task_process):
     # 
     self.linuxpart = self.disk.find_partition(self.partition_id)
     if self.linuxpart is None:
-      self.set_progress(999, "No Linux partition found")
+      self._setup_failed("No partition found. Parition id is %s" % str(self.partition_id))
       return
+
     # IOW, the disk should be mounted, or else, I'm in big problem
     if not self.linuxpart.mounted:
-      self.set_progress(999, "Linux partition is not mounted.")
+      self._setup_failed("Linux partition is not mounted.")
       return
 
     # Blesser

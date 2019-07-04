@@ -12,6 +12,7 @@
 import datetime, re, subprocess, traceback
 from wce_triage.ops.run_state import RunState
 from wce_triage.lib.timeutil import *
+from wce_triage.ops.tasks import op_task
 import functools
 
 #
@@ -81,13 +82,16 @@ class Runner:
     self.ui.report_tasks(self.runner_id, self.run_estimate, self.tasks)
     pass
 
-  def report_current_task(self):
+  def report_run_state(self):
     self.current_time = datetime.datetime.now()
     self.run_time = self.current_time - self.start_time
     self._update_run_estimate()
-    self.ui.report_run_progress(self.runner_id, self.task_step, self.tasks, self.run_estimate, self.run_time)
+    self.ui.report_run_progress(self.runner_id, self.get_state_name(), self.task_step, self.tasks, self.run_estimate, self.run_time)
     pass
 
+  def get_state_name(self):
+    return ["Waiting", "Prepare", "Preflight", "Running", "Success", "Failed"][self.state.value]
+      
   #
   def run(self):
     if self.state != RunState.Preflight:
@@ -95,7 +99,7 @@ class Runner:
     self.state = RunState.Running
 
     self.start_time = datetime.datetime.now()
-    self.report_current_task()
+    self.report_run_state()
     
     while self.task_step < len(self.tasks):
       task = self.tasks[self.task_step]
@@ -112,11 +116,12 @@ class Runner:
         pass
 
       self.task_step = self.task_step + 1
-      self.report_current_task()
+      self.report_run_state()
       pass
 
     if self.state == RunState.Running:
       self.state = RunState.Success
+      self.report_run_state()
       pass
 
     pass
@@ -128,7 +133,7 @@ class Runner:
     run_time = current_time - self.start_time
     last_progress_time = current_time
 
-    ui.report_task_progress(self.runner_id, self.run_estimate, run_time, task.time_estimate, 0, 0, task)
+    ui.report_task_progress(self.runner_id, self.run_estimate, run_time, task.time_estimate, 0, 0, task, self.tasks)
 
     while task.progress < 100:
       task.poll()
@@ -147,18 +152,18 @@ class Runner:
                                 task.time_estimate,
                                 task_elapsed_time,
                                 task.progress,
-                                task)
+                                task, self.tasks)
         pass
 
       # Update the estimate time with actual elapsed time.
       if task.progress >= 100:
+        task.teardown()
         task.time_estimate = in_seconds(task_elapsed_time)
         pass
 
       if task.progress > 100:
         # something went wrong.
         self.state = RunState.Failed
-        task.teardown()
         ui.report_task_failure(self.runner_id,
                                task.time_estimate,
                                task_elapsed_time,
@@ -168,13 +173,15 @@ class Runner:
 
       if task.progress == 100:
         # done
-        task.teardown()
         ui.report_task_success(self.runner_id, task.time_estimate, task_elapsed_time, task)
         pass
       pass
     pass
 
   def log(self, task, msg):
+    if not isinstance(task, op_task):
+      raise Exception("task given in not a instance of op_task " + str(task))
+    
     self.ui.task_log(self.runner_id, task, msg)
     pass
 

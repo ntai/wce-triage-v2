@@ -15,9 +15,7 @@ from collections import deque
 import urllib.parse
 import os
 
-import logging
-tlog = logging.getLogger('triage')
-
+tlog = get_triage_logger()
 
 from collections import namedtuple
 PipeInfo = namedtuple('PipeInfo', 'app, process, pipetag, pipe')
@@ -44,12 +42,18 @@ class Printer:
     pass
   
   def print_progress(self, msg):
+    msg = msg.strip()
+    if len(msg) == 0:
+      return
     tlog.debug(self.prefix + msg)
     print(self.prefix + msg)
     sys.stdout.flush()
     pass
 
   def print_error(self, msg):
+    msg = msg.strip()
+    if len(msg) == 0:
+      return
     tlog.debug(self.error_prefix + msg)
     sys.stdout.write('\n'.join([ self.error_prefix + line for line in msg.split('\n') ]))
     sys.stdout.flush()
@@ -136,22 +140,22 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
 
           line = reader.readline()
           if line == b'':
-            # printer.print_progress(name, "%s.%s closed." % (proc_name, pipe_name))
-            # this fd closed.
             gatherer.unregister(fd)
             del fd_map[fd]
             pipe_readers[pipe_name] = None
             pass
           elif line is not None:
-            printer.print_progress(pipe_name + ":" + line)
+            line = line.strip()
+            if line:
+              # This is the real progress.
+              printer.print_progress(pipe_name + ":" + line)
+              pass
             pass
           # Skip checking the closed fd until nothing to read
           continue
       
         # 
         if event & (select.POLLHUP | select.POLLNVAL | select.POLLERR):
-          # printer.print_progress("%s: %s.%s closed." % (name, proc_name, pipe_name))
-          # this fd closed.
           pipe.close()
           gatherer.unregister(fd)
           del fd_map[fd]

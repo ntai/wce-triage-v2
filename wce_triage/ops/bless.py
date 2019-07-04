@@ -28,7 +28,7 @@ class BlessDiskRunner(runner.Runner):
     self.tasks.append(tasks.task_refresh_partitions("Refresh partition information", disk))
     self.tasks.append(tasks.task_mount("Mount disk %s" % disk.device_name, disk, partition_id=partition_id))
     mock_video = (0, 0, 1)
-    self.tasks.append(tasks.task_install_grub('Install GRUB boot manager', disk, mock_video, partition_id=partition_id))
+    self.tasks.append(tasks.task_install_grub('Install GRUB boot manager', disk=disk, detected_videos=mock_video, partition_id=partition_id))
     self.tasks.append(tasks.task_finalize_disk('Finalize disk', disk, partition_id=partition_id))
     unmounter = tasks.task_unmount("Unmount disk %s" % disk.device_name, disk, partition_id=partition_id)
     unmounter.set_teardown_task()

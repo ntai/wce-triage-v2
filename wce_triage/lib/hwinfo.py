@@ -1,6 +1,7 @@
 import os, subprocess, json
-import logging
-tlog = logging.getLogger('triage')
+
+from wce_triage.lib.util import *
+tlog = get_triage_logger()
 
 # lshw is far better!
 def run_lshw():

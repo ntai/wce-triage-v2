@@ -46,9 +46,10 @@ class pickle_ui(ops_ui):
     pass
 
   #
-  def report_task_progress(self, runner_id, run_estimate, run_time, time_estimate, elapsed_time, progress, task):
+  def report_task_progress(self, runner_id, run_estimate, run_time, time_estimate, elapsed_time, progress, task, tasks):
     self.send("loadimage", { "step": task.task_number,
                              "device": runner_id,
+                             "runStatus": "Step %d of %d tasks" % (task.task_number+1, len(tasks)),
                              "runEstimate": run_estimate,
                              "runTime": round(in_seconds(run_time)),
                              "timeEstimate" : round(in_seconds(time_estimate)),
@@ -84,6 +85,7 @@ class pickle_ui(ops_ui):
 
   def report_run_progress(self,
                           runner_id,
+                          runner_state,
                           step,
                           tasks,
                           run_estimate,

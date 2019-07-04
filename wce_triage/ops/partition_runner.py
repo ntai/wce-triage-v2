@@ -136,9 +136,9 @@ class PartitionDiskRunner(Runner):
         self.tasks.append(mkfs)
         pass
       elif part.parttype in [Partition.BIOSBOOT, Partition.MBR]:
-        zeropart = task_zero_partition("Clear partition on %s" % partdevname,
-                                       partition=partition)
-        self.tasks.append(zeropart)
+        # This is a very bad idea.
+        #zeropart = task_zero_partition("Clear partition on %s" % partdevname, partition=partition)
+        #self.tasks.append(zeropart)
         pass
       pass
     pass

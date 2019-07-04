@@ -26,7 +26,7 @@ class ops_ui(object):
     pass
 
   @abc.abstractmethod
-  def report_task_progress(self, runner_id, run_estimate, run_time, task_estimate, task_elapsed_time, progress, task):
+  def report_task_progress(self, runner_id, run_estimate, run_time, task_estimate, task_elapsed_time, progress, task, tasks):
     '''report_task_progress is called at semi-regular interval to 
        report the current progress. 
        progress: 0-100
@@ -53,6 +53,7 @@ class ops_ui(object):
   @abc.abstractmethod
   def report_run_progress(self,
                           runner_id, 
+                          runner_state,
                           step,
                           tasks,
                           run_estimate,
@@ -87,7 +88,7 @@ class console_ui(ops_ui):
     pass
 
   #
-  def report_task_progress(self, runner_id, run_estimate, run_time, time_estimate, elapsed_time, progress, task):
+  def report_task_progress(self, runner_id, run_estimate, run_time, time_estimate, elapsed_time, progress, task, tasks):
     current_time = datetime.datetime.now()
     dt = in_seconds( current_time - self.last_report_time )
     if dt < 0:
@@ -115,14 +116,15 @@ class console_ui(ops_ui):
 
   def report_run_progress(self, 
                           runner_id,
+                          runner_state,
                           step,
                           tasks,
                           run_estimate,
                           run_time):
-    print("%s %3d: (%d/%d) estimate %d seconds." % (runner_id,
-                                                    in_seconds(run_time),
-                                                    step, len(tasks),
-                                                    in_seconds(run_estimate)))
+    print("%s %s %3d: (%d/%d) estimate %d seconds." % (runner_id, runner_state,
+                                                       in_seconds(run_time),
+                                                       step, len(tasks),
+                                                       in_seconds(run_estimate)))
     pass
 
 
@@ -145,7 +147,7 @@ class virtual_ui(ops_ui):
     pass
 
   #
-  def report_task_progress(self, runner_id, run_estimate, run_time, time_estimate, elapsed_time, progress, task):
+  def report_task_progress(self, runner_id, run_estimate, run_time, time_estimate, elapsed_time, progress, task, tasks):
     pass
 
   def report_task_failure(self,
@@ -167,6 +169,7 @@ class virtual_ui(ops_ui):
 
   def report_run_progress(self, 
                           runner_id,
+                          runner_state,
                           step,
                           tasks,
                           run_estimate,

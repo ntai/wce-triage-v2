@@ -10,8 +10,8 @@ from wce_triage.ops.tasks import *
 from wce_triage.lib.timeutil import *
 import functools
 from .estimate import *
-import logging
-tlog = logging.getLogger('triage')
+from wce_triage.lib.util import *
+tlog = get_triage_logger()
 
 #
 # Running partclone base class
@@ -87,12 +87,12 @@ class task_partclone(op_task_process):
           self.set_progress(self._estimate_progress_from_time_estimate(dt.total_seconds()), "elapsed: %s remaining: %s" % (elapsed, remaining))
           pass
         else:
-          m = output_re.match(line)
+          m = self.output_re.match(line)
           if m:
             self.message = m.group(1)
             pass
 
-          m = error_re.match(line)
+          m = self.error_re.match(line)
           if m:
             self.verdict.append(m.group(2))
             pass
@@ -154,7 +154,7 @@ class task_restore_disk_image(task_partclone):
     pass
 
   def explain(self):
-    return "Restore disk image from %s to %s using WCE Triage's restore_volume" % (self.source, self.disk.device_name)
+    return "Restore disk image from %s to %s %s" % (self.source, self.disk.device_name, str(self.partition_id))
 
   # ignore parsing partclone progress. for restore, it is 100$ wrong.
   def parse_partclone_progress(self):
@@ -173,9 +173,7 @@ class task_restore_disk_image(task_partclone):
       self.out = self.out[newline+1:]
       current_time = datetime.datetime.now()
 
-      tlog.debug("Restore progress: %s" % line)
-      print("Restore progress: %s" % line)
-
+      tlog.debug("partclone: %s" % line)
       # Look for the EXT parition cloning start marker
       while len(self.start_re) > 0:
         m = self.start_re[0].search(line)
@@ -185,6 +183,28 @@ class task_restore_disk_image(task_partclone):
         if len(self.start_re) == 0:
           self.set_progress(5, "Start imaging")
           self.imaging_start_seconds = in_seconds(current_time - self.start_time)
+          pass
+        pass
+
+      # passed the start marker
+      if len(self.start_re) == 0:
+        m = self.progress_re.search(line)
+        if m:
+          self.log(line.strip())
+          pass
+        else:
+          m = self.output_re.match(line)
+          if m:
+            msg = m.group(1).strip()
+            if msg:
+              self.log(msg)
+              pass
+            pass
+
+          m = self.error_re.match(line)
+          if m:
+            self.verdict.append(m.group(2).strip())
+            pass
           pass
         pass
       pass

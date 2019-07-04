@@ -196,6 +196,18 @@ def is_block_device(path):
   path_stat = os.stat(path)
   return stat.S_ISBLK(path_stat.st_mode)
 
+import logging
+logfileout = None
+
+def get_triage_logger():
+  global logfileout
+
+  tlog = logging.getLogger('triage')
+  if logfileout is None:
+    logfileout = logging.FileHandler("/tmp/triage.log")
+    tlog.addHandler(logfileout)
+    pass
+  return tlog
 
 #
 if __name__ == "__main__":

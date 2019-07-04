@@ -20,8 +20,7 @@ from wce_triage.lib.util import *
 from wce_triage.lib.hwinfo import *
 from wce_triage.components.disk import Disk, Partition
 
-import logging
-tlog = logging.getLogger('triage')
+tlog = get_triage_logger()
 
 
 class Computer:

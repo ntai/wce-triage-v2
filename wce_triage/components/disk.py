@@ -1,8 +1,9 @@
 import re, sys, os, subprocess, traceback
 import logging
-tlog = logging.getLogger('triage')
 
 from wce_triage.lib.util import *
+tlog = get_triage_logger()
+
 
 disk1_re = re.compile(r"Disk /dev/[^:]+:\s+\d+\.\d*\s+[KMG]B, (\d+) bytes")
 disk2_re = re.compile(r"\d+ heads, \d+ sectors/track, \d+ cylinders, total (\d+) sectors")

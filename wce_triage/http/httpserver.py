@@ -6,6 +6,8 @@ WCE Triage HTTP server -
 and webscoket server
 
 """
+TRIAGE_VERSION="0.1.10"
+
 import aiohttp
 import aiohttp.web
 import aiohttp_cors
@@ -21,11 +23,13 @@ from wce_triage.components.computer import Computer
 from wce_triage.ops.restore_image_runner import RestoreDiskRunner
 from wce_triage.ops.create_image_runner import ImageDiskRunner
 from wce_triage.components.disk import Disk, Partition
-import wce_triage.lib.util
+from wce_triage.lib.util import *
 from wce_triage.lib.timeutil import *
 from wce_triage.ops.ops_ui import ops_ui
 from wce_triage.ops.partition_runner import make_usb_stick_partition_plan, make_efi_partition_plan
 from wce_triage.lib.pipereader import *
+
+tlog = get_triage_logger()
 
 routes = aiohttp.web.RouteTableDef()
 
@@ -33,9 +37,6 @@ import socketio
 wock = socketio.AsyncServer(async_mode='aiohttp', logger=True, cors_allowed_origins='*')
 
 #
-import logging
-tlog = logging.getLogger('triage')
-
 
 @routes.get('/version.json')
 async def route_version(request):
@@ -139,7 +140,7 @@ class TriageWeb(object):
       pass
 
     self.computer = None
-    self.messages = ['WCE Triage Version 0.0.1']
+    self.messages = []
     self.triage_timestamp = None
 
     self.loading_status = { "pages": 1, "steps": [] }
@@ -268,7 +269,7 @@ class TriageWeb(object):
   @routes.get("/dispatch/disk-images.json")
   async def route_disk_images(request):
     """Handles getting the list of disk images"""
-    return aiohttp.web.json_response({ "sources": wce_triage.lib.util.get_disk_images() })
+    return aiohttp.web.json_response({ "sources": get_disk_images() })
 
 
   # Restore types
@@ -289,6 +290,7 @@ class TriageWeb(object):
   async def route_load_image(request):
     """Load disk image to disk"""
     global me
+    preflight = request.query.get("preflight")
     devname = request.query.get("deviceName")
     imagefile = request.query.get("source")
     imagefile_size = request.query.get("size") # This comes back in bytes from sending sources with size. value in query is always string.
@@ -299,7 +301,7 @@ class TriageWeb(object):
       newhostname = {'triage': 'wcetriage2', 'wce': 'wce' + uuid.uuid4().hex[:8]}.get(restore_type, 'host' + uuid.uuid4().hex[:8])
       pass
     
-    await wock.emit("loadimage", { "device": devname, "totalEstimate" : 0, "steps" : [] })
+    await wock.emit("loadimage", { "device": devname, "runStatus": "", "totalEstimate" : 0, "steps" : [] })
     if not imagefile:
       me.note("No image file selected.")
       await Emitter.flush()
@@ -310,7 +312,7 @@ class TriageWeb(object):
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     asyncio.get_event_loop().add_reader(me.restore.stdout, functools.partial(me.restore_progress_report, me.restore.stdout))
     asyncio.get_event_loop().add_reader(me.restore.stderr, functools.partial(me.restore_progress_report, me.restore.stderr))
-    return aiohttp.web.json_response({ "pages": 1 })
+    return aiohttp.web.json_response({})
 
 
   def check_restore_process(self):
@@ -356,6 +358,15 @@ class TriageWeb(object):
 
     self.check_restore_process()
     pass
+
+
+  @routes.post("/dispatch/stop-load")
+  async def route_stop_load_image(request):
+    global me
+    if me.restore and me.restore.returncode is None:
+      me.restore.kill()
+      pass
+    return aiohttp.web.json_response({})
 
 
   @routes.get("/dispatch/disk-load-status.json")
@@ -429,7 +440,7 @@ async def connect(wockid, environ):
   global me
   me.channels[wockid] = environ
   tlog.debug("WOCK: %s connected" % wockid)
-  me.note("Hello from Triage service.")
+  me.note("Hello from Triage service Version " + TRIAGE_VERSION)
   await Emitter.flush()
   pass
 
@@ -463,12 +474,7 @@ arguments = cli.parse_args()
 if __name__ == '__main__':
   logging.basicConfig(level=logging.INFO)
 
-  fileout = logging.FileHandler("/tmp/triage.log")
-  for logkind in ['triage', 'aiohttp.access', 'aiohttp.internal', 'aiohttp.server', 'aiohttp.web']:
-    lgr = logging.getLogger(logkind)
-    lgr.setLevel(logging.DEBUG)
-    lgr.addHandler(fileout)
-    pass
+  tlog.setLevel(logging.DEBUG)
   
   # Create and configure the HTTP server instance
   the_root_url = u"{0}://{1}:{2}{3}".format("HTTP",
