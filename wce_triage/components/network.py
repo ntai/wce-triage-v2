@@ -6,27 +6,33 @@ import os, sys
 sys.path.append(os.path.split(os.getcwd())[0])
 from wce_triage.components.pci import *
 from wce_triage.lib.util import *
-from wce_triage.lib.hwinfo import *
+# from wce_triage.lib.hwinfo import *
+from enum import Enum
 
-
-class NetworkDevice(object):
+class NetworkDeviceType(Enum):
+  Unknown = 0
   Ethernet = 1
   Wifi = 2
   Bluetooth = 3
   Other = 4
+  pass
+
+
+
+class NetworkDevice(object):
   
   def __init__(self, device_name=None, device_type=None):
-    self.device_type = device_type
+    self.device_type = NetworkDeviceType.Unknown
     self.device_name = device_name
     self.device_node = os.path.join('/sys/class/net', device_name)
     self.connected = None
 
-    if self.device_type is None:
+    if self.device_type in [None, NetworkDeviceType.Unknown]:
       wifipath = os.path.join(self.device_node, 'wireless')
       if os.path.exists(wifipath):
-        self.device_type = self.Wifi
+        self.device_type = NetworkDeviceType.Wifi
       else:
-        self.device_type = self.Ethernet
+        self.device_type = NetworkDeviceType.Ethernet
         pass
       pass
     pass
@@ -48,10 +54,15 @@ class NetworkDevice(object):
 
   # Syntax sugar for triage needs
   def is_wifi(self):
-    return self.device_type == self.Wifi
+    return self.device_type == NetworkDeviceType.Wifi
 
   def is_ethernet(self):
-    return self.device_type == self.Ethernet
+    return self.device_type == NetworkDeviceType.Ethernet
+
+
+  def get_device_type_name(self):
+    return [ "Unknown", "Ethernet", "WIFI", "Bluetooth", "Other"][self.device_type.value]
+
   pass
 
 
@@ -63,12 +74,12 @@ def detect_net_devices(hw_info):
 
   if hw_info:
     for netdev in hw_info.get_entries('network'):
-      devtype = NetworkDevice.Other
+      devtype = NetworkDeviceType.Other
       capabilities = netdev.get("capabilities")
       if capabilities.get("ethernet"):
-        devtype = NetworkDevice.Ethernet
+        devtype = NetworkDeviceType.Ethernet
         if capabilities.get("wireless"):
-          devtype = NetworkDevice.Wifi
+          devtype = NetworkDeviceType.Wifi
           pass
         pass
       else:

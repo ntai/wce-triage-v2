@@ -4,8 +4,11 @@ from wce_triage.lib.util import *
 tlog = get_triage_logger()
 
 # lshw is far better!
+# Turns out, this tries to access optical and when there is a bad media
+# in the bay, it takes too long.
+#
 def run_lshw():
-  lshw = subprocess.Popen(['sudo', '-H', '-S', 'lshw', '-json'], stderr=subprocess.PIPE, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+  lshw = subprocess.Popen(['sudo', '-H', '-S', 'lshw', '-quiet', '-json', '-class', 'system', '-class', ''], stderr=subprocess.PIPE, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
   password = get_test_password()
   (out, err) = lshw.communicate(password)
   if out == b'':

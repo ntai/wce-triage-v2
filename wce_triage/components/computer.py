@@ -17,7 +17,7 @@ re_error_status = re.compile(r'\sError Status: (\w+)')
 
 
 from wce_triage.lib.util import *
-from wce_triage.lib.hwinfo import *
+#from wce_triage.lib.hwinfo import *
 from wce_triage.components.disk import Disk, Partition
 
 tlog = get_triage_logger()
@@ -94,7 +94,8 @@ class Computer:
   # 
 
   def gather_info(self):
-    self.hw_info = hw_info()
+    #self.hw_info = hw_info()
+    self.hw_info = None
 
     self.cpu = _cpu.detect_cpu_type(self.hw_info)
     self.memory = _memory.detect_memory(self.hw_info)
@@ -123,26 +124,38 @@ class Computer:
     #
     cpu = self.cpu
     cpu_detail = "P%d %s %s %dMHz %d cores" % (cpu.cpu_class, cpu.vendor, cpu.model, cpu.speed, cpu.cores)
-    self.decisions.append(("CPU", cpu.cpu_class >= 5, cpu_detail))
+    self.decisions.append( {"component": "CPU",
+                            "result":  cpu.cpu_class >= 5,
+                            "message": cpu_detail,
+                            "details": cpu_detail } )
 
     # Memory
     ramtype = self.memory.ramtype if self.memory.ramtype is not None else "Unknown"
-    self.decisions.append(("Memory", self.memory.total > 2000,  "RAM Type: %s  Size: %dMbytes" % (ramtype, self.memory.total)))
+    mem_info = "RAM Type: %s  Size: %dMbytes" % (ramtype, self.memory.total)
+    self.decisions.append( {"component": "Memory",
+                            "message": mem_info,
+                            "result": self.memory.total > 2000,
+                            "details": mem_info})
 
     if len(self.memory.slots) > 0:
       slots = ""
       for slot in self.memory.slots:
         slots = slots + " %s: %d MB%s" % (slot.slot, slot.size, " Installed" if slot.status else "")
         pass
-      self.decisions.append(("Memory", True, slots))
+      self.decisions.append({"component": "Memory",
+                             "result": True,
+                             "message": slots,
+                             "details": slots})
       pass
         
     if len(self.disks) == 0:
-      self.decisions.append( ("Disk", False, "Hard Drive: NOT DETECTED -- INSTALL A DISK"))
+      self.decisions.append( {"component": "Disk", "result": False, "message": "Hard Drive: NOT DETECTED -- INSTALL A DISK"})
     else:
-      msg = "Hard Drive:\n"
-      good_disk = False
       for disk in self.disks:
+        if disk.mounted:
+          continue
+        msg = ""
+        good_disk = False
         tlog.debug("%s = %d" % (disk.device_name, disk.get_byte_size()))
         disk_gb = disk.get_byte_size() / 1000000000
         disk_msg = "     Device %s: size = %dGbytes  %s" % (disk.device_name, disk_gb, disk.model_name)
@@ -153,22 +166,32 @@ class Computer:
         else:
           disk_msg += " - TOO SMALL"
           pass
-        msg = msg + disk_msg + "\n"
+        msg = msg + disk_msg 
+
+        self.decisions.append( {"component": "Disk",
+                                "result": good_disk,
+                                "device": disk.device_name,
+                                "message": msg,
+                                "details": msg })
         pass
-      self.decisions.append( ( "Disk", good_disk, msg ) )
       pass
 
     optical_drives = _optical_drive.detect_optical_drives(self.hw_info)
     if len(optical_drives) == 0:
-      self.decisions.append( ("Optical drive", False, "***** NO OPTICALS: INSTALL OPTICAL DRIVE *****"))
+      self.decisions.append( { "component": "Optical drive",
+                               "result": False,
+                               "message": "***** NO OPTICALS: INSTALL OPTICAL DRIVE *****" })
     else:
-      msg = "Optical drive:\n"
+      msg = ""
       index = 1
       for optical in optical_drives:
-        msg = msg + "    %d: %s %s %s" % (index, optical.vendor, optical.model_name, optical.get_feature_string(", "))
+        msg = msg + " %d: %s %s %s" % (index, optical.vendor, optical.model_name, optical.get_feature_string(", "))
+        self.decisions.append( {"component": "Optical drive",
+                                "result": False,
+                                "device": optical.device_name,
+                                "message": msg,
+                                "details": msg })
         index = index + 1
-        pass
-      self.decisions.append( ("Optical drive", True, msg))
       pass
 
     blacklist = _pci.detect_blacklist_devices()
@@ -178,40 +201,30 @@ class Computer:
     if len(blacklist.videos) > 0:
       msg = "Remove or disable following video(s) because known to not work\n"
       for video in blacklist.videos:
-        msg = msg + "    " + video + "\n"
+        msg = msg + "  " + video + "\n"
         pass
-      self.decisions.append( ("Video", False, msg))
+      self.decisions.append( {"component": "Video", "result": False, "message": msg})
       pass
 
-    msg = ""
-    if videos.nvidia > 0:
-      msg = msg + "Video:     nVidia video card = %d\n" % videos.nvidia
-      pass
-    if videos.ati > 0:
-      msg = msg + "Video:     ATI video card = %d\n" % videos.ati
-      pass
-    if videos.vga > 0:
-      msg = msg + "Video:     Video card = %d\n" % videos.vga
-      pass
-
+    #
     if (videos.nvidia + videos.ati + videos.vga) >= 0:
       if videos.nvidia > 0:
-        self.decisions.append( ("Video", True, "nVidia video card present") )
+        self.decisions.append( {"component": "Video", "result": True, "message": "nVidia video card present" } )
         pass
       if videos.ati > 0:
-        self.decisions.append( ("Video", True, "ATI video card present") )
+        self.decisions.append( {"component": "Video", "result": True, "message": "ATI video card present" } )
         pass
       if videos.vga > 0:
-        self.decisions.append( ("Video", True, "VGA video card present") )
+        self.decisions.append( {"component": "Video", "result": True, "message": "VGA video card present" } )
         pass
       pass
 
     if len(blacklist.nics) > 0:
       msg = "Remove or disable following cards because known to not work\n"
       for card in blacklist.nics:
-        msg = msg + "    " + card + "\n"
+        msg = msg + "  " + card + "\n"
         pass
-      self.decisions.append( ("Network", False, msg))
+      self.decisions.append( {"component": "Network", "result": False, "message": msg } )
       pass
 
     if len(self.networks) > 0:
@@ -223,24 +236,34 @@ class Computer:
         else:
           msg = "Network device '{dev}' detected{conn}".format(dev=netdev.device_name, conn=connected)
           pass
-        self.decisions.append( ("Network", netdev.is_network_connected(), msg))
+        self.decisions.append( {"component": "Network",
+                                "device": netdev.device_name,
+                                "device_type": netdev.get_device_type_name(),
+                                "result": netdev.is_network_connected(),
+                                "message": msg } )
         pass
       pass
     else:
       msg = "Network device is not present -- INSTALL NETWORK DEVICE"
-      self.decisions.append( ("Network", False, msg))
+      self.decisions.append( { "component": "Network",
+                               "result": False,
+                               "message": msg })
       pass
 
     if not self.sound_dev:
-      self.decisions.append( ("Sound", False, "Sound card: NOT DETECTED -- INSTALL SOUND CARD"))
+      self.decisions.append( {"component": "Sound",
+                              "result": False,
+                              "message": "Sound card: NOT DETECTED -- INSTALL SOUND CARD"})
       pass
     else:
-      self.decisions.append( ("Sound", True, "Sound device is present. Hit [Play] button to test the sound."))
+      self.decisions.append( {"component": "Sound",
+                              "result": False,
+                              "message": "Sound card detected -- Hit [play] button"})
       pass
 
     self.decision = True
     for decision in self.decisions:
-      if not decision[1]:
+      if not decision.get("result"):
         self.decision = False
         break
       pass

@@ -1,5 +1,5 @@
 
-from wce_triage.components.network import NetworkDevice
+from wce_triage.components.network import *
 import sys, os
 
 indentspace = '  '
@@ -40,9 +40,9 @@ def create_netplan_cfg(filename, devices):
   WIFIPASSWORD = os.environ.get('TRIAGE_PASSWORD', 'thepasswordiswcetriage')
 
   for dev in devices:
-    if dev.device_type == NetworkDevice.Ethernet:
+    if dev.device_type == NetworkDeviceType.Ethernet:
       ethernets.append( { dev.device_name: [ { 'dhcp4': 'yes' }, { 'optional': 'yes' } ] } )
-    elif dev.device_type == NetworkDevice.Wifi:
+    elif dev.device_type == NetworkDeviceType.Wifi:
       # netplan works with wpa-supplicant, generates a simple config file
       # in the same directory and hands off the auth.
       if len(WIFIPASSWORD) > 0:

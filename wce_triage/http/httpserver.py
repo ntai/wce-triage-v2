@@ -6,7 +6,7 @@ WCE Triage HTTP server -
 and webscoket server
 
 """
-TRIAGE_VERSION="0.1.12"
+TRIAGE_VERSION="0.1.14"
 
 import aiohttp
 import aiohttp.web
@@ -201,11 +201,9 @@ class TriageWeb(object):
     await me.triage()
     computer = me.computer
 
-    decisions = [ { "component": "Overall", "result": "Good" if me.overall_decision else "Bad" } ] + [ {"component": thing, "result": "Good" if good else "Bad", "details": dtl} for thing, good, dtl in computer.decisions ]
-    # decision comes back as tuple, make it to the props for jsonify
+    decisions = [ { "component": "Overall", "result": me.overall_decision } ] + computer.decisions
     jsonified = { "components":  decisions }
     return aiohttp.web.json_response(jsonified)
-
 
   @routes.get("/dispatch/disks.json")
   async def route_disks(request):
@@ -266,12 +264,12 @@ class TriageWeb(object):
     raise HTTPNotFound()
 
 
-  @routes.get("/dispatch/opticaldrive")
+  @routes.get("/dispatch/opticaldrivetest")
   async def route_opticaldrive(request):
     """Test optical drive"""
     global me
 
-    optical_drives = _optical_drive.detect_optical_drives(self.hw_info)
+    optical_drives = _optical_drive.detect_optical_drives(None)
     if len(optical_drives) == 0:
       raise HTTPNotFound()
     # Since reading optical is slow, the answer goes back over websocket.
@@ -320,7 +318,7 @@ class TriageWeb(object):
       del self.pipe_readers[pipe]
       pass
     elif line is not None:
-      # tlog.debug("FromOptest: '%s'" % line)
+      tlog.debug("FromOptest: '%s'" % line)
       try:
         packet = json.loads(line)
         Emitter._send(packet['event'], packet['message'])
