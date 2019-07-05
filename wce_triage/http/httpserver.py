@@ -6,7 +6,7 @@ WCE Triage HTTP server -
 and webscoket server
 
 """
-TRIAGE_VERSION="0.1.11"
+TRIAGE_VERSION="0.1.12"
 
 import aiohttp
 import aiohttp.web
