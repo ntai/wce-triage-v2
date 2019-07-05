@@ -14,7 +14,7 @@ if python_version < need_python_version:
 
 setuptools.setup(
   name="wce_triage",
-  version="0.1.9",
+  version="0.1.11",
   author="Naoyuki Tai",
   author_email="ntai@cleanwinner.com",
   description="WCE Triage",

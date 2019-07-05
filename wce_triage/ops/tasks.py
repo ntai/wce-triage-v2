@@ -611,7 +611,7 @@ class task_shrink_partition(op_task_process):
     self.partition_id = partition_id
     super().__init__(description,
                      time_estimate=self.disk.get_byte_size() / 1000000000, # FIXME: bogus estimate
-                     argv=["resize2fs", "-M", disk.device_name+partition_id], **kwargs)
+                     argv=["resize2fs", "-M", disk.device_name, partition_id], **kwargs)
     pass
 
   def setup(self):
