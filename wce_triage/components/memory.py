@@ -181,16 +181,9 @@ class dmi_type_handler_17(dmi_type_handler):
 #
 def get_ram_info():
   
-  dmidecode = subprocess.Popen(['sudo', '-S', 'dmidecode', '-t', 'memory'], stderr=subprocess.PIPE, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-  password = os.environ.get('WCE_TEST_PASSWORD')
-  if password is None:
-    password = "wce123\n"
-    pass
-  else:
-    password = password + "\n"
-    pass
-  
-  (out, err) = dmidecode.communicate(password.encode())
+  dmidecode = subprocess.Popen(['sudo', '-H', '-S', 'dmidecode', '-t', 'memory'], stderr=subprocess.PIPE, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+  password = get_test_password()
+  (out, err) = dmidecode.communicate(password)
 
   rams = []
   parse_state = 0

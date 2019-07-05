@@ -219,6 +219,19 @@ def get_triage_logger():
     pass
   return tlog
 
+
+# Get the test password that you can feed to sudo
+# IOW, the output is not string, but bytes
+def get_test_password():
+  password = os.environ.get('WCE_TEST_PASSWORD')
+  if password is None:
+    password = "wce123\n"
+    pass
+  else:
+    password = password + "\n"
+    pass
+  return password.encode('iso-8859-1')
+
 #
 if __name__ == "__main__":
   for diskimage in get_disk_images():

@@ -28,6 +28,7 @@ from wce_triage.lib.timeutil import *
 from wce_triage.ops.ops_ui import ops_ui
 from wce_triage.ops.partition_runner import make_usb_stick_partition_plan, make_efi_partition_plan
 from wce_triage.lib.pipereader import *
+from wce_triage.components import optical_drive as _optical_drive
 
 tlog = get_triage_logger()
 
@@ -148,6 +149,10 @@ class TriageWeb(object):
     self.channels = {}
 
     self.pipe_readers = {}
+
+    self.restore = None
+    self.imaging = None
+    self.optests = []
     pass
 
   def note(self, message):
@@ -168,6 +173,12 @@ class TriageWeb(object):
 
   # triage being async is somewhat pedantic but it runs a couple of processes
   # so it's slow enough.
+  # 
+  # FIXME: Running process is not coroutine! I am learning that, things that can be
+  # coroutine is not coroutine at all, like time.sleep, subprocess.*.
+  # Waiting on process is blocking.
+  # I think what's needed is to run a triage (which isn't too slow) in a loop from
+  # service and pick off the result.
   async def triage(self):
     current_time = datetime.datetime.now()
     if self.triage_timestamp and in_seconds(current_time - self.triage_timestamp) > 5:
@@ -253,6 +264,73 @@ class TriageWeb(object):
       resp.content_type="audio/mpeg"
       return resp
     raise HTTPNotFound()
+
+
+  @routes.get("/dispatch/opticaldrive")
+  async def route_opticaldrive(request):
+    """Test optical drive"""
+    global me
+
+    optical_drives = _optical_drive.detect_optical_drives(self.hw_info)
+    if len(optical_drives) == 0:
+      raise HTTPNotFound()
+    # Since reading optical is slow, the answer goes back over websocket.
+    for optical in optical_drives:
+      await wock.emit("opticaldrive", { "device": optical.device_name })
+
+      # restore image runs its own course, and output will be monitored by a call back
+      optical_test = subprocess.Popen( ['python3', '-m', 'wce_triage.bin.test_optical', optical.device_name],
+                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+      asyncio.get_event_loop().add_reader(optical_test.stdout, functools.partial(me.watch_optest, optical_test.stdout))
+      asyncio.get_event_loop().add_reader(optical_test.stderr, functools.partial(me.watch_optest, optical_test.stderr))
+      me.optests.append(optical_test)
+      pass
+    return aiohttp.web.json_response({})
+
+
+  def check_optest_process(self):
+    if self.optests:
+      optests = self.optests[:]
+      for optest in optests:
+        # FIXME:
+        # I think I need to check the process active in better way.
+        optest.poll()
+        if optest.returncode:
+          self.optests.remove(optest)
+          returncode = optest.returncode
+          if returncode is not 0:
+            self.note("Optical drive test failed with error code %d" % returncode)
+            pass
+          pass
+        pass
+      pass
+    pass
+
+
+  def watch_optest(self, pipe):
+    reader = self.pipe_readers.get(pipe)
+    if reader is None:
+      reader = PipeReader(pipe)
+      self.pipe_readers[pipe] = reader
+      pass
+
+    line = reader.readline()
+    if line == b'':
+      asyncio.get_event_loop().remove_reader(pipe)
+      del self.pipe_readers[pipe]
+      pass
+    elif line is not None:
+      # tlog.debug("FromOptest: '%s'" % line)
+      try:
+        packet = json.loads(line)
+        Emitter._send(packet['event'], packet['message'])
+      except Exception as exc:
+        tlog.info("FromOptest: '%s'" % line)
+        pass
+      pass
+
+    self.check_optest_process()
+    pass
 
 
   @routes.get("/dispatch/network-device-status.json")

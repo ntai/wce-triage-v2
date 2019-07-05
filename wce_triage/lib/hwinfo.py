@@ -6,8 +6,8 @@ tlog = get_triage_logger()
 # lshw is far better!
 def run_lshw():
   lshw = subprocess.Popen(['sudo', '-H', '-S', 'lshw', '-json'], stderr=subprocess.PIPE, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-  password = os.environ.get('WCE_TEST_PASSWORD', 'wce123')
-  (out, err) = lshw.communicate(password.encode('iso-8859-1'))
+  password = get_test_password()
+  (out, err) = lshw.communicate(password)
   if out == b'':
     return None
   if err != b'':
