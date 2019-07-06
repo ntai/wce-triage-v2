@@ -6,7 +6,7 @@ WCE Triage HTTP server -
 and webscoket server
 
 """
-TRIAGE_VERSION="0.1.15"
+TRIAGE_VERSION="0.1.16"
 
 import aiohttp
 import aiohttp.web
@@ -208,8 +208,9 @@ class TriageWeb(object):
     """Handles getting the list of disks"""
 
     global me
-    if me.computer is None:
-      raise HTTPServiceUnavailable()
+    while me.computer is None:
+      await me.triage()
+      pass
 
     computer = me.computer
     computer.detect_disks()
@@ -250,8 +251,9 @@ class TriageWeb(object):
     # For now, return the first mp3 file. Triage usually has only one
     # mp3 file for space reason.
     global me
-    if me.computer is None:
-      raise HTTPServiceUnavailable()
+    while me.computer is None:
+      await me.triage()
+      pass
 
     music_file = None
     for asset in os.listdir(TriageWeb.asset_path):
