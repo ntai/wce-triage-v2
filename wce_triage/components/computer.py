@@ -77,12 +77,15 @@ class Computer:
     
     for disk_name in possible_disks:
       # Let's skip the mounted disk
-      if disk_name in self.mounted_devices and (not list_mounted_disks):
+      is_mounted = disk_name in self.mounted_devices
+      if is_mounted and (not list_mounted_disks):
         # Mounted disk %s is not included in the candidate." % disk_name
         continue
 
       # Now, I do double check that this is really a disk
-      disk = Disk(disk_name)
+
+
+      disk = Disk(disk_name, mounted=is_mounted)
       if disk.detect_disk():
         self.disks.append(disk)
         pass
@@ -182,10 +185,9 @@ class Computer:
                                "result": False,
                                "message": "***** NO OPTICALS: INSTALL OPTICAL DRIVE *****" })
     else:
-      msg = ""
       index = 1
       for optical in optical_drives:
-        msg = msg + " %d: %s %s %s" % (index, optical.vendor, optical.model_name, optical.get_feature_string(", "))
+        msg = " %d: %s %s %s" % (index, optical.vendor, optical.model_name, optical.get_feature_string(", "))
         self.decisions.append( {"component": "Optical drive",
                                 "result": False,
                                 "device": optical.device_name,
@@ -268,6 +270,40 @@ class Computer:
         break
       pass
     return
+
+  # This may be too invasive...
+  def update_decision( self, keys, updates ):
+    for decision in self.decisions:
+      matched_decision = decision
+
+      for key, value in keys.items():
+        if decision.get(key) != value:
+          matched_decision = None
+          break
+        pass
+      
+      if matched_decision:
+        break
+      pass
+
+    if matched_decision:
+      tlog.debug( "Updating %s with %s" % (matched_decision["component"], str(updates)))
+      for key, value in updates.items():
+        matched_decision[key] = value
+        pass
+      pass
+    else:
+      tlog.debug( "Not updating %s with %s. THIS IS PROBABLY A BUG." % (str(keys), str(updates)))
+      pass
+
+    self.decision = True
+    for decision in self.decisions:
+      if not decision.get("result"):
+        self.decision = False
+        break
+      pass
+    pass
+  
   # End of computer class
   pass
 

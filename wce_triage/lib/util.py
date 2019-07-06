@@ -213,10 +213,6 @@ def get_triage_logger():
   global logfileout
 
   tlog = logging.getLogger('triage')
-  if logfileout is None:
-    logfileout = logging.FileHandler("/tmp/triage.log")
-    tlog.addHandler(logfileout)
-    pass
   return tlog
 
 

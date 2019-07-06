@@ -55,13 +55,13 @@ class Partition:
 # disk class represents a disk
 #
 class Disk:
-  def __init__(self, device_name=None):
+  def __init__(self, device_name=None, mounted=False):
     self.verdict = False  # True if this is valid disk
     self.device_name = device_name
     self.partitions = []
     self.byte_size = None
     self.sectors = None
-    self.mounted = False
+    self.mounted = mounted
     self.partclone_image = "/ubuntu.partclone.gz"
     self.is_disk = None
     self.is_ata_or_scsi = None
