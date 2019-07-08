@@ -97,7 +97,10 @@ def run_load_image(ui, devname, imagefile, imagefile_size, newhostname, restore_
     partition_id=1
     partition_map='msdos'
   else:
-    pplan = make_efi_partition_plan(disk)
+    # ext4 1.42 didn't have metadata_csum. mkfs needs extra options to disable the feature
+    # denote it as "wce-16", therefore, translate "wce-16" to "ext4 version 1.42".
+    # Newer ones have no need for the mkfs opts
+    pplan = make_efi_partition_plan(disk, ext4_version = ("1.42" if restore_type == 'wce-16' else None))
     partition_id='Linux'
     partition_map='gpt'
     pass
@@ -116,7 +119,7 @@ def run_load_image(ui, devname, imagefile, imagefile_size, newhostname, restore_
 
 if __name__ == "__main__":
   if len(sys.argv) == 1:
-    print( 'Flasher: devname imagesource imagesize hostname [wce|triage|preflight]')
+    print( 'Flasher: devname imagesource imagesize hostname [wce|wce-16|triage|preflight]')
     sys.exit(0)
     # NOTREACHED
     pass 

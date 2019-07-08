@@ -13,10 +13,13 @@ from wce_triage.lib.util import *
 from wce_triage.lib.timeutil import *
 from wce_triage.bin.process_driver import *
 
+tlog = get_triage_logger()
+
 import json
 
 def reply_result(result):
-  jata = json.dumps( { "event": "opticaldrive", "message": result } )
+  jata = json.dumps( { "event": "triageupdate", "message": result } )
+  tlog.debug(jata)
   print(jata)
   sys.stdout.flush()
   pass
@@ -46,8 +49,11 @@ def unmount(password, mountpoint):
   pass
 
 def test_optical(password, source, encoding='iso-8859-1'):
+  tlog.debug("optical test started for " + source)
   if not is_block_device(source):
-    reply_result({"result": False,
+    reply_result({"component": "Optical drive",
+                  "result": False,
+                  "device": source,
                   "message": "Device %s is not a block device." % source})
     return 1
 
@@ -55,7 +61,9 @@ def test_optical(password, source, encoding='iso-8859-1'):
   try:
     os.makedirs(mountpoint, exist_ok=True)
   except Exception as exc:
-    reply_result({"result": False,
+    reply_result({"component": "Optical drive",
+                  "result": False,
+                  "device": source,
                   "message": "Failed creating mount point %s" % mountpoint})
     return 1
 
@@ -74,7 +82,8 @@ def test_optical(password, source, encoding='iso-8859-1'):
   except Exception as exc:
     error_message = traceback.format_exc()
     end_time = datetime.datetime.now()
-    reply_result({"result": False,
+    reply_result({"component": "Optical drive",
+                  "result": False,
                   "message" : "The device %s failed to mount." % source,
                   "verdict" : [error_message, out.decode('iso-8859-1'), err.decode('iso-8859-1')],
                   "device": source,
@@ -92,7 +101,8 @@ def test_optical(password, source, encoding='iso-8859-1'):
 
   if mount and mount.returncode and mount.returncode != 0:
     all_the_messages.append(error_message)
-    reply_result({"result": False,
+    reply_result({"component": "Optical drive",
+                  "result": False,
                   "message" : "The device %s failed to mount." % source,
                   "verdict" : all_the_messages,
                   "device": source,
@@ -116,7 +126,8 @@ def test_optical(password, source, encoding='iso-8859-1'):
     pass
 
   result = { "device": source, "elapseTime": deltatime(start_time, end_time) }
-  reply_result({"result": okay,
+  reply_result({"component": "Optical drive",
+                "result": okay,
                 "message" : "The device %s passed the test." % source,
                 "verdict": all_the_messages,
                 "device": source,

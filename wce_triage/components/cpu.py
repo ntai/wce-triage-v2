@@ -1,5 +1,7 @@
 import os
 
+from wce_triage.components.component import *
+
 from collections import namedtuple
 CPUInfo = namedtuple('CPUInfo', 'cpu_class, cores, processors, vendor, model, bogomips, speed')
 
@@ -10,8 +12,8 @@ def parse_cpu_info_tag_value(line):
     return (elems[0].strip(), elems[1].strip())
   return (None, None)
 
-def detect_cpu_type(hw_info):
-  '''Detect cpu type. Ignoring hw_info.'''
+def detect_cpu_type():
+  '''Detect cpu type.'''
   
   max_processor = 0
   cpu_vendor = "other"
@@ -25,6 +27,7 @@ def detect_cpu_type(hw_info):
   cpu_sse = False
   cpu_3dnow = False
   cpu_mmx = False
+  cpu_sse4_2 = False
   
   cpu_info = open("/proc/cpuinfo")
   for line in cpu_info.readlines():
@@ -68,6 +71,9 @@ def detect_cpu_type(hw_info):
         elif flag == "mmx":
           cpu_mmx = True
           pass
+        elif flag == ["sse4_2" in "sse4a"]:
+          cpu_sse4_2 = True
+          pass
         pass
       pass
     elif tag == 'bogomips':
@@ -78,6 +84,8 @@ def detect_cpu_type(hw_info):
   cpu_info.close()
   
   cpu_class = 1
+  if cpu_cores >= 2 and cpu_sse4_2:
+    cpu_class = 6
   if cpu_cores >= 2:
     cpu_class = 5
   elif cpu_sse2 or (cpu_3dnow and cpu_sse):
@@ -100,4 +108,28 @@ def detect_cpu_type(hw_info):
   
   return CPUInfo(**{ "cpu_class": cpu_class, "cores": cpu_cores, "processors": max_processor + 1, "vendor": cpu_vendor, "model": model_name, "bogomips": bogomips, "speed": cpu_speed })
 
+
+class CPU(Component):
+  def __init__(self):
+    self.cpu_info = detect_cpu_type()
+    pass
+
+  def get_component_type(self):
+    return "CPU"
+
+  def decision(self):
+    cpu = self.cpu_info
+    cpu_detail = "P%d %s %s %dMHz %d cores" % (cpu.cpu_class, cpu.vendor, cpu.model, cpu.speed, cpu.cores)
+    return [{"component": self.get_component_type(),
+             "result":  self.cpu_info.cpu_class >= 5,
+             "message": cpu_detail}]
+    pass
+  pass
+
+#
+if __name__ == "__main__":
+  cpu = CPU()
+  print(cpu.decision())
+  pass
+  
 

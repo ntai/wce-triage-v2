@@ -3,6 +3,8 @@
 #
 
 from wce_triage.components.pci import *
+from wce_triage.components.component import *
+import wce_triage.components.pci as _pci
 
 from collections import namedtuple
 Videos = namedtuple('Videos', 'nvidia, ati, vga')
@@ -10,7 +12,7 @@ Videos = namedtuple('Videos', 'nvidia, ati, vga')
 #
 #
 #
-def detect_video_cards(hw_info):
+def detect_video_cards():
   n_nvidia = 0
   n_ati = 0
   n_vga = 0
@@ -32,9 +34,49 @@ def detect_video_cards(hw_info):
     pass
   return Videos(nvidia=n_nvidia, ati=n_ati, vga=n_vga)
 
+
+class Video(Component):
+  def __init__(self):
+    self.video = detect_video_cards()
+    pass
+
+  def get_component_type(self):
+    return "Video"
+
+  def decision(self):
+    decisions = []
+    
+    blacklist = _pci.detect_blacklist_devices()
+    #
+    if len(blacklist.videos) > 0:
+      msg = "Remove or disable following video(s) because known to not work\n"
+      for video in blacklist.videos:
+        msg = msg + "  " + video + "\n"
+        pass
+      decisions.append({"component": "Video", "result": False, "message": msg})
+      pass
+
+    #
+    videos = detect_video_cards()
+    if (videos.nvidia + videos.ati + videos.vga) >= 0:
+      if videos.nvidia > 0:
+        decisions.append( {"component": "Video", "result": True, "message": "nVidia video card present" } )
+        pass
+      if videos.ati > 0:
+        decisions.append( {"component": "Video", "result": True, "message": "ATI video card present" } )
+        pass
+      if videos.vga > 0:
+        decisions.append( {"component": "Video", "result": True, "message": "VGA video card present" } )
+        pass
+      pass
+    return decisions
+  pass
+
+
 #
 if __name__ == "__main__":
-  print(detect_video_cards())
+  video = Video()
+  print(video.decision())
   pass
   
 

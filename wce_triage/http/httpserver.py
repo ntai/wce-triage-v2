@@ -6,7 +6,8 @@ WCE Triage HTTP server -
 and webscoket server
 
 """
-TRIAGE_VERSION="0.1.16"
+
+from wce_triage.version import *
 
 import aiohttp
 import aiohttp.web
@@ -21,13 +22,10 @@ import logging, logging.handlers
 import functools
 
 from wce_triage.components.computer import Computer
-from wce_triage.ops.restore_image_runner import RestoreDiskRunner
-from wce_triage.ops.create_image_runner import ImageDiskRunner
-from wce_triage.components.disk import Disk, Partition
+from wce_triage.components.disk import Disk, Partition, DiskPortal
 from wce_triage.lib.util import *
 from wce_triage.lib.timeutil import *
 from wce_triage.ops.ops_ui import ops_ui
-from wce_triage.ops.partition_runner import make_usb_stick_partition_plan, make_efi_partition_plan
 from wce_triage.lib.pipereader import *
 from wce_triage.components import optical_drive as _optical_drive
 from wce_triage.components import sound as _sound
@@ -65,6 +63,23 @@ async def route_version(request):
   fversion = "0.0.1"
   jsonified = { "version": [ {"backend": version },  {"frontend": fversion } ] }
   return aiohttp.web.json_response(jsonified)
+
+#
+#
+#
+def jsoned_disk(disk):
+  return {"target": 0,
+          "deviceName": disk.device_name,
+          "runTime": 0,
+          "runEstimate": 0,
+          "mounted": disk.mounted,
+          "size": round(disk.get_byte_size() / 1000000),
+          "bus": "usb" if disk.is_usb else "ata",
+          "model": disk.vendor + " " + disk.model_name }
+
+def jsoned_optical(optical):
+  return {"deviceName": optical.device_name,
+          "model": optical.vendor + " " + optical.model_name }
 
 #
 #
@@ -112,6 +127,12 @@ class Emitter:
     Emitter.queue.put((Emitter.item_count, event, data))
     Emitter.item_count += 1
     pass
+
+  # This is to send message
+  def note(message):
+    Emitter._send('message', {"message": message})
+    pass
+
   pass
 
 
@@ -124,7 +145,7 @@ class Emitter:
 class TriageWeb(object):
   asset_path = "/usr/local/share/wce/triage/assets"
 
-  def __init__(self, app, rootdir, cors):
+  def __init__(self, app, rootdir, cors, loop):
     """
     HTTP request handler for triage
     """
@@ -154,10 +175,40 @@ class TriageWeb(object):
     self.optests = []
 
     self.wock = wock
+
+    self.disk_portal = DiskPortal()
+
+    asyncio.ensure_future(TriageWeb._periodic_update(), loop=loop)
     pass
 
-  def note(self, message):
-    Emitter._send('message', {"message": message})
+  #
+  async def _periodic_update():
+    global me
+    while True:
+      await asyncio.sleep(0.5)
+      if me.triage_timestamp is None:
+        continue
+
+      computer = me.computer
+      (added, changed, removed) = me.disk_portal.detect_disks()
+      
+      if added or changed or removed:
+        disks = [ jsoned_disk(disk) for disk in me.disk_portal.disks ]
+        Emitter._send('diskupdate', disks)
+        pass
+
+      for component in computer.components:
+        for update_key, update_value in component.detect_changes():
+          updated = computer.update_decision( update_key,
+                                              update_value,
+                                              overall_changed=me.overall_changed)
+          if updated:
+            # join the key and value and send it
+            update_value.update(update_key)
+            Emitter._send('triageupdate', update_value)
+          pass
+        pass
+      pass
     pass
 
 
@@ -190,41 +241,36 @@ class TriageWeb(object):
       pass
     return self.computer
 
-
   @routes.get("/dispatch/triage.json")
   async def route_triage(request):
     """Handles requesting triage result"""
     global me
+    hello = me.computer == None
     await me.triage()
     computer = me.computer
 
     decisions = [ { "component": "Overall", "result": me.overall_decision } ] + computer.decisions
     jsonified = { "components":  decisions }
-    me.note("Hello from Triage service Version " + TRIAGE_VERSION)
+
+    if hello:
+      Emitter.note("Hello from Triage service Version " + TRIAGE_VERSION)
+      pass
+
     return aiohttp.web.json_response(jsonified)
+
+  # Updating the overall decision
+  def overall_changed(self, new_decision):
+    Emitter._send('triageupdate', { "component": "Overall", "result": new_decision })
+    pass
 
   @routes.get("/dispatch/disks.json")
   async def route_disks(request):
     """Handles getting the list of disks"""
-
     global me
-    while me.computer is None:
-      await me.triage()
-      pass
-
-    computer = me.computer
-    computer.detect_disks()
+    me.disk_portal.detect_disks()
     
-    disks = [ {"target": 0,
-               "deviceName": disk.device_name,
-               "runTime": 0,
-               "runEstimate": 0,
-               "mounted": disk.mounted,
-               "size": round(disk.get_byte_size() / 1000000),
-               "bus": "usb" if disk.is_usb else "ata",
-               "model": disk.vendor + " " + disk.model_name }
-              for disk in computer.disks ]
-
+    disks = [ jsoned_disk(disk) for disk in me.disk_portal.disks ]
+    tlog.debug(str(disks))
     jsonified = { "diskPages": 1, "disks": disks }
     return aiohttp.web.json_response(jsonified)
 
@@ -266,28 +312,53 @@ class TriageWeb(object):
       resp = aiohttp.web.FileResponse(music_file)
       resp.content_type="audio/mpeg"
 
-      if _sound.detect_sound_device(None):
+      updated = None
+      if _sound.detect_sound_device():
         computer = me.computer
-        computer.update_decision( {"component": "Sound" },
-                                  {"result": True,
-                                   "message": "Sound is tested." })
+        updated = computer.update_decision( {"component": "Sound" },
+                                            {"result": True,
+                                             "message": "Sound is tested." },
+                                            overall_changed=me.overall_changed)
         pass
       return resp
+    
+    Emitter.note(message)
     raise HTTPNotFound()
 
 
-  @routes.get("/dispatch/opticaldrivetest")
+  @routes.get("/dispatch/opticaldrives.json")
+  async def route_opticaldrives(request):
+    """Handles getting the list of disks"""
+    global me
+    while me.computer is None:
+      await me.triage()
+      pass
+    
+    reply = [ jsoned_optical(optical) for disk in computer.opticals._drives ]
+    jsonified = { "opticaldrives": reply }
+    return aiohttp.web.json_response(jsonified)
+
+  @routes.post("/dispatch/opticaldrivetest")
   async def route_opticaldrive(request):
     """Test optical drive"""
     global me
 
-    optical_drives = _optical_drive.detect_optical_drives(None)
-    if len(optical_drives) == 0:
+    while me.computer is None:
+      await me.triage()
+      pass
+
+    computer = me.computer
+    opticals = computer.opticals
+
+    if opticals.count() == 0:
+      tlog.debug('No optical drives detected.')
       raise HTTPNotFound()
+
     # Since reading optical is slow, the answer goes back over websocket.
-    for optical in optical_drives:
+    for optical in opticals._drives:
       # await me.wock.emit("opticaldrive", { "device": optical.device_name })
       # restore image runs its own course, and output will be monitored by a call back
+      tlog.debug("run wce_triage.bin.test_optical " + optical.device_name)
       optical_test = subprocess.Popen( ['python3', '-m', 'wce_triage.bin.test_optical', optical.device_name],
                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       asyncio.get_event_loop().add_reader(optical_test.stdout, functools.partial(me.watch_optest, optical_test.stdout))
@@ -298,7 +369,6 @@ class TriageWeb(object):
 
 
   def check_optest_process(self):
-    global me
     if self.optests:
       optests = self.optests[:]
       for optest in optests:
@@ -310,10 +380,10 @@ class TriageWeb(object):
           self.optests.remove(optest)
           returncode = process.returncode
           if returncode == 0:
-            self.note("Optical drive test succeeded.")
+            Emitter.note("Optical drive test succeeded.")
             pass
           else:
-            self.note("Optical drive test failed with error code %d" % returncode)
+            Emitter.note("Optical drive test failed with error code %d" % returncode)
             pass
           pass
         pass
@@ -322,8 +392,6 @@ class TriageWeb(object):
 
 
   def watch_optest(self, pipe):
-    global me
-
     reader = self.pipe_readers.get(pipe)
     if reader is None:
       reader = PipeReader(pipe)
@@ -332,6 +400,7 @@ class TriageWeb(object):
 
     line = reader.readline()
     if line == b'':
+      tlog.debug("FromOptest: optical test stream ended.")
       asyncio.get_event_loop().remove_reader(pipe)
       del self.pipe_readers[pipe]
       pass
@@ -342,14 +411,22 @@ class TriageWeb(object):
         message = packet['message']
 
         computer = me.computer
+        updated = None
         if computer:
-          computer.update_decision( {"component": "Optical drive",
-                                     "device": message['device'] },
-                                    { "result": message['result'],
-                                      "message": message['message'],
-                                      "verdict": message['verdict'] } )
+          updated = computer.update_decision( {"component": "Optical drive",
+                                               "device": message['device'] },
+                                              { "result": message['result'],
+                                                "message": message['message'],
+                                                "verdict": message['verdict'] },
+                                              overall_changed=me.overall_changed)
           pass
-        Emitter._send(packet['event'], packet['message'])
+
+        payload = packet['message']
+        if updated:
+          payload['message'] = updated.message
+          pass
+        # packet['event'] == 'triageupdate'
+        Emitter._send('triageupdate', payload)
       except Exception as exc:
         tlog.info("FromOptest: '%s'" % line)
         pass
@@ -369,10 +446,11 @@ class TriageWeb(object):
     netstat = []
     for netdev in detect_net_devices():
       netstat.append( { "device": netdev.device_name, "carrier": netdev.is_network_connected() } )
-      computer.update_decision( {"component": "Network",
-                                 "device": netdev.device_name},
-                                { "result": netdev.is_network_connected(),
-                                  "message": "Network connection detected on device %s" % netdev.device_name })
+      updated = computer.update_decision( {"component": "Network",
+                                           "device": netdev.device_name},
+                                          { "result": netdev.is_network_connected(),
+                                            "message": "Connection detected." if netdev.is_network_connected() else "Not conntected."},
+                                          overall_changed=me.overall_changed)
       pass
     return aiohttp.web.json_response({ "network": netstat })
 
@@ -392,6 +470,8 @@ class TriageWeb(object):
     """Returning supported restore types."""
     return aiohttp.web.json_response({ "restoreTypes": [{ "id": "wce",
                                                           "name" : "WCE content loading"},
+                                                        { "id": "wce-16",
+                                                          "name" : "WCE Ubuntu 16"},
                                                         { "id" : "triage",
                                                           "name" : "Triage USB flash drive" },
                                                         { "id" : "clone",
@@ -414,9 +494,9 @@ class TriageWeb(object):
     
     await me.wock.emit("loadimage", { "device": devname, "runStatus": "", "totalEstimate" : 0, "steps" : [] })
     if not imagefile:
-      me.note("No image file selected.")
+      Emitter.note("No image file selected.")
       await Emitter.flush()
-      return aiohttp.web.json_response({ "pages": 1 })
+      return aiohttp.web.json_response({})
 
     # restore image runs its own course, and output will be monitored by a call back
     me.restore = subprocess.Popen( ['python3', '-m', 'wce_triage.ops.restore_image_runner', devname, imagefile, imagefile_size, newhostname, restore_type],
@@ -433,7 +513,7 @@ class TriageWeb(object):
         returncode = self.restore.returncode
         self.restore = None
         if returncode is not 0:
-          self.note("Restore failed with error code %d" % returncode)
+          Emitter.note("Restore failed with error code %d" % returncode)
           pass
         pass
       pass
@@ -463,7 +543,7 @@ class TriageWeb(object):
           pass
         pass
       else:
-        self.note(line)
+        Emitter.note(line)
         pass
       pass
 
@@ -504,7 +584,8 @@ class TriageWeb(object):
   async def route_mount_disk(request):
     """Mount disk"""
     global me
-    disks=me.triage().detect_disks()
+    me.disk_portal.detect_disks()
+    disks = me.disk_portal.disks
 
     requested = requst.query.get("deviceName")
     for disk in disks:
@@ -517,7 +598,7 @@ class TriageWeb(object):
           subprocess.run(["mount", disk.device_name, mount_point])
           pass
         except Exception as exc:
-          me.note(exc.format_exc())
+          Emitter.note(exc.format_exc())
           await Emitter.flush()
           pass
         pass
@@ -540,13 +621,13 @@ class TriageWeb(object):
     global me
     shutdown_mode = request.query.get("mode", ["ignored"])
     if shutdown_mode == "poweroff":
-      me.note("Power off")
+      Emitter.note("Power off")
       subprocess.run(['poweroff'])
     elif shutdown_mode == "reboot":
-      me.note("Reboot")
+      Emitter.note("Reboot")
       subprocess.run(['reboot'])
     else:
-      me.note("Shutdown command needs a query and ?mode=poweroff or ?mode=reboot is accepted.")
+      Emitter.note("Shutdown command needs a query and ?mode=poweroff or ?mode=reboot is accepted.")
       await Emitter.flush()
       raise HTTPNotFound()
       pass
@@ -609,7 +690,7 @@ if __name__ == '__main__':
   cors = aiohttp_cors.setup(app)
   wock.attach(app)
   global me
-  me = TriageWeb(app, arguments.rootdir, cors)
+  me = TriageWeb(app, arguments.rootdir, cors, loop)
 
   tlog.info("Starting server, use <Ctrl-C> to stop...")
   tlog.info(u"Open {0} in a web browser.".format(the_root_url))

@@ -378,12 +378,13 @@ class task_mkdir(op_task_python_simple):
 #
 #
 class task_mkfs(op_task_process_simple):
-  def __init__(self, description, partition=None, time_estimate=None, **kwargs):
+  def __init__(self, description, partition=None, mkfs_opts=None, time_estimate=None, **kwargs):
     super().__init__(description, encoding='iso-8859-1', time_estimate=time_estimate, **kwargs)
     self.success_returncodes = [0]
-    self.success_msg = "Initializing file system succeeded."
-    self.failure_msg = "Initializing file system failed."
+    self.success_msg = "Creating file system succeeded."
+    self.failure_msg = "Creating file system failed."
     self.part = partition
+    self.mkfs_opts = mkfs_opts
 
     if self.part.file_system == 'fat32':
       #
@@ -392,7 +393,7 @@ class task_mkfs(op_task_process_simple):
         partname = "EFI" if self.part.partition_type == Partition.UEFI else "DOS"
         pass
 
-      self.argv = ["mkfs.vfat", "-n", partname, self.part.device_name]
+      self.argv = ["mkfs.vfat", "-n", partname]
     elif self.part.file_system == 'ext4':
       #
       partname = self.part.partition_name
@@ -404,9 +405,35 @@ class task_mkfs(op_task_process_simple):
       if partuuid is None:
         partuuid = uuid.uuid4()
         pass
-      self.argv = ["mkfs.ext4", "-b", "4096", "-L", partname, "-U", str(partuuid), self.part.device_name]
+      self.argv = ["mkfs.ext4", "-b", "4096", "-L", partname, "-U", str(partuuid)]
     else:
       raise Exception("Unsuppoted partition type")
+
+    if mkfs_opts:
+      self.argv = self.argv + mkfs_opts
+      pass
+
+    # Finally the device name
+    self.argv.append(self.part.device_name)
+    pass
+
+  def _estimate_progress(self, total_seconds):
+    return self._estimate_progress_from_time_estimate(total_seconds)
+  pass
+
+#
+# run mkswap
+#
+class task_mkswap(op_task_process_simple):
+  def __init__(self, description, partition=None, time_estimate=None, **kwargs):
+    super().__init__(description, encoding='iso-8859-1', time_estimate=time_estimate, **kwargs)
+    self.success_returncodes = [0]
+    self.success_msg = "Creating swap paritition succeeded."
+    self.failure_msg = "Creating swap paritition failed."
+    self.part = partition
+
+    # Default is to let mkswap assign a UUID
+    self.argv = ["mkswap", self.part.device_name]
     pass
 
   def _estimate_progress(self, total_seconds):
@@ -1000,7 +1027,7 @@ proc            /proc           proc    nodev,noexec,nosuid 0       0
 UUID=%s /               ext4    errors=remount-ro 0       1
 '''
 
-swap_template = '''# swap was on /dev/sda5 during installation
+swap_template = '''# swap partition. should match with blkid output.
 UUID=%s none            swap    sw              0       0
 '''
 

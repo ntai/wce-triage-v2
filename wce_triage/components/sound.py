@@ -1,6 +1,7 @@
 import os, subprocess
+from wce_triage.components.component import *
 
-def detect_sound_device(hw_info):
+def detect_sound_device():
   detected = False
   try:
     for snd_dev in os.listdir("/dev/snd"):
@@ -14,6 +15,32 @@ def detect_sound_device(hw_info):
   return detected
 
 
-def detect_sound_device_details():
-  pactl = subprocess.run(['pacmd', 'list-sinks'])
+
+class Sound(Component):
   
+  def __init__(self):
+    self.dev = detect_sound_device()
+    pass
+
+  def get_component_type(self):
+    return "Sound"
+
+  def decision(self):
+    if not self.dev:
+      return [{"component": self.get_component_type(),
+              "result": False,
+              "message": "Sound card: NOT DETECTED -- INSTALL SOUND CARD"}]
+      pass
+    else:
+      return [{"component": self.get_component_type(),
+               "result": False,
+               "message": "Sound card detected -- Hit [play] button"}]
+    pass
+  pass
+
+
+#
+if __name__ == "__main__":
+  sound = Sound()
+  print(sound.decision())
+  pass

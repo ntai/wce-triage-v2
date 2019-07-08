@@ -1,6 +1,6 @@
 import re, subprocess, string, os
 from wce_triage.lib.util import *
-from wce_triage.lib.hwinfo import *
+from wce_triage.components.component import *
 
 from collections import namedtuple
 MemoryInfo = namedtuple('MemoryInfo', 'rams, ramtype, total, slots')
@@ -238,41 +238,7 @@ def get_ram_info():
 #
 # Detect the memory nd ram type
 #
-def detect_memory(hw_info):
-  if hw_info:
-    # hw_info.get_entries returns a lot of extras like CPU cache.
-    ram_type = None
-    slots = []
-    rams = []
-    total_memory = 0
-    for memory in hw_info.get_entries('memory'):
-      id = memory.get('id')
-      if 'cache' in id:
-        continue
-      children = memory.get("children")
-      if id == "memory":
-        if children: # this is a slot
-          total_memory = int(int(memory.get('size')) / 2**20)
-
-          for child in children:
-            size = int(int(child.get('size')) / 2**20)
-            ram_type = child.get('description')
-            socket_designation = child.get('slot')
-            slots.append(MemorySlot(slot=socket_designation, size=size, status=size>0, memtype=child.get('description')))
-            if size>0:
-              rams.append(RAM(socket=socket_designation, size=size, status=True))
-              pass
-            pass
-          pass
-        else:
-          total_memory += int(memory.get('size')) / 2**20
-          pass
-        break
-      pass
-        
-    return MemoryInfo(rams=rams, ramtype=ram_type, total=total_memory, slots=slots)
-    pass
-  
+def detect_memory():
   # Try getting memory from dmidecode
   ram_type, rams, slots = get_ram_info()
   total_memory = 0
@@ -293,8 +259,42 @@ def detect_memory(hw_info):
   return MemoryInfo(rams=rams, ramtype=ram_type, total=total_memory, slots=slots)
 
 
+class Memory(Component):
+  def __init__(self):
+    self.memory = None
+    pass
+
+  def get_component_type(self):
+    return "Memory"
+
+  def decision(self):
+    if self.memory == None:
+      self.memory = detect_memory()
+      pass
+    
+    ramtype = self.memory.ramtype if self.memory.ramtype is not None else "Unknown"
+    mem_info = "RAM Type: %s  Size: %dMbytes" % (ramtype, self.memory.total)
+
+    decisions = [{"component": self.get_component_type(),
+                  "message": mem_info,
+                  "result": self.memory.total > 2000}]
+
+    if len(self.memory.slots) > 0:
+      slots = ""
+      for slot in self.memory.slots:
+        slots = slots + " %s: %d MB%s" % (slot.slot, slot.size, " Installed" if slot.status else "")
+        pass
+      decisions.append({"component": "Memory",
+                        "result": True,
+                        "message": slots})
+      pass
+    return decisions
+
+  pass
+
+
 #
 if __name__ == "__main__":
-  print( str(detect_memory(hw_info())))
-  print( str(detect_memory(None)))
+  memory = Memory()
+  print(memory.decision())
   pass

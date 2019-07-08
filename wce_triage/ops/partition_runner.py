@@ -16,9 +16,9 @@ from wce_triage.ops.tasks import *
 from wce_triage.ops.ops_ui import *
 
 class PartPlan:
-  attribs = ['no', 'name', 'filesys', 'start', 'size', 'parttype', 'flags']
+  attribs = ['no', 'name', 'filesys', 'start', 'size', 'parttype', 'flags', 'mkfs_opts']
 
-  def __init__(self, no, name, filesys, start, size, parttype, flags):
+  def __init__(self, no, name, filesys, start, size, parttype, flags, mkfs_opts):
     self.no = no
     self.name = name
     self.filesys = filesys
@@ -26,6 +26,7 @@ class PartPlan:
     self.size = size # Size is in MiB
     self.parttype = parttype
     self.flags = flags
+    self.mkfs_opts = mkfs_opts
     pass
 
   def __get__(self, tag):
@@ -41,16 +42,25 @@ class PartPlan:
 
   pass
 
-def make_efi_partition_plan(disk):
+
+def _ext4_version_to_mkfs_opts(ext4_version):
+  # extfs 1.42 has no metadata_csum
+  return [ '-O', '^metadata_csum'] if ext4_version == "1.42" else None
+  
+
+def make_efi_partition_plan(disk, ext4_version=None):
   diskmbsize = int(disk.get_byte_size() / (1024*1024))
   swapsize = int(diskmbsize * 0.05)
   swapsize = 8192 if swapsize > 8192 else (2048 if swapsize < 2048 else swapsize)
-  # This is for EFI
-  pplan = [PartPlan(0, None,    None,         0,        2, Partition.MBR,  None),
-           PartPlan(1, 'BOOT',  None,         0,       32, Partition.BIOSBOOT, 'boot'),
-           PartPlan(2, 'EFI',   'fat32',      0,      300, Partition.UEFI, None),
-           PartPlan(3, 'SWAP',  'linux-swap', 0, swapsize, Partition.SWAP, None),
-           PartPlan(4, 'Linux', 'ext4',       0,        0, Partition.EXT4, None) ]
+  # This is for EFI - yes, still using bios boot. It's coming.
+
+  mkfs_opts = _ext4_version_to_mkfs_opts(ext4_version)
+
+  pplan = [PartPlan(0, None,    None,         0,        2, Partition.MBR,      None,   None),
+           PartPlan(1, 'BOOT',  None,         0,       32, Partition.BIOSBOOT, 'boot', None),
+           PartPlan(2, 'EFI',   'fat32',      0,      300, Partition.UEFI,     None,   None),
+           PartPlan(3, 'SWAP',  'linux-swap', 0, swapsize, Partition.SWAP,     None,   None),
+           PartPlan(4, 'Linux', 'ext4',       0,        0, Partition.EXT4,     None,   mkfs_opts) ]
   partion_start = 0
   for part in pplan:
     part.start = partion_start
@@ -65,12 +75,13 @@ def make_efi_partition_plan(disk):
   return pplan
 
 
-def make_usb_stick_partition_plan(disk, partition_id=None):
+def make_usb_stick_partition_plan(disk, partition_id=None, ext4_version=None):
   diskmbsize = int(disk.get_byte_size() / (1024*1024))
   # This is for gpt/grub. Set aside the EFI partition so we can 
   # make this usb stick for EFI if needed.
-  pplan = [PartPlan(0, None,         None,         0,        2, Partition.MBR, None),
-           PartPlan(1, partition_id, 'ext4',       0,        0, Partition.EXT4, 'boot') ]
+  mkfs_opts = _ext4_version_to_mkfs_opts(ext4_version)
+  pplan = [PartPlan(0, None,         None,         0,        2, Partition.MBR,   None,  None),
+           PartPlan(1, partition_id, 'ext4',       0,        0, Partition.EXT4, 'boot', mkfs_opts) ]
   partion_start = 0
   for part in pplan:
     part.start = partion_start
@@ -132,13 +143,24 @@ class PartitionDiskRunner(Runner):
         mkfs = task_mkfs(mkfs_desc,
                          partition=partition,
                          progress_finished="mkfs %s on %s completed." % (part.filesys, partition.device_name),
-                         time_estimate=4*part.size/1024 + 3)
+                         time_estimate=4*part.size/1024 + 3,
+                         mkfs_opts=part.mkfs_opts)
         self.tasks.append(mkfs)
+        mkfs=None
         pass
       elif part.parttype in [Partition.BIOSBOOT, Partition.MBR]:
         # This is a very bad idea.
         #zeropart = task_zero_partition("Clear partition on %s" % partdevname, partition=partition)
         #self.tasks.append(zeropart)
+        pass
+      elif part.parttype in [Partition.SWAP]:
+        mkswap_desc = "Create swap partition on %s" % (partition.device_name)
+        mkswap = task_mkswap(mkswap_desc,
+                             partition=partition,
+                             progress_finished="mkswap on %s completed." % (partition.device_name),
+                             time_estimate=3)
+        self.tasks.append(mkswap)
+        mkswap = None
         pass
       pass
     pass

@@ -5,6 +5,7 @@ import wce_triage.bin.restore_volume
 import wce_triage.bin.start_network
 
 import wce_triage.components
+import wce_triage.components.component
 
 import wce_triage.lib.copyfile
 import wce_triage.lib.netplan

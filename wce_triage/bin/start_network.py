@@ -10,11 +10,16 @@ from wce_triage.components.network import *
 from wce_triage.lib.netplan import *
 
 if __name__ == "__main__":
-  devices = detect_net_devices(None)
-  subprocess.call('mkdir -p /run/netplan', shell=True)
-  create_netplan_cfg('/run/netplan/triage.yaml', devices)
-  subprocess.call('netplan generate', shell=True)
-  subprocess.call('netplan apply', shell=True)
+  netman = subprocess.run('systemctl status -n 0 NetworkManager.service', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  # No need to set up the netplan if Network Manager is available.
+  # This means that it's running on a desktop machine with full Ubuntu installation
+  if 'NetworkManager.service could not be found' in netman.stderr.decode('iso-8859-1'):
+    devices = detect_net_devices()
+    subprocess.call('mkdir -p /run/netplan', shell=True)
+    create_netplan_cfg('/run/netplan/triage.yaml', devices)
+    subprocess.call('netplan generate', shell=True)
+    subprocess.call('netplan apply', shell=True)
+    pass
   sys.exit(0)
   pass
 

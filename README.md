@@ -30,7 +30,7 @@ The details are in the latter part of this document.
 
 ### wce-kiosk overview
 The frontend UI uses React.js, and the source is available at https://github.com/ntai/wce-triage-ui. For the details, please see the project document.
-it's developed on Mac by me at the moment, and quite crude. The release build does not require anything extra from internet, and HTTP server in wce-triage can handle the requests.
+it's developed on Mac by me at the moment, and quite crude. The release build does not require anything extra from internet, and HTTP server in wce-triage handles the requests.
 
 # WCE Triage details
 The package provides following features:

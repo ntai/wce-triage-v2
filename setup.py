@@ -1,4 +1,4 @@
-import setuptools, sys
+import setuptools, sys, os
 
 with open("README.md", "r") as fh:
   long_description = fh.read()
@@ -12,16 +12,19 @@ if python_version < need_python_version:
   raise RuntimeError("wce_triage requires Python version %d.%d or higher"
                      % need_python_version)
 
+sys.path.append(os.getcwd())
+from wce_triage.version import *
+
 setuptools.setup(
   name="wce_triage",
-  version="0.1.16",
+  version=TRIAGE_VERSION,
   author="Naoyuki Tai",
   author_email="ntai@cleanwinner.com",
   description="WCE Triage",
   long_description=long_description,
   long_description_content_type="text/markdown",
   url="https://github.com/ntai/wce-triage-v2",
-  packages=['wce_triage.bin', 'wce_triage.components', 'wce_triage.lib', 'wce_triage.http', 'wce_triage.ops'],
+  packages=['wce_triage', 'wce_triage.bin', 'wce_triage.components', 'wce_triage.lib', 'wce_triage.http', 'wce_triage.ops'],
   classifiers=[
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",

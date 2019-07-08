@@ -1,235 +1,150 @@
 import os, subprocess, string
 from wce_triage.lib.util import *
-from wce_triage.lib.hwinfo import *
+from wce_triage.components.component import *
 
 tlog = get_triage_logger()
-
-#
-# Find optical device files
-#
-
-def find_optical_device_files(devpath = None):
-  if devpath is None: 
-    devpath = "/dev/sr"
-    pass
-  result = []
-  for letter in "0123456789":
-    device_file = devpath + letter
-    if os.path.exists(device_file):
-      result.append(device_file)
-    else:
-      break
-    pass
-  return result
-
 
 #
 # Optical drive class
 #
 class OpticalDrive(object):
-  def __init__(self, device_name="unknown", is_cd=True, is_dvd=False, model_name="", vendor="", features=[]):
-    if isinstance(device_name, list):
-      for devname in device_name:
-        if os.path.islink(devname):
-          continue
-        self.device_name = devname
-        break
-      pass
-    else:
-      self.device_name = device_name
-      pass
-
-    self.features = features
-    self.model_name = model_name
-    self.vendor = vendor
-    self.is_cd = is_cd
-    self.is_dvd = is_dvd
-    pass
-
-  def __getattribute__(self, key):
-    if key == 'model':
-      key = 'model_name'
-    elif key == 'device':
-      key = 'device_name'
-    elif key == 'feature_list':
-      return self.get_feature_string()
-    elif key == 'cd':
-      return "y" if self.is_cd else "n"
-    elif key == 'dvd':
-      return "y" if self.is_dvd else "n"
-    return object.__getattribute__(self, key)
-
-  def __setattr__(self, key, value):
-    if key == 'model':
-      key = 'model_name'
-      pass
-    elif key == 'device':
-      key = 'device_name'
-      pass
-    object.__setattr__(self, key, value)
-    pass
-
-
-  # stringify featues
-  def get_feature_string(self, sep = ' '):
-    self.features.sort()
-    cd = []
-    dvd = []
-    rest = []
-    for feature in self.features:
-      if feature[0:2] == "CD":
-        if len(feature[2:]) > 0:
-          cd.append(feature[2:])
-          pass
-        else:
-          cd.append("CD")
-          pass
-        pass
-      elif feature[0:3] == "DVD":
-        if len(feature[3:]) > 0:
-          dvd.append(feature[3:])
-          pass
-        else:
-          dvd.append("DVD")
-          pass
-        pass
-      else:
-        rest.append(feature)
-        pass
-      pass
-    features = []
-    if len(cd) > 0:
-      features.append(" ".join(cd))
-      pass
-    if len(dvd) > 0:
-      features.append(" ".join(dvd))
-      pass
-    return ", ".join(features + rest)
-
-  # detect the device is optical or not
-  def detect(self):
+  def __init__(self, device_name, device_node):
+    self._device_name = device_name
+    self.device_name = '/dev/' + device_name
+    self.device_node = device_node
+    self.vendor = ''
+    self.model_name = ''
+    self._detect()
     self.features = []
-    self.is_cd = False
-    self.is_dvd = False
-    self.vendor = ""
-    self.model_name = ""
+    pass
 
-    out = ""
-    try:
-      cmd = "udevadm info --query=property --name=%s" % self.device_name
-      udevadm = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-      (out, err) = udevadm.communicate()
-      out = safe_string(out)
-      err = safe_string(err)
-    except Exception as exc:
-      self.is_cd = False
-      self.is_dvd = False
-      out = ""
-      err = str(exc)
+  def _detect(self):
+    with open(os.path.join(self.device_node, 'device', 'vendor')) as vendor:
+      self.vendor = vendor.read().strip()
+      pass
+    
+    with open(os.path.join(self.device_node, 'device', 'model')) as model:
+      self.model_name = model.read().strip()
+      pass
+    pass
+    
+
+  # stringify features
+  def get_feature_string(self, sep = ' '):
+    return sep.join(self.features)
+
+  def debug_print(self):
+    fmt = "Device {device}, Features: {feature_list}, Vendor: {vendor}, Model: {model}"
+    print(fmt.format(device=self._device_name, feature_list=self.get_feature_string(), vendor=self.vendor, model=self.model))
+    pass
+  pass
+
+
+feature_map = {'Can read multisession': ('Multisession', lambda x: int(x) == 1),
+               'Can play audio': ('Audio', lambda x: int(x) == 1),
+               'Can read CD-R': ('CDR-R', lambda x: int(x) == 1),
+               'Can write CD-R': ('CDR-W', lambda x: int(x) == 1),
+               'Can write CD-RW': ('CDRW-W', lambda x: int(x) == 1),
+               'Can read DVD': ('DVD-R', lambda x: int(x) == 1),
+               'Can write DVD-R': ('DVDR-W', lambda x: int(x) == 1),
+               'Can write DVD-RAM': ('DVDRAM-W', lambda x: int(x) == 1),
+               'Can read MRW': ('MRW-R', lambda x: int(x) == 1),
+               'Can write MRW': ('MRW-W', lambda x: int(x) == 1),
+               'Can write RAM': ('RAM-W', lambda x: int(x) == 1)}
+
+def detect_optical_drives():
+  drives = []
+  found = {}
+  
+  block_device = '/sys/dev/block'
+
+  for dev_id in os.listdir(block_device):
+    device_node = os.path.join(block_device, dev_id)
+    major = None
+    device_name = None
+    with open(os.path.join(device_node, 'uevent')) as uevent:
+      for line in uevent.readlines():
+        tag_value = line.strip().split('=')
+        # cd drive is major == 11
+        if tag_value[0] == 'MAJOR':
+          major = tag_value[1]
+          pass
+        elif tag_value[0] == 'DEVNAME': # 
+          device_name = tag_value[1]
+          pass
+        pass
       pass
 
-    for line in out.splitlines():
-      elems = line.split('=')
-      if len(elems) != 2:
-        continue
-      tag = elems[0].strip()
-      value = elems[1].strip()
-      if tag == "ID_TYPE":
-        if value.lower() == "cd":
-          self.is_cd = True
+    if major == '11':
+      optical = OpticalDrive(device_name, device_node)
+      drives.append(optical)
+      found[device_name] = optical
+      pass
+    pass
+
+  # Decorate the found device
+  with open('/proc/sys/dev/cdrom/info') as cdrom_info:
+    disc = None
+    for line in cdrom_info.readlines():
+      tag_value = line.strip().split(':')
+      if len(tag_value) == 2:
+        tag = tag_value[0].strip()
+        value = tag_value[1].strip()
+        if tag == 'drive name':
+          disc = found.get(value)
           pass
-        pass
-      elif tag == "ID_CDROM":
-        if value == "1":
-          self.is_cd = True
-          pass
-        pass
-      elif tag[0:9] == "ID_CDROM_":
-        self.is_cd = True
-        if value == "1":
-          feature = tag[9:].replace('_', '-')
-          if feature == "DVD-PLUS-R":
-            self.is_dvd = True
-            self.features.append("DVD+R")
-          elif feature == "DVD-PLUS-RW":
-            self.is_dvd = True
-            self.features.append("DVD+RW")
-          elif feature == "DVD-PLUS-R-DL":
-            self.is_dvd = True
-            self.features.append("DVD+R(DL)")
-          else:
-            if feature[0:3] == 'DVD':
-              self.is_dvd = True
-              pass
-            self.features.append(feature)
+
+        feature = feature_map.get(tag)
+        if disc and feature:
+          attrname = feature[0]
+          value = feature[1](tag_value[1].strip())
+          if value:
+            disc.features.append(attrname)
             pass
           pass
         pass
-      elif tag == "ID_VENDOR":
-        self.vendor = value
-      elif tag == "ID_MODEL":
-        self.model_name = value
-        pass
-      pass
-    return self.is_cd
-
-  def debug_print(self):
-    fmt = "Device {device}, CD: {cd}, DVD: {dvd}, Features: {feature_list}, Vendor: {vendor}, Model: {model}"
-    print(fmt.format(device=self.device, cd=self.cd, dvd=self.dvd, feature_list=self.feature_list, vendor=self.vendor, model=self.model))
-    pass
-  pass
-
-
-def detect_optical_drives(hw_info):
-  drives = []
-  if hw_info:
-    storages = hw_info.get_entries('storage')
-    if storages is None:
-      tlog.debug("hw_info: no storage")
-      return drives
-      
-    for storage in storages:
-      children = storage.get('children')
-      if children is None:
-        continue
-      for child in children:
-        if child.get("class") != "disk":
-          continue
-        capabilities = child.get("capabilities")
-        if capabilities is None:
-          continue
-        # If disk that cannot read cd-r, this is not optical drive.
-        if not capabilities.get('cd-r'):
-          continue
-        disc = child
-        logicalname = child.get("logicalname")
-        drives.append(OpticalDrive(logicalname,
-                                 is_dvd=capabilities.get("dvd") is not None,
-                                 vendor=disc.get("vendor"),
-                                 model_name=disc.get("product"),
-                                 features = [feature.upper() for feature in capabilities.keys() ]))
-        break
-      pass
-    return drives
-  
-  for optical in find_optical_device_files():
-    current_optical = OpticalDrive(optical)
-    if current_optical.detect():
-      drives.append(current_optical)
       pass
     pass
+
   return drives
 
+
+class OpticalDrives(Component):
   
+  def __init__(self):
+    self._drives = detect_optical_drives()
+    pass
+  
+  def get_component_type(self):
+    return "Optical drive"
+  
+  def count(self):
+    return len(self._drives)
+
+  def decision(self):
+    decisions = []
+
+    if len(self._drives) == 0:
+      decisions.append({ "component": self.get_component_type(),
+                          "result": False,
+                          "message": "***** NO OPTICALS: INSTALL OPTICAL DRIVE *****" })
+    else:
+      index = 1
+      for optical in self._drives:
+        msg = " %d: %s %s %s" % (index, optical.vendor, optical.model_name, optical.get_feature_string(sep=", "))
+        decisions.append( {"component": self.get_component_type(),
+                           # it's always false until it's tested.
+                           "result": False,
+                           "device": optical.device_name,
+                           "message": msg,
+                           "verdict": optical.features })
+        index = index + 1
+      pass
+    return decisions
+
+  
+
 if __name__ == "__main__":
-  for opt in detect_optical_drives(hw_info()):
-    opt.debug_print()
-    pass
-
-  for optical in find_optical_device_files():
-    current_optical = OpticalDrive(optical)
-    is_optical = current_optical.detect()
-    current_optical.debug_print()
-    pass
+  optical = OpticalDrives()
+  print(optical.decision())
   pass
-

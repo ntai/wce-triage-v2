@@ -25,6 +25,8 @@ Here is the things need to be solved.
  - Create disk image
    Instead of hardcoding the destination, since there is a UI,
    choose desination possible.
+   Disable auto-mount of usb media
+   - systemctl mask udisks2
 
  - Restore disk image
 

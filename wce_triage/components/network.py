@@ -3,10 +3,11 @@
 #
 import urllib.parse
 import os, sys
-sys.path.append(os.path.split(os.getcwd())[0])
+
 from wce_triage.components.pci import *
+from wce_triage.components.component import *
 from wce_triage.lib.util import *
-# from wce_triage.lib.hwinfo import *
+
 from enum import Enum
 
 class NetworkDeviceType(Enum):
@@ -69,24 +70,8 @@ class NetworkDevice(object):
 #
 # FIXME: do something with iwconfig and rfkill
 #
-def detect_net_devices(hw_info):
+def detect_net_devices():
   net_devices = []
-
-  if hw_info:
-    for netdev in hw_info.get_entries('network'):
-      devtype = NetworkDeviceType.Other
-      capabilities = netdev.get("capabilities")
-      if capabilities.get("ethernet"):
-        devtype = NetworkDeviceType.Ethernet
-        if capabilities.get("wireless"):
-          devtype = NetworkDeviceType.Wifi
-          pass
-        pass
-      else:
-        continue
-      net_devices.append(NetworkDevice(device_name=netdev.get("logicalname"), device_type=devtype))
-      pass
-    return net_devices
 
   ethernet_detected = False
   ip = subprocess.Popen(["ip", "addr", "show", "scope", "link"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -137,9 +122,71 @@ def get_router_ip_address():
   return None
             
 
+class Networks(Component):
+  
+  def __init__(self):
+    self.networks = detect_net_devices()
+    pass
+  
+  def get_component_type(self):
+    return "Network"
+
+  def decision(self):
+    decisions = []
+
+    blacklist = detect_blacklist_devices()
+
+    if len(blacklist.nics) > 0:
+      msg = "Remove or disable following cards because known to not work\n"
+      for card in blacklist.nics:
+        msg = msg + "  " + card + "\n"
+        pass
+      decisions.append( {"component": "Network", "result": False, "message": msg } )
+      pass
+
+
+    if len(self.networks) > 0:
+      for netdev in self.networks:
+        connected = " and connected" if netdev.is_network_connected() else " not connected"
+        if netdev.is_wifi():
+          msg = "WIFI device '{dev}' detected{conn}. ".format(dev=netdev.device_name, conn=connected)
+          pass
+        else:
+          msg = "Network device '{dev}' detected{conn}".format(dev=netdev.device_name, conn=connected)
+          pass
+        decisions.append({"component": self.get_component_type(),
+                          "device": netdev.device_name,
+                          "device_type": netdev.get_device_type_name(),
+                          "result": netdev.is_network_connected(),
+                          "message": msg })
+        pass
+      pass
+    else:
+      msg = "Network device is not present -- INSTALL NETWORK DEVICE"
+      decisions.append({"component": self.get_component_type(),
+                        "result": False,
+                        "message": msg })
+      pass
+    return decisions
+
+  def detect_changes(self):
+    updates = []
+    for netdev in self.networks:
+      old_connected = netdev.connected
+      new_connected = netdev.is_network_connected()
+      if old_connected == new_connected:
+        continue
+      updates.append(({"component": "Network",
+                       "device": netdev.device_name,
+                       "device_type": netdev.get_device_type_name()},
+                      {"result": netdev.is_network_connected()}))
+      pass
+    return updates
+
+  pass
+
 #
 if __name__ == "__main__":
-  for netdev in detect_net_devices(hw_info()):
-    print(netdev.device_name)
-    pass
+  networks = Networks()
+  print(networks.decision())
   pass

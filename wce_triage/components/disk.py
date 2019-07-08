@@ -1,7 +1,9 @@
-import re, sys, os, subprocess, traceback
+import re, sys, os, subprocess, traceback, time
 import logging
 
 from wce_triage.lib.util import *
+from wce_triage.components.component import *
+
 tlog = get_triage_logger()
 
 
@@ -39,6 +41,7 @@ class Partition:
     self.partition_uuid = partition_uuid # Partition UUID, different from fs_uuid
     self.file_system = file_system # This is from parted
     self.fs_uuid = fs_uuid # This is the file system UUID.
+    self.ext4_version = None # Ext4 file system version. 1.42 is for Ubuntu 16. It added metadata_csum after >= 1.43
     self.mounted = mounted
     pass
 
@@ -72,6 +75,8 @@ class Disk:
     self.serial_no = ""
     self.mount_dir = "/mnt/wce_install_target.%d" % os.getpid()
     self.wce_release_file = os.path.join(self.mount_dir, "etc", wce_release_file_name)
+    self.is_detected = False
+    self.disappeared = False
     pass
 
 
@@ -161,6 +166,10 @@ class Disk:
 
   # FIXME: may make sense to move this to a task.
   def detect_disk_type(self):
+    if self.is_detected:
+      return
+    self.is_detected = True
+    #
     # I'm going to be optimistic here since the user can pick a disk
     self.is_disk = False
     self.is_ata_or_scsi = False
@@ -223,19 +232,158 @@ class Disk:
 
   pass # End of disk class
 
+# 
 #
 #
-#
-def quick_test_detect():
-  import computer
-  machine = computer.Computer()
-  machine.detect_disks()
-  for disk in machine.disks:
-    print("device: %s, model: %s, size: %d" % (disk.device_name, disk.model_name, disk.get_byte_size()))
+class DiskPortal(Component):
+
+  def __init__(self, list_mounted_disks=False):
+    self.disks = []
+    self.detect_disks(list_mounted_disks=list_mounted_disks)
     pass
+
+  def get_component_type(self):
+    return "Disk"
+
+  #
+  # Find out the mounted partitions
+  #
+  def detect_mounts(self):
+    self.mounted_devices = {}
+    self.mounted_partitions = {}
+
+    # Known mounted disks. 
+    # These cannot be the target
+    mount_re = re.compile(r"(/dev/[a-z]+)([0-9]*) ([a-z0-9/\.]+) ([a-z0-9]+) (.*)")
+    with open('/proc/mounts') as mount_f:
+      for one_mount in mount_f.readlines():
+        m = mount_re.match(one_mount)
+        if m:
+          device_name = m.group(1)
+          if device_name in self.mounted_devices:
+            self.mounted_devices[device_name] = mounted_devices[device_name] + ", " + m.group(3)
+          else:
+            self.mounted_devices[device_name] = m.group(3)
+            pass
+          partition_name = m.group(1) + m.group(2)
+          self.mounted_partitions[partition_name] = m.group(3)
+          pass
+        pass
+      pass
+    pass
+  
+
+  # list_mounted_disks is true for live-triage
+  # list_mounted_disks is false for loading and imaging disk
+  def detect_disks(self, list_mounted_disks = True):
+    # Know what's mounted already
+    self.detect_mounts()
+
+    disk_entry_re = re.compile(r'\s+(\d+)\s+(\d+)\s+([\w\d]+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)')
+
+    # Marked first to see it's redetected.
+    existing_disks = {}
+    for disk in self.disks:
+      existing_disks[disk.device_name] = disk
+      pass
+
+    added_disks = []
+    updated_disks = []
+    removed_disks = []
+
+    # Find the disks from diskstats
+    with open('/proc/diskstats') as diskstats:
+      for disk_entry in diskstats.readlines():
+        matched = disk_entry_re.match(disk_entry)
+        if matched:
+          dev_type = matched.group(1)
+          dev_node = matched.group(2)
+          dev_name = matched.group(3)
+
+          if dev_type != '8':
+            # This is not a disk
+            continue
+
+          node_number = int(dev_node)
+          if node_number % 16 != 0:
+            # This is not a disk node. Rather, is a partition of disk
+            continue
+
+          # device name in diskstats has no device file path, so make it up.
+          device_name = '/dev/'+dev_name
+          is_mounted = device_name in self.mounted_devices
+          if is_mounted and (not list_mounted_disks):
+            # Mounted disk %s is not included in the candidate." % device_name
+            continue
+
+          disk = existing_disks.get(device_name)
+          if disk is None:
+            disk = Disk(device_name, mounted=is_mounted)
+            if disk.detect_disk():
+              self.disks.append(disk)
+              added_disks.append(disk)
+              pass
+            pass
+          else:
+            # Consume the disk entry
+            existing_disks[device_name] = None
+            if disk.mounted != is_mounted:
+              disk.mounted = is_mounted
+              updated_disks.append(disk)
+              pass
+            pass
+          pass
+        pass
+      pass
+
+    for device_name, disk in existing_disks.items():
+      if disk is not None:
+        removed_disks.append(disk)
+        self.disks.remove(disk)
+        pass
+      pass
+    return (added_disks, updated_disks, removed_disks)
+
+  def count(self):
+    return len(self.disks)
+
+
+  def decision(self):
+    decisions = []
+    if self.count() == 0:
+      decisions.append( {"component": "Disk", "result": False, "message": "Hard Drive: NOT DETECTED -- INSTALL A DISK"})
+    else:
+      for disk in self.disks:
+        if disk.mounted:
+          continue
+        msg = ""
+        good_disk = False
+        tlog.debug("%s = %d" % (disk.device_name, disk.get_byte_size()))
+        disk_gb = disk.get_byte_size() / 1000000000
+        disk_msg = "     Device %s: size = %dGbytes  %s" % (disk.device_name, disk_gb, disk.model_name)
+        if disk_gb >= 60:
+          good_disk = True
+          disk_msg += " - Good"
+          pass
+        else:
+          disk_msg += " - TOO SMALL"
+          pass
+        msg = msg + disk_msg 
+
+        decisions.append( {"component": "Disk",
+                           "result": good_disk,
+                           "device": disk.device_name,
+                           "message": msg})
+        pass
+      pass
+    return decisions
   pass
 
+#
+#
+#
+
 if __name__ == "__main__":
-  sys.path.append(os.path.join(os.getcwd(), ".."))
-  quick_test_detect()
+  portal = DiskPortal(list_mounted_disks=True)
+  print(portal.decision())
   pass

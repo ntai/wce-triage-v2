@@ -72,7 +72,7 @@ cat > /tmp/wce-triage.sh <<EOF
 #
 python3 -m wce_triage.bin.start_network
 cd /usr/local/share/wce/wce-triage-ui
-python3 -m wce_triage.http.httpserver $$*
+python3 -m wce_triage.http.httpserver
 EOF
 
 sudo install -m 0555 /tmp/wce-triage.sh /usr/local/bin
