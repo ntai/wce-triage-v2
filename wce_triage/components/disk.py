@@ -261,7 +261,7 @@ class DiskPortal(Component):
         if m:
           device_name = m.group(1)
           if device_name in self.mounted_devices:
-            self.mounted_devices[device_name] = mounted_devices[device_name] + ", " + m.group(3)
+            self.mounted_devices[device_name] = self.mounted_devices[device_name] + ", " + m.group(3)
           else:
             self.mounted_devices[device_name] = m.group(3)
             pass
@@ -348,13 +348,13 @@ class DiskPortal(Component):
     return len(self.disks)
 
 
-  def decision(self):
+  def decision(self, list_mounted_disks=False):
     decisions = []
     if self.count() == 0:
       decisions.append( {"component": "Disk", "result": False, "message": "Hard Drive: NOT DETECTED -- INSTALL A DISK"})
     else:
       for disk in self.disks:
-        if disk.mounted:
+        if (not list_mounted_disks) and disk.mounted:
           continue
         msg = ""
         good_disk = False
@@ -385,5 +385,5 @@ class DiskPortal(Component):
 
 if __name__ == "__main__":
   portal = DiskPortal(list_mounted_disks=True)
-  print(portal.decision())
+  print(portal.decision(list_mounted_disks=True))
   pass

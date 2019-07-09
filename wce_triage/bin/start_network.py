@@ -6,6 +6,7 @@
 # When the service starts, 
 #
 import os, sys, subprocess
+import wce_triage.bin
 from wce_triage.components.network import * 
 from wce_triage.lib.netplan import *
 

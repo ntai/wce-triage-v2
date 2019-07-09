@@ -21,9 +21,10 @@ def make_random_hostname(stemname="wce"):
 #
 class RestoreDiskRunner(PartitionDiskRunner):
 
-  def __init__(self, ui, runner_id, disk, src, src_size, partition_id='Linux', pplan=None, newhostname=make_random_hostname(), partition_map='gpt'):
+  def __init__(self, ui, runner_id, disk, src, src_size, partition_id='Linux', pplan=None, newhostname=make_random_hostname(), partition_map='gpt', restore_type=None):
 
     #
+    self.restore_type = restore_type if restore_type is not None else 'wce'
     self.partition_id = partition_id
     if pplan is None:
       pplan = make_efi_partition_plan(disk, partition_id=partition_id)
@@ -41,7 +42,7 @@ class RestoreDiskRunner(PartitionDiskRunner):
     # partition runner adds a few tasks to create new partition map.
     super().prepare()
 
-    # This is not true for content loading
+    # This is not true for content loading or cloning
     detected_videos = wce_triage.components.video.detect_video_cards(None)
 
     # sugar
@@ -55,24 +56,39 @@ class RestoreDiskRunner(PartitionDiskRunner):
     # load disk image
     self.tasks.append(task_restore_disk_image("Load disk image", disk=disk, partition_id=partition_id, source=self.source, source_size=self.source_size))
 
-    # Loading disk image resets the UUID. 
+    # Make sure it went right.
     self.tasks.append(task_fsck("fsck partition", disk=disk, partition_id=partition_id))
-    self.tasks.append(task_set_partition_uuid("Set partition UUID", disk=disk, partition_id=partition_id))
+
+    # Loading disk image changes file system's UUID. 
+    if self.restore_type != 'clone':
+      # set the fs's uuid to it
+      self.tasks.append(task_set_partition_uuid("Set partition UUID", disk=disk, partition_id=partition_id))
+    else:
+      # Read the fs's uuid back
+      self.tasks.append(task_fetch_partitions("Fetch disk information", disk))
+      self.tasks.append(task_refresh_partitions("Refresh partition information", disk))
+      pass
 
     # mount it
     self.tasks.append(task_mount("Mount the target disk", disk=disk, partition_id=partition_id))
 
-    # trim some files
-    self.tasks.append(task_remove_persistent_rules("Remove persistent rules", disk=disk, partition_id=partition_id))
+    # trim some files for new machine
+    if self.restore_type != 'clone':
+      self.tasks.append(task_remove_persistent_rules("Remove persistent rules", disk=disk, partition_id=partition_id))
+      pass
 
-    # set up some system files
-    self.tasks.append(task_finalize_disk("Finalize disk", disk=disk, partition_id=partition_id, newhostname=self.newhostname))
+    # set up some system files. finalize disk sets the new host name and change the fstab
+    if self.restore_type != 'clone':
+      self.tasks.append(task_finalize_disk("Finalize disk", disk=disk, partition_id=partition_id, newhostname=self.newhostname))
+      pass
 
     # Install GRUB
     self.tasks.append(task_install_grub('Install GRUB boot manager', disk=disk, detected_videos=detected_videos, partition_id=partition_id))
 
     # unmount so I can run fsck and expand partition
-    self.tasks.append(task_unmount("Unmount target", disk=disk, partition_id=partition_id))
+    if self.restore_type != 'clone':
+      self.tasks.append(task_unmount("Unmount target", disk=disk, partition_id=partition_id))
+      pass
 
     # fsck/expand partition
     self.tasks.append(task_fsck("fsck partition", disk=disk, partition_id=partition_id))
@@ -107,7 +123,7 @@ def run_load_image(ui, devname, imagefile, imagefile_size, newhostname, restore_
 
   runner = RestoreDiskRunner(ui, disk.device_name, disk, imagefile, imagefile_size, 
                              pplan=pplan, partition_id=partition_id, partition_map=partition_map,
-                             newhostname=newhostname)
+                             newhostname=newhostname, restore_type=restore_type)
   runner.prepare()
   runner.preflight()
   runner.explain()
@@ -119,7 +135,7 @@ def run_load_image(ui, devname, imagefile, imagefile_size, newhostname, restore_
 
 if __name__ == "__main__":
   if len(sys.argv) == 1:
-    print( 'Flasher: devname imagesource imagesize hostname [wce|wce-16|triage|preflight]')
+    print( 'Flasher: devname imagesource imagesize hostname [wce|wce-16|triage|clone|preflight]')
     sys.exit(0)
     # NOTREACHED
     pass 

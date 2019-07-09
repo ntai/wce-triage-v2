@@ -1,9 +1,5 @@
 name = "wce_triage"
 
-import wce_triage.bin.image_volume
-import wce_triage.bin.restore_volume
-import wce_triage.bin.start_network
-
 import wce_triage.components
 import wce_triage.components.component
 
@@ -21,3 +17,7 @@ import wce_triage.ops.restore_image_runner
 import wce_triage.ops.runner
 import wce_triage.ops.run_state
 import wce_triage.ops.tasks
+
+import wce_triage.bin.image_volume
+import wce_triage.bin.restore_volume
+import wce_triage.bin.start_network
