@@ -454,6 +454,10 @@ class task_unmount(op_task_process_simple):
 
   def setup(self):
     self.part = self.disk.find_partition(self.partition_id)
+    if self.part is None:
+      self._setup_failed("No partition found. Parition id is %s" % str(self.partition_id))
+      return
+
     self.partition_is_mounted = self.part.mounted
 
     self.argv = ["/bin/umount"]

@@ -1,23 +1,49 @@
+# WCE Triage
+#
+# Author: Naoyuki Tai
+# Last Change: Jul, 2019
+# URL: https://github.com/ntai/wce-triage-v2
+
+"""
+The top-level :mod:`deb_pkg_tools` module.
+
+The :mod:`deb_pkg_tools` module defines the `deb-pkg-tools` version number and
+the Debian packages that are required to use all of the features provided by
+the `deb-pkg-tools` package.
+"""
 name = "wce_triage"
 
-import wce_triage.components
-import wce_triage.components.component
+# Semi-standard module versioning.
+__version__ = '0.1.19'
 
-import wce_triage.lib.copyfile
-import wce_triage.lib.netplan
-import wce_triage.lib.timeutil
-import wce_triage.lib.util
+debian_package_dependencies = (
+    'partclone',     # partclone is a part of Clonezilla
+    'pigz' ,         # parallel gzip
+    'gnupg',         # apt-ftparchive
+    'dmidecode',     # dpkg-architecture
+    'grub2-common',  # 
+    'grub2-pc',      # 
+    'efibootmgr',    # 
+    'alsa-utils',    # 
+    'pulseaudio',    #
+    'pulseaudio-utils',     #
+    'python3-aiohttp',      #
+    'python3-aiohttp-cors', #
+)
+"""A tuple of strings with required Debian packages."""
 
-import wce_triage.ops.bless
-import wce_triage.ops.create_image_runner
-import wce_triage.ops.ops_ui
-import wce_triage.ops.partclone_tasks
-import wce_triage.ops.partition_runner
-import wce_triage.ops.restore_image_runner
-import wce_triage.ops.runner
-import wce_triage.ops.run_state
-import wce_triage.ops.tasks
 
-import wce_triage.bin.image_volume
-import wce_triage.bin.restore_volume
-import wce_triage.bin.start_network
+def generate_stdeb_cfg():
+    """
+    Generate the contents of the ``stdeb.cfg`` file used by stdeb_ and py2deb_.
+
+    The Debian package dependencies and minimal Python version are included in
+    the output.
+
+    .. _stdeb: https://pypi.python.org/pypi/stdeb
+    .. _py2deb: https://pypi.python.org/pypi/py2deb
+    """
+    print('[wce_triage]')
+    print('Depends: ')
+    print('Recommends: %s' % ', '.join(pkg for pkg in debian_package_dependencies if pkg != 'python-apt'))
+    print('Suggests: ')

@@ -24,7 +24,7 @@ setuptools.setup(
   long_description=long_description,
   long_description_content_type="text/markdown",
   url="https://github.com/ntai/wce-triage-v2",
-  packages=['wce_triage', 'wce_triage.bin', 'wce_triage.components', 'wce_triage.lib', 'wce_triage.http', 'wce_triage.ops'],
+  packages=['wce_triage', 'wce_triage.bin', 'wce_triage.components', 'wce_triage.lib', 'wce_triage.http', 'wce_triage.ops', 'wce_triage.setup'],
   classifiers=[
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",

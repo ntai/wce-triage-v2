@@ -1,0 +1,4 @@
+#!/bin/sh
+sudo -H pip3 install --no-cache-dir -i https://test.pypi.org/simple/ --no-deps wce_triage
+cd /usr/local/share/wce/wce-triage-ui
+wget --user=triage --password=triage -q -O - http://release.cleanwinner.com/wce/wce-triage-ui.tgz | tar xzf -

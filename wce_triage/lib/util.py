@@ -168,7 +168,26 @@ def get_disk_image_directories():
   return dirs
 
 
+#
+# 
+#
 def get_disk_images():
+  '''scans the known drectories for disk image and returns the list of disk images
+
+    :arg none
+
+    :returns: list of dict instances. 
+      mtime: file modify time
+      restoreType: keyword for restore type. [wce|wce-16|triage|clone]
+                   The restore type is nothing more than the name of directory, and
+                   should match exactly to the restore type.
+      name: filename - this is shown to the user.
+      size: file size
+      fullpath: the full path.
+
+    ..note the entries are deduped by the filename so if two directories
+           contain the same file name, only one is pikced.
+  '''
   # Dedup the same file name
   images = {}
   for dir in get_disk_image_directories():
@@ -229,7 +248,16 @@ def get_test_password():
   return password.encode('iso-8859-1')
 
 #
+def get_ip_addresses():
+  ip_route = subprocess.run('ip route', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  entries = ip_route.stdout.decode('iso-8859-1').splitlines()[0].strip().split(' ')
+  return (entries[2], entries[8])
+
+
+#
 if __name__ == "__main__":
+  print ('my ip addr = ' + get_my_ip_address())
+
   for diskimage in get_disk_images():
     print (diskimage)
     pass

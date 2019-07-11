@@ -457,8 +457,26 @@ class TriageWeb(object):
 
   @routes.get("/dispatch/disk-images.json")
   async def route_disk_images(request):
-    """Handles getting the list of disk images"""
+    """Handles getting the list of disk images on local media"""
     return aiohttp.web.json_response({ "sources": get_disk_images() })
+
+
+  @routes.get("/remote-disk-images.json")
+  async def route_disk_images(request):
+    """Returning the disk image for remote loading.
+       This is probably not going to be used for serving installation payload.
+       It should be done by the http server like lighttpd
+    """
+    myaddr = get_my_ip_address()
+    myport = arguments.port
+
+    sources = []
+    url_template = 'http://{myaddr}:{myport}/wce-disk-images/{restoretype}/{filename}'
+    for source in get_disk_images():
+      source['fullpath'] = url_template.format(myaddr=myaddr, myport=myport, restoretype=source.restoretype, filename=source.name)
+      sources.append(source)
+      pass
+    return aiohttp.web.json_response({ "sources": sources })
 
 
   # Restore types
@@ -481,7 +499,6 @@ class TriageWeb(object):
   async def route_load_image(request):
     """Load disk image to disk"""
     global me
-    preflight = request.query.get("preflight")
     devname = request.query.get("deviceName")
     imagefile = request.query.get("source")
     imagefile_size = request.query.get("size") # This comes back in bytes from sending sources with size. value in query is always string.
@@ -695,5 +712,6 @@ if __name__ == '__main__':
   tlog.info("Starting server, use <Ctrl-C> to stop...")
   tlog.info(u"Open {0} in a web browser.".format(the_root_url))
   Emitter.register(loop)
+
   aiohttp.web.run_app(app, host="0.0.0.0", port=arguments.port, access_log=get_triage_logger())
   pass

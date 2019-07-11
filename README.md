@@ -61,3 +61,81 @@ The module name says pretty much what it is. Disk and network are somewhat speci
 
 Computer module collects the components' information and makes the triage decision. The criteria of triage is decided by WCE.
 
+## Creating Bootable Installer
+
+### Step 1: Acquire Ubuntu 18.04LTS mini.iso installer
+  Making a bootable USB stick from mini.iso is tricky.
+  'Create Installer' of Ubuntu does not work for mini.iso.
+
+  For Mac:
+    Use balenaEtcher. This macOS app works and probably the simplest.
+
+  For Linux:
+    Most likely, "dd" works. Find out the USB stick device and
+    dd if=mini.iso of=/dev/<USB_STICK_DEVICE> bs=1M
+
+### Step 2: Install mini.iso to a disk
+  Disk can be an external disk, USB stick, etc.
+  I recommend using a normal disk (or SSD) to make it faster rather than USB stick.
+  Boot from mini.iso bootable and install minimal.
+  Machine name is "wcetriage".
+  User name/password is "triage/triage".
+
+### Step 3: Bootstrap
+  Once installation is done, boot into the installed system.
+  One way or the other, you need to get network going. mini.iso is barebone (on purpose.)
+
+  Here is what you can do:
+  * if you have an ethernet, use it. First, find out the ethernet device name.
+
+    $ ip  addr
+
+    Usually, "lo" is the loopback device and first. 2nd and on is the network device.
+    2: <YOUR-DEVICE-HERE>: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500...
+
+  * create netplan file
+    $ sudo mkdir /run/netplan
+    Using text editor, create a netplan file as follow. Indentation is critial to netplan so this shoud look exactly as follow:
+    /run/netplan/bootstrap.yaml
+
+----- THIS LINE NOT INCLUDED IN run/netplan/bootstrap.yaml ------
+network: 
+  version: 2
+  renderer: networkd
+  ethernets:
+    <YOUR-DEVICE-HERE>:
+      dhcp4: yes
+      optional: yes
+----- THIS LINE NOT INCLUDED IN run/netplan/bootstrap.yaml ------
+
+   * start network
+     $ sudo netplan generate
+     $ sudo netplan apply
+
+### Step 4: Download wce_triage software
+  $ sudo -H apt install -y python3-pip
+  $ sudo -H pip3 install --no-cache-dir -i https://test.pypi.org/simple/ --no-deps wce_triage
+
+  At this point, if you want to switch over to use WIFI instead of ethernet, you can do so by
+
+  $ sudo -H python3 -m wce_traige.bin.start_network
+
+  This module scans the network devices and runs netplan. If you want to use WIFI, set up a guest network as follow:
+  SSID: wcetriage
+  Wifi password: thepasswordiswcetriage
+  
+  You can use your existing network.
+  $ export TRIAGE_SSID=<YOUR-SSID>
+  $ export TRIAGE_PASSWORD=<YOUR-WIFI-PASSWORD>
+  $ sudo -H python3 -m wce_traige.bin.start_network
+
+  "wcetriage" - is used for testing WIFI device during WCE's triage.
+  In other word, if you have a wifi router with wcetriage/thepasswordiswcetriage, running triage software automatically connects to the wifi router thus it tests the WIFI device.
+
+
+### Step 5: Install the rest of WCE triage assets and set up the installer.
+
+  $ python3 -m wce_triage.setup.setup_triage_system
+
+  You should run this from terminal. It probably asks you some questions. Answer appropriately.
+  For grub installation, install to the disk device you booted.
