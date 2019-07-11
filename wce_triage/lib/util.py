@@ -254,6 +254,24 @@ def get_ip_addresses():
   return (entries[2], entries[8])
 
 
+def get_lighttpd_server_port():
+  '''picks off the port number from lighttpd.conf.
+     :return: port number (in string)
+  '''
+  
+  server_port_re = re.compile('server\.port\s*=\s*(\d+)')
+  
+  port = '80'
+  with  open('/etc/lighttpd/lighttpd.conf') as conffile:
+    for line in conffile.readlines():
+      matched = server_port_re.match(line.strip())
+      if matched:
+        port = matched.group(1)
+        break
+      pass
+    pass
+  return port
+
 #
 if __name__ == "__main__":
   print ('my ip addr = ' + get_my_ip_address())

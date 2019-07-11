@@ -14,8 +14,10 @@ xhost + localhost SI:localuser:$TRIAGEUSER
 sudo -H -u $TRIAGEUSER DISPLAY=$$DISPLAY openbox-session &
 sudo -H -u $TRIAGEUSER DISPLAY=$$DISPLAY start-pulseaudio-x11
 while true; do
-  sudo -H -u $TRIAGEUSER rm -rf /home/triage/.{config,cache}/google-chrome/
-  sudo -H -u $TRIAGEUSER google-chrome --display=$$DISPLAY --kiosk --no-first-run 'http://localhost:8312'
+  if lsof -Pi :8312 -sTCP:LISTEN -t >/dev/null ; then
+      sudo -H -u triage rm -rf /home/triage/.{config,cache}/google-chrome/
+      sudo -H -u triage google-chrome --display=$DISPLAY --kiosk --no-first-run 'http://localhost:8312'
+  fi
   sleep 1
 done
 ''')

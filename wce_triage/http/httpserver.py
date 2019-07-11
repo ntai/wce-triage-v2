@@ -458,6 +458,14 @@ class TriageWeb(object):
   @routes.get("/dispatch/disk-images.json")
   async def route_disk_images(request):
     """Handles getting the list of disk images on local media"""
+
+    # Loading doesn't have to come from http server, but this is
+    # a good test for now.
+    disk_images = '/usr/local/share/wce/wce-disk-images/wce-disk-images.json'
+    if os.path.exists(disk_images):
+      resp = aiohttp.web.FileResponse(disk_images)
+      resp.content_type="application/json"
+      return resp
     return aiohttp.web.json_response({ "sources": get_disk_images() })
 
 
@@ -467,7 +475,7 @@ class TriageWeb(object):
        This is probably not going to be used for serving installation payload.
        It should be done by the http server like lighttpd
     """
-    myaddr = get_my_ip_address()
+    peeraddr, myaddr = get_ip_addresses()
     myport = arguments.port
 
     sources = []

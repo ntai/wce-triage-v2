@@ -43,7 +43,7 @@ class RestoreDiskRunner(PartitionDiskRunner):
     super().prepare()
 
     # This is not true for content loading or cloning
-    detected_videos = wce_triage.components.video.detect_video_cards(None)
+    detected_videos = wce_triage.components.video.detect_video_cards()
 
     # sugar
     disk = self.disk

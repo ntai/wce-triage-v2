@@ -33,6 +33,7 @@ desktop_packages = [
 #
 # vbetool - video buffer tool
 # gfxboot - pretty boot screen
+# lighttpd - serving payload. much better than using python.
 
 kiosk_packages = [
   'xorg',
@@ -41,7 +42,8 @@ kiosk_packages = [
   'xserver-xorg-video-all',
   'xserver-xorg-video-vmware',
   'vbetool',
-  'gfxboot'
+  'gfxboot',
+  'lighttpd'
 ]
 
 # python-socketio - websocket.
