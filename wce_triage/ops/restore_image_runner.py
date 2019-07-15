@@ -60,15 +60,16 @@ class RestoreDiskRunner(PartitionDiskRunner):
     disk = self.disk
     partition_id = self.partition_id
 
+    # once the partitioning is done, refresh the partition
+    self.tasks.append(task_fetch_partitions("Fetch disk information", disk))
+    self.tasks.append(task_refresh_partitions("Refresh partition information", disk))
+
     # load efi
     # hack - source size is hardcoded to 4MB...
     if self.efi_source:
       self.tasks.append(task_restore_disk_image("Load EFI System partition", disk=disk, partition_id=EFI_NAME, source=self.efi_source, source_size=2**22))
+      self.tasks.append(task_refresh_partitions("Refresh partition information", disk))
       pass
-
-    # once the partitioning is done, refresh the partition
-    self.tasks.append(task_fetch_partitions("Fetch disk information", disk))
-    self.tasks.append(task_refresh_partitions("Refresh partition information", disk))
 
     # load disk image
     self.tasks.append(task_restore_disk_image("Load disk image", disk=disk, partition_id=partition_id, source=self.source, source_size=self.source_size))

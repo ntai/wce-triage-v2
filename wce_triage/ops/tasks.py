@@ -1215,7 +1215,7 @@ class task_finalize_efi(op_task_python_simple):
 
     # patch up the grub.cfg
     grub_cfg = open("%s/EFI/ubuntu/grub.cfg" % self.efi_dir, "w")
-    fstab.write(fstab_template.format(Linux_UUID=self.linuxpart.fs_uuid, Linux_part_no=self.linuxpart.partition_number)
+    grub_cfg.write(EFI_ubuntu_grub_template.format(Linux_UUID=self.linuxpart.fs_uuid, Linux_part_no=self.linuxpart.partition_number))
     grub_cfg.close()
     pass
   pass

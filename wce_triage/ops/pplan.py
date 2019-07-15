@@ -86,7 +86,9 @@ def make_usb_stick_partition_plan(disk, partition_id=None, ext4_version=None, ef
 
   if efi_boot:
     pplan = [PartPlan(0, None,         None,         0,        2, Partition.MBR,   None,         None),
-             PartPlan(1, EFI_NAME,     'fat32',      0,      512, Partition.UEFI,  EFI_PART_OPT, None),
+             # For desktop and Windows, etc., the EFI partition is 512MiB but for USB stick,
+             # it's only for installation. 32MiB is plenty big.
+             PartPlan(1, EFI_NAME,     'fat32',      0,       32, Partition.UEFI,  EFI_PART_OPT, None),
              PartPlan(2, partition_id, 'ext4',       0,        0, Partition.EXT4,  None,         mkfs_opts) ]
   else:
     pplan = [PartPlan(0, None,         None,         0,        2, Partition.MBR,   None,  None),
