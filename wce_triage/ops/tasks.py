@@ -11,6 +11,7 @@ import datetime, re, subprocess, abc, os, select, time, uuid
 import wce_triage.components.pci as _pci
 from wce_triage.components.disk import Disk, Partition
 from wce_triage.lib.util import drain_pipe, drain_pipe_completely, get_triage_logger
+from wce_triage.ops.pplan import *
 import uuid
 
 tlog = get_triage_logger()
@@ -266,8 +267,6 @@ class op_task_process(op_task):
       pass
     pass
 
-
-
   def _update_progress(self):
     if self.process.returncode is None:
       # Let's fake it.
@@ -280,10 +279,18 @@ class op_task_process(op_task):
         self.set_progress(progress, self.kwargs.get('progress_running', "Running" ))
         pass
       pass
-    elif self.process.returncode in self.good_returncode:
-      self.set_progress(100, self.kwargs.get('progress_finished', "Finished" ) )
     else:
-      self.set_progress(999, "Failed with return code %d\n%s" % (self.process.returncode, self.err))
+      if self.process.returncode in self.good_returncode:
+        self.set_progress(100, self.kwargs.get('progress_finished', "Finished" ) )
+      else:
+        self.set_progress(999, "Failed with return code %d\n%s" % (self.process.returncode, self.err))
+        pass
+      if self.out:
+        tlog.debug("Process stdout: " + self.out)
+        pass
+      if self.err:
+        tlog.debug("Process stderr: " + self.err)
+        pass
       pass
     pass
 
@@ -386,7 +393,7 @@ class task_mkfs(op_task_process_simple):
     self.part = partition
     self.mkfs_opts = mkfs_opts
 
-    if self.part.file_system == 'fat32':
+    if self.part.file_system in [ 'fat32', 'vfat' ]:
       #
       partname = self.part.partition_name
       if partname is None:
@@ -1031,6 +1038,12 @@ proc            /proc           proc    nodev,noexec,nosuid 0       0
 UUID=%s /               ext4    errors=remount-ro 0       1
 '''
 
+# UUID should be available after re-fetching partition info.
+# Original was 9ABD-4363
+efi_template = '''# /boot/efi was on /dev/sda1 during installation
+UUID=%s  /boot/efi       vfat    umask=0077      0       1
+'''
+
 swap_template = '''# swap partition. should match with blkid output.
 UUID=%s none            swap    sw              0       0
 '''
@@ -1039,11 +1052,12 @@ UUID=%s none            swap    sw              0       0
 # Create various files for blessed installation
 #
 class task_finalize_disk(op_task_python_simple):
-  def __init__(self, description, disk=None, newhostname=None, partition_id='Linux', **kwargs):
+  def __init__(self, description, disk=None, newhostname=None, partition_id='Linux', efi_id = None, **kwargs):
     super().__init__(description, time_estimate=1, **kwargs)
     self.newhostname = newhostname
     self.disk = disk
     self.partition_id = partition_id
+    self.efi_id = efi_id
     pass
    
 
@@ -1059,12 +1073,17 @@ class task_finalize_disk(op_task_python_simple):
         tlog.debug( str(part))
         pass
       raise Exception(msg)
+
+    self.efi_part = self.disk.find_partition(EFI_NAME)
     self.swappart = self.disk.find_partition_by_type(Partition.SWAP)
     self.mount_dir = self.linuxpart.get_mount_point()
 
     # patch up the restore
     fstab = open("%s/etc/fstab" % self.mount_dir, "w")
     fstab.write(fstab_template % (self.linuxpart.fs_uuid))
+    if self.efi_part:
+      fstab.write(efi_template % self.efi_part.fs_uuid)
+      pass
     if self.swappart:
       fstab.write(swap_template % (self.swappart.fs_uuid))
       pass
@@ -1147,6 +1166,57 @@ class task_finalize_disk_aux(op_task_python):
         pass
       pass
     grub_cfg_file.close()
+    pass
+  pass
+
+#
+# Adjust grub in EFI 
+#
+EFI_ubuntu_grub_template = """search.fs_uuid {Linux_UUID} root hd0,gpt{Linux_part_no} 
+set prefix=($root)'/boot/grub'
+configfile $prefix/grub.cfg
+"""
+
+class task_finalize_efi(op_task_python_simple):
+  def __init__(self, description, disk=None, partition_id='Linux', efi_id = EFI_NAME, **kwargs):
+    super().__init__(description, time_estimate=1, **kwargs)
+    self.disk = disk
+    self.partition_id = partition_id
+    self.efi_id = efi_id
+    pass
+   
+
+  def run_python(self):
+    #
+    self.linuxpart = self.disk.find_partition(self.partition_id)
+    if self.linuxpart is None:
+      msg = "Partition with %s does not exist." % str(self.partition_id)
+      self.set_progress(999, msg)
+
+      tlog.debug("part n = %d" % len(self.disk.partitions))
+      for part in self.disk.partitions:
+        tlog.debug( str(part))
+        pass
+      raise Exception(msg)
+
+    self.efi_part = self.disk.find_partition(EFI_NAME)
+    if self.efi_part is None:
+      msg = "EFI Partition with %s does not exist." % str(self.efi_id)
+      self.set_progress(999, msg)
+
+      tlog.debug("part n = %d" % len(self.disk.partitions))
+      for part in self.disk.partitions:
+        tlog.debug( str(part))
+        pass
+      raise Exception(msg)
+
+    self.mount_dir = self.linuxpart.get_mount_point()
+    self.efi_dir = self.efi_part.get_mount_point()
+
+    # patch up the grub.cfg
+    grub_cfg = open("%s/EFI/ubuntu/grub.cfg" % self.efi_dir, "w")
+    fstab.write(fstab_template.format(Linux_UUID=self.linuxpart.fs_uuid, Linux_part_no=self.linuxpart.partition_number)
+    grub_cfg.close()
     pass
   pass
 

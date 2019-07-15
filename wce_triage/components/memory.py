@@ -267,7 +267,7 @@ class Memory(Component):
   def get_component_type(self):
     return "Memory"
 
-  def decision(self):
+  def decision(self, **kwargs):
     if self.memory == None:
       self.memory = detect_memory()
       pass

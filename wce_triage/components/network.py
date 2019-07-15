@@ -131,7 +131,7 @@ class Networks(Component):
   def get_component_type(self):
     return "Network"
 
-  def decision(self):
+  def decision(self, **kwargs):
     decisions = []
 
     blacklist = detect_blacklist_devices()

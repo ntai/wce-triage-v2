@@ -237,9 +237,9 @@ class Disk:
 #
 class DiskPortal(Component):
 
-  def __init__(self, list_mounted_disks=False):
+  def __init__(self, live_system=False):
     self.disks = []
-    self.detect_disks(list_mounted_disks=list_mounted_disks)
+    self.detect_disks(live_system=live_system)
     pass
 
   def get_component_type(self):
@@ -273,9 +273,9 @@ class DiskPortal(Component):
     pass
   
 
-  # list_mounted_disks is true for live-triage
-  # list_mounted_disks is false for loading and imaging disk
-  def detect_disks(self, list_mounted_disks = True):
+  # live_system is true for live-triage
+  # live_system is false for loading and imaging disk
+  def detect_disks(self, live_system = True):
     # Know what's mounted already
     self.detect_mounts()
 
@@ -312,7 +312,7 @@ class DiskPortal(Component):
           # device name in diskstats has no device file path, so make it up.
           device_name = '/dev/'+dev_name
           is_mounted = device_name in self.mounted_devices
-          if is_mounted and (not list_mounted_disks):
+          if is_mounted and (not live_system):
             # Mounted disk %s is not included in the candidate." % device_name
             continue
 
@@ -348,13 +348,13 @@ class DiskPortal(Component):
     return len(self.disks)
 
 
-  def decision(self, list_mounted_disks=False):
+  def decision(self, live_system=False, **kwargs):
     decisions = []
     if self.count() == 0:
       decisions.append( {"component": "Disk", "result": False, "message": "Hard Drive: NOT DETECTED -- INSTALL A DISK"})
     else:
       for disk in self.disks:
-        if (not list_mounted_disks) and disk.mounted:
+        if (not live_system) and disk.mounted:
           continue
         msg = ""
         good_disk = False
@@ -384,6 +384,6 @@ class DiskPortal(Component):
 #
 
 if __name__ == "__main__":
-  portal = DiskPortal(list_mounted_disks=True)
-  print(portal.decision(list_mounted_disks=True))
+  portal = DiskPortal(live_system=True)
+  print(portal.decision(live_system=True))
   pass

@@ -9,19 +9,20 @@ from wce_triage.ops.partclone_tasks import *
 from wce_triage.ops.ops_ui import *
 from wce_triage.components.disk import Disk, Partition
 from wce_triage.ops.runner import *
+from wce_triage.lib.disk_images import *
 
 #
-#
 class ImageDiskRunner(Runner):
-  def __init__(self, ui, runner_id, disk, destdir, partition_id = 'Linux', stem_name="wce-mate"):
+  def __init__(self, ui, runner_id, disk, destdir, suggestedname=None, partition_id='LINUX'):
     super().__init__(ui, runner_id)
-    self.disk = disk
     self.time_estimate = 600
-    self.destdir = destdir
+    self.disk = disk
     self.partition_id = partition_id
-    self.stem_name = stem_name
-    self.imagename = os.path.join(self.destdir, "%s-%s.partclone.gz" % (self.stem_name, datetime.date.today().isoformat()))
+    self.destdir = destdir
+
+    self.imagename = make_disk_image_name(destdir, suggestedname)
     pass
+
 
   def prepare(self):
     super().prepare()
@@ -47,19 +48,19 @@ class ImageDiskRunner(Runner):
 
 if __name__ == "__main__":
   if len(sys.argv) == 1:
-    print( 'devname part destdir stem')
+    print( 'devicename part destdir')
     sys.exit(0)
     pass
   devname = sys.argv[1]
   part = sys.argv[2]
   destdir = sys.argv[3]
-  stem = sys.argv[4]
   disk = Disk(device_name=devname)
   ui = console_ui()
   if part == '1':
     part = 1
     pass
-  runner = ImageDiskRunner(ui, disk.device_name, disk, destdir, partition_id=part, stem_name=stem)
+  runner_id = disk.device_name
+  runner = ImageDiskRunner(ui, runner_id, disk, destdir, partition_id=part)
   runner.prepare()
   runner.preflight()
   runner.explain()

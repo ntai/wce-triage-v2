@@ -43,7 +43,7 @@ class Video(Component):
   def get_component_type(self):
     return "Video"
 
-  def decision(self):
+  def decision(self, **kwargs):
     decisions = []
     
     blacklist = _pci.detect_blacklist_devices()

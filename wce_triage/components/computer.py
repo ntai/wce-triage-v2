@@ -28,6 +28,7 @@ class Computer(Component):
     self.target = None # Installation destination
 
     #
+    self.live_system = False
     self.decisions = []
     self.decision = None
     pass
@@ -41,7 +42,7 @@ class Computer(Component):
     self.cpu = _cpu.CPU()
     self.memory = _memory.Memory()
     #
-    self.disk_portal = _disk.DiskPortal()
+    self.disk_portal = _disk.DiskPortal(live_system=self.live_system)
     #
     self.video = _video.Video()
     #
@@ -56,6 +57,7 @@ class Computer(Component):
 
 
   def triage(self, live_system = False):
+    self.live_system = live_system
     self.gather_info();
     self.make_decision()
     return self.decision
@@ -63,7 +65,7 @@ class Computer(Component):
   def make_decision(self):
     #
     for component in self.components:
-      self.decisions = self.decisions + component.decision()
+      self.decisions = self.decisions + component.decision(live_system=self.live_system)
       pass
 
     self.decision = True

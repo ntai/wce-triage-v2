@@ -58,7 +58,8 @@ def save_disk(source, dest, encoding='iso-8859-1'):
 
   # When compressor or curl exists, partclone outputs to stdout.
   # When this is standalone, then, the actual file.
-  if argv_comp or argv_curl:
+  # If the destination is stdout, it's still goes through compressor.
+  if argv_comp or argv_curl or dest == '-':
     partclone_output = "-"
     partclone_stdout = subprocess.PIPE
   else:
@@ -81,11 +82,15 @@ def save_disk(source, dest, encoding='iso-8859-1'):
 
   # Now the compressor.
   # Input is always the partclone's stdout when the compressor exists.
-  if argv_comp:
+  if argv_comp or dest == '-':
     if argv_curl:
       comp_stdout = subprocess.PIPE
     else:
-      comp_stdout = open(dest, "wb")
+      if dest == '-':
+        comp_stdout = sys.stdout
+      else:
+        comp_stdout = open(dest, "wb")
+        pass
       pass
     comp = subprocess.Popen(argv_comp, stdin=partclone.stdout, stdout=comp_stdout, stderr=subprocess.PIPE)
     processes.append((argv_comp[0], comp))
@@ -115,7 +120,7 @@ def save_disk(source, dest, encoding='iso-8859-1'):
 
 if __name__ == "__main__":
   if len(sys.argv) != 3:
-    sys.stderr.write('image_volume.py <source> <dest>\n  source: device file\n  dest: URL [?user=<usename>&password=<password>]\n')
+    sys.stderr.write('image_volume.py <source> <dest>\n  source: device file\n  dest: URL [?user=<usename>&password=<password>] or '-' for stdout\n')
     sys.exit(1)
     pass
     

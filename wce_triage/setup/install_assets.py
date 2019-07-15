@@ -35,13 +35,60 @@ if __name__ == "__main__":
 
   update_triage = open('/tmp/update-wce-triage', 'w')
   update_triage.write('''#!/bin/sh
-sudo -H pip3 install --no-cache-dir -i https://test.pypi.org/simple/ --no-deps wce_triage
-cd /usr/local/share/wce/wce-triage-ui
+#sudo -H pip3 install --no-cache-dir -i https://test.pypi.org/simple/ --no-deps wce_triage
+tempdir=/tmp/wce-$$
+mkdir -p $tempdir
+cat > $tempdir/get-mount-point.py << EOF
+import os, sys, re
+
+def match(mount_roots, path):
+    criteria = path.split('/')
+    for c_len in range(len(criteria), 0, -1):
+        candidate = '/'.join(criteria[:c_len])
+        if candidate == '':
+            candidate = '/'
+            pass
+        found = mount_roots.get(candidate)
+        if found:
+            return found
+        pass
+    # This should not happen
+    return None
+
+if __name__ == "__main__":
+
+    mount_re = re.compile('([^ ]+)\s+([^ ]+)\s+([^ ]+)\s+([^ ]+)\s+([^ ]+)\s+([^ ]+)')
+    mount_roots = {}
+
+    with open('/proc/mounts') as mounts_fd:
+        for mount_entry in mounts_fd.read().splitlines():
+            matched = mount_re.match(mount_entry)
+            if matched:
+                mount_roots[matched.group(2)] = matched.group(2)
+                pass
+            pass
+        pass
+
+    print(mount_roots.keys())
+    path = sys.argv[1]
+    if path[0] == '.':
+      path = os.getcwd()
+      pass
+    print (path)
+    print(match(mount_roots, path))
+    pass
+    pass
+EOF
+python3 $tempdir/get-mount-point.py $0
+
+echo $MOUNTPOINT
+cd $MOUNTPOINT/usr/local/share/wce/wce-triage-ui/wce-triage-ui
 wget -q -O - http://release.cleanwinner.com/wce/wce-triage-ui.tgz | tar xzf -
+rm -fr $tempdir
 ''')
   update_triage.close()
 
-  subprocess.call('sudo -H install -m 555 /tmp/update-wce-triage /usr/local/share/wce/triage/bin', shell=True)
+  subprocess.call('sudo -H install -m 0755 /tmp/update-wce-triage /usr/local/share/wce/triage/bin', shell=True)
 
   subprocess.call('wget -q -O - http://release.cleanwinner.com/wce/update-wce-triage && chmod +x update-wce-triage', shell=True)
   #

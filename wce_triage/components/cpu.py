@@ -117,7 +117,7 @@ class CPU(Component):
   def get_component_type(self):
     return "CPU"
 
-  def decision(self):
+  def decision(self, **kwargs):
     cpu = self.cpu_info
     cpu_detail = "P%d %s %s %dMHz %d cores" % (cpu.cpu_class, cpu.vendor, cpu.model, cpu.speed, cpu.cores)
     return [{"component": self.get_component_type(),

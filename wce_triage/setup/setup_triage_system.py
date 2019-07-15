@@ -24,6 +24,7 @@ if __name__ == "__main__":
            'install_assets',
            'install_wce_triage',
            'install_wce_kiosk',
+           'install_live_triage',
            # boot loader installation
            'install_boot'
   ]

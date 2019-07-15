@@ -121,7 +121,7 @@ class OpticalDrives(Component):
   def count(self):
     return len(self._drives)
 
-  def decision(self):
+  def decision(self, **kwargs):
     decisions = []
 
     if len(self._drives) == 0:

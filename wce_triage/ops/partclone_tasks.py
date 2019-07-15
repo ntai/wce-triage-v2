@@ -43,18 +43,18 @@ class task_partclone(op_task_process):
 
   def parse_partclone_progress(self):
     #
-    # Check the progress. driver prints everything to stdout
+    # Check the progress. driver prints everything to stderr
     #
-    if len(self.out) == 0:
+    if len(self.err) == 0:
       return
     
     # look for a line
     while True:
-      newline = self.out.find('\n')
+      newline = self.err.find('\n')
       if newline < 0:
         break
-      line = self.out[:newline]
-      self.out = self.out[newline+1:]
+      line = self.err[:newline]
+      self.err = self.err[newline+1:]
       current_time = datetime.datetime.now()
 
       # Look for the EXT parition cloning start marker
@@ -121,12 +121,13 @@ class task_create_disk_image(task_partclone):
     if part is None:
       self.set_progress(999, "No partion %s" % self.partition_id)
       return
+    # Unlike others, image_volume outputs progress to stderr.
     self.argv = ["python3", "-m", "wce_triage.bin.image_volume", part.device_name, self.imagename ]
     super().setup()
     pass
 
   def explain(self):
-    return "Create disk image of %s using WCE Triage's image_volume" % self.disk.device_name
+    return "Create disk image of %s to %s using WCE Triage's image_volume" % (self.disk.device_name, self.imagename)
   pass
 
 #
@@ -159,18 +160,18 @@ class task_restore_disk_image(task_partclone):
   # ignore parsing partclone progress. for restore, it is 100$ wrong.
   def parse_partclone_progress(self):
     #
-    # Check the progress. driver prints everything to stdout
+    # Check the progress. driver prints everything to stderr
     #
-    if len(self.out) == 0:
+    if len(self.err) == 0:
       return
     
     # look for a line
     while True:
-      newline = self.out.find('\n')
+      newline = self.err.find('\n')
       if newline < 0:
         break
-      line = self.out[:newline]
-      self.out = self.out[newline+1:]
+      line = self.err[:newline]
+      self.err = self.err[newline+1:]
       current_time = datetime.datetime.now()
 
       tlog.debug("partclone: %s" % line)

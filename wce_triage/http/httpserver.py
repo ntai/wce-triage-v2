@@ -8,7 +8,6 @@ and webscoket server
 """
 
 from wce_triage.version import *
-
 import aiohttp
 import aiohttp.web
 from aiohttp.web_exceptions import *
@@ -29,6 +28,8 @@ from wce_triage.ops.ops_ui import ops_ui
 from wce_triage.lib.pipereader import *
 from wce_triage.components import optical_drive as _optical_drive
 from wce_triage.components import sound as _sound
+from wce_triage.lib.disk_images import *
+
 
 tlog = get_triage_logger()
 routes = aiohttp.web.RouteTableDef()
@@ -145,10 +146,11 @@ class Emitter:
 class TriageWeb(object):
   asset_path = "/usr/local/share/wce/triage/assets"
 
-  def __init__(self, app, rootdir, cors, loop):
+  def __init__(self, app, rootdir, cors, loop, live_triage):
     """
     HTTP request handler for triage
     """
+    self.live_triage = live_triage
     app.router.add_routes(routes)
     app.router.add_static("/", rootdir)
     for resource in app.router._resources:
@@ -235,7 +237,7 @@ class TriageWeb(object):
     if self.triage_timestamp is None:
       self.triage_timestamp = datetime.datetime.now()
       computer = Computer()
-      self.overall_decision = computer.triage()
+      self.overall_decision = computer.triage(live_system=self.live_triage)
       tlog.info("Triage is done.")
       self.computer = computer
       pass
@@ -260,6 +262,7 @@ class TriageWeb(object):
 
   # Updating the overall decision
   def overall_changed(self, new_decision):
+    self.overall_decision = new_decision
     Emitter._send('triageupdate', { "component": "Overall", "result": new_decision })
     pass
 
@@ -491,17 +494,12 @@ class TriageWeb(object):
   #  content - content loading for disk
   #  triage - USB stick flashing
   #  clone - cloning 
+  #  
   @routes.get("/dispatch/restore-types.json")
   async def route_restore_types(request):
     """Returning supported restore types."""
-    return aiohttp.web.json_response({ "restoreTypes": [{ "id": "wce",
-                                                          "name" : "WCE content loading"},
-                                                        { "id": "wce-16",
-                                                          "name" : "WCE Ubuntu 16"},
-                                                        { "id" : "triage",
-                                                          "name" : "Triage USB flash drive" },
-                                                        { "id" : "clone",
-                                                          "name": "Disk restore" } ] })
+    # disk image type is in lib/disk_images
+    return aiohttp.web.json_response({ "restoreTypes": read_disk_image_types() })
 
   @routes.post("/dispatch/load")
   async def route_load_image(request):
@@ -599,11 +597,73 @@ class TriageWeb(object):
     return aiohttp.web.json_response({})
 
 
+  @routes.get("/dispatch/download")
+  async def route_download_image(request):
+    """Download disk image. not implemented yet."""
+    return aiohttp.web.json_response({})
+
+
   @routes.post("/dispatch/save")
   async def route_save_image(request):
-    """Create disk image ans save"""
-    # FIXME: needs actual implementation
+    """Create disk image and save"""
+    global me
+    devname = request.query.get("deviceName")
+    imagefile = request.query.get("destination")
+
+    await me.wock.emit("saveimage", { "device": devname, "runStatus": "", "totalEstimate" : 0, "steps" : [] })
+
+    # restore image runs its own course, and output will be monitored by a call back
+    me.restore = subprocess.Popen( ['python3', '-m', 'wce_triage.ops.create_image_runner', devname, imagefile, imagefile_size, newhostname, restore_type],
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    asyncio.get_event_loop().add_reader(me.restore.stdout, functools.partial(me.restore_progress_report, me.restore.stdout))
+    asyncio.get_event_loop().add_reader(me.restore.stderr, functools.partial(me.restore_progress_report, me.restore.stderr))
     return aiohttp.web.json_response({})
+
+
+  def check_restore_process(self):
+    if self.restore:
+      self.restore.poll()
+      if self.restore.returncode:
+        returncode = self.restore.returncode
+        self.restore = None
+        if returncode is not 0:
+          Emitter.note("Restore failed with error code %d" % returncode)
+          pass
+        pass
+      pass
+    pass
+
+  def restore_progress_report(self, pipe):
+    reader = self.pipe_readers.get(pipe)
+    if reader is None:
+      reader = PipeReader(pipe)
+      self.pipe_readers[pipe] = reader
+      pass
+
+    line = reader.readline()
+    if line == b'':
+      asyncio.get_event_loop().remove_reader(pipe)
+      del self.pipe_readers[pipe]
+      pass
+    elif line is not None:
+      tlog.debug("FromRestore: '%s'" % line)
+      if self.restore and pipe == self.restore.stdout:
+        # This is a message from loader
+        try:
+          packet = json.loads(line)
+          Emitter._send(packet['event'], packet['message'])
+        except Exception as exc:
+          tlog.info("FromRestore: BAD LINE '%s'" % line)
+          pass
+        pass
+      else:
+        Emitter.note(line)
+        pass
+      pass
+
+    self.check_restore_process()
+    pass
+
 
   @routes.post("/dispatch/mount")
   async def route_mount_disk(request):
@@ -691,6 +751,7 @@ cli = ArgumentParser(description='Example Python Application')
 cli.add_argument("-p", "--port", type=int, metavar="PORT", dest="port", default=8312)
 cli.add_argument("--host", type=str, metavar="HOST", dest="host", default=socket.getfqdn())
 cli.add_argument("--rootdir", type=str, metavar="ROOTDIR", dest="rootdir", default="/usr/local/share/wce/wce-triage-ui")
+cli.add_argument("--live-triage", type=str, metavar="ROOTDIR", dest="live_triage", default=False)
 arguments = cli.parse_args()
 
 # If the module is invoked directly, initialize the application
@@ -715,7 +776,7 @@ if __name__ == '__main__':
   cors = aiohttp_cors.setup(app)
   wock.attach(app)
   global me
-  me = TriageWeb(app, arguments.rootdir, cors, loop)
+  me = TriageWeb(app, arguments.rootdir, cors, loop, arguments.live_triage)
 
   tlog.info("Starting server, use <Ctrl-C> to stop...")
   tlog.info(u"Open {0} in a web browser.".format(the_root_url))

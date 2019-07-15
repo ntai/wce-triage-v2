@@ -11,7 +11,7 @@ class Component(object):
 
   # This can produce multiple entries so it must return as list
   @abc.abstractmethod
-  def decision(self):
+  def decision(self, **kwargs):
     pass
 
   # detect changes return a list of tuples with two elements.

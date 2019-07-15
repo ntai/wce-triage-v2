@@ -46,8 +46,7 @@ class Printer:
     if len(msg) == 0:
       return
     tlog.debug(self.prefix + msg)
-    print(self.prefix + msg)
-    sys.stdout.flush()
+    print(self.prefix + msg, file=sys.stderr, flush=True)
     pass
 
   def print_error(self, msg):
@@ -55,8 +54,7 @@ class Printer:
     if len(msg) == 0:
       return
     tlog.debug(self.error_prefix + msg)
-    sys.stdout.write('\n'.join([ self.error_prefix + line for line in msg.split('\n') ]))
-    sys.stdout.flush()
+    print('\n'.join([ self.error_prefix + line for line in msg.split('\n') ]), file=sys.stderr, flush=True)
     pass
   pass
 

@@ -25,7 +25,7 @@ class Sound(Component):
   def get_component_type(self):
     return "Sound"
 
-  def decision(self):
+  def decision(self, **kwargs):
     if not self.dev:
       return [{"component": self.get_component_type(),
               "result": False,
