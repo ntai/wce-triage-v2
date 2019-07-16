@@ -12,7 +12,7 @@ if __name__ == "__main__":
   sources = []
   url_template = 'http://{myaddr}:{myport}/wce-disk-images/{restoretype}/{filename}'
   for source in get_disk_images():
-    source['fullpath'] = url_template.format(myaddr=myaddr, myport=myport, restoretype=source['restoreType'], filename=source['name'])
+    source['url'] = url_template.format(myaddr=myaddr, myport=myport, restoretype=source['restoreType'], filename=source['name'])
     sources.append(source)
     pass
 

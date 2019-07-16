@@ -144,13 +144,12 @@ class Emitter:
 # is to use a singleton. IOW, this class is nothing more than a namespace.
 #
 class TriageWeb(object):
-  asset_path = "/usr/local/share/wce/triage/assets"
-
-  def __init__(self, app, rootdir, cors, loop, live_triage):
+  def __init__(self, app, rootdir, wcedir, cors, loop, live_triage):
     """
     HTTP request handler for triage
     """
     self.live_triage = live_triage
+    self.asset_path = os.path.join(wcedir, "triage", "assets")
     app.router.add_routes(routes)
     app.router.add_static("/", rootdir)
     for resource in app.router._resources:
@@ -305,9 +304,9 @@ class TriageWeb(object):
       pass
 
     music_file = None
-    for asset in os.listdir(TriageWeb.asset_path):
+    for asset in os.listdir(me.asset_path):
       if asset.endswith(".mp3"):
-        music_file = os.path.join(TriageWeb.asset_path, asset)
+        music_file = os.path.join(me.asset_path, asset)
         break
       pass
 
@@ -464,7 +463,7 @@ class TriageWeb(object):
 
     # Loading doesn't have to come from http server, but this is
     # a good test for now.
-    disk_images = '/usr/local/share/wce/wce-disk-images/wce-disk-images.json'
+    disk_images = os.path.join(self.wcedir, "wce-disk-images", "wce-disk-images.json")
     if os.path.exists(disk_images):
       resp = aiohttp.web.FileResponse(disk_images)
       resp.content_type="application/json"
@@ -750,7 +749,8 @@ import socket
 cli = ArgumentParser(description='Example Python Application')
 cli.add_argument("-p", "--port", type=int, metavar="PORT", dest="port", default=8312)
 cli.add_argument("--host", type=str, metavar="HOST", dest="host", default=socket.getfqdn())
-cli.add_argument("--rootdir", type=str, metavar="ROOTDIR", dest="rootdir", default="/usr/local/share/wce/wce-triage-ui")
+cli.add_argument("--rootdir", type=str, metavar="ROOTDIR", dest="rootdir", default=None)
+cli.add_argument("--wcedir", type=str, metavar="ROOTDIR", dest="rootdir", default="/usr/local/share/wce")
 cli.add_argument("--live-triage", type=str, metavar="ROOTDIR", dest="live_triage", default=False)
 arguments = cli.parse_args()
 
@@ -776,7 +776,12 @@ if __name__ == '__main__':
   cors = aiohttp_cors.setup(app)
   wock.attach(app)
   global me
-  me = TriageWeb(app, arguments.rootdir, cors, loop, arguments.live_triage)
+  wcedir = arguments.wcedir
+  rootdir = arguments.rootdir
+  if rootdir is None:
+    rootdir = os.path.join(wcedir, "wce-triage-ui")
+    pass
+  me = TriageWeb(app, rootdir, wcedir, cors, loop, arguments.live_triage)
 
   tlog.info("Starting server, use <Ctrl-C> to stop...")
   tlog.info(u"Open {0} in a web browser.".format(the_root_url))
