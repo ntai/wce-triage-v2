@@ -768,9 +768,9 @@ import socket
 cli = ArgumentParser(description='Example Python Application')
 cli.add_argument("-p", "--port", type=int, metavar="PORT", dest="port", default=8312)
 cli.add_argument("--host", type=str, metavar="HOST", dest="host", default=socket.getfqdn())
-cli.add_argument("--rootdir", type=str, metavar="ROOTDIR", dest="rootdir", default=None)
-cli.add_argument("--wcedir", type=str, metavar="ROOTDIR", dest="rootdir", default="/usr/local/share/wce")
-cli.add_argument("--live-triage", type=str, metavar="ROOTDIR", dest="live_triage", default=False)
+cli.add_argument("--rootdir", type=str, metavar="WCE_TRIAGE_UI_ROOTDIR", dest="rootdir", default=None)
+cli.add_argument("--wcedir", type=str, metavar="WCE_ROOT_DIR", dest="wcedir", default="/usr/local/share/wce")
+cli.add_argument("--live-triage", type=str, metavar="WCE_LIVE_TRIAGE", dest="live_triage", default=False)
 arguments = cli.parse_args()
 
 # If the module is invoked directly, initialize the application

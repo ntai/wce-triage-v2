@@ -122,6 +122,11 @@ class task_create_disk_image(task_partclone):
     if part is None:
       self.set_progress(999, "No partion %s" % self.partition_id)
       return
+    #
+    if part.file_system is None:
+      self.set_progress(999, "Partion %s exists but the file system is not fetched." % str(self.partition_id))
+      return
+
     # Unlike others, image_volume outputs progress to stderr.
     self.argv = ["python3", "-m", "wce_triage.bin.image_volume", part.device_name, part.file_system, self.imagename ]
     super().setup()

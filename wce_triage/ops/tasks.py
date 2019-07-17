@@ -758,14 +758,17 @@ class task_fetch_partitions(op_task_process_simple):
 
     if self.progress == 100:
       self.disk.partitions = []
-    
-      for line in self.out.splitlines():
+      partclone_output = self.out.splitlines()
+      if partclone_output[0] != 'BYT;':
+        raise Exception('parted returned the first line other than BYT; This means the unit printed is not byte.')
+      # partclone_output[1] is for whole disk, and unused.
+      for line in partclone_output[2:]:
         m = self.partline_re.match(line)
         if m:
           part = Partition(device_name = self.disk.device_name + m.group(1),
                            partition_name = m.group(6),
                            partition_number = int(m.group(1)),
-                           partition_type = m.group(5))
+                           file_system = m.group(5))
           self.disk.partitions.append(part)
           pass
         pass
