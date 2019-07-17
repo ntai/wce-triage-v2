@@ -8,9 +8,14 @@ from wce_triage.lib.timeutil import *
 from collections import deque
 from wce_triage.bin.process_driver import *
 
-def load_disk(source, dest_dev):
+def load_disk(source, dest_dev, filesystem=None):
   if not is_block_device(dest_dev):
     return 1
+
+  partclone_path = os.path.join('/', 'usr', 'sbin', 'partclone.%s' % filesystem)
+  if not os.path.exists(partclone_path):
+    return 1
+
   bin_name = "LOADER"
 
   transport_scheme = get_transport_scheme(source)
@@ -45,7 +50,7 @@ def load_disk(source, dest_dev):
   pipes = []
 
   # So, for partclone, the source is whatever upstream hands down.
-  argv_partclone = [ "partclone.ext4", "-f", "2", "-r", "-s", source, "-o", dest_dev ]
+  argv_partclone = [ partclone_path, "-f", "2", "-r", "-s", source, "-o", dest_dev ]
 
   # wire up the apps
   if argv_wget:
@@ -88,14 +93,16 @@ def load_disk(source, dest_dev):
 
 
 if __name__ == "__main__":
-  if len(sys.argv) != 3:
-    sys.stderr.write('restore_volume.py <source> <destdev>\n  source: URL\n  destdev: device file\n')
+  if len(sys.argv) != 4:
+    sys.stderr.write('restore_volume.py <source> [ext4|fat32] <destdev>\n  source: URL\n  destdev: device file\n')
     sys.exit(1)
     pass
     
-  if not is_block_device(sys.argv[2]):
-    sys.stderr.write("%s is not a block device.\n" % sys.argv[2])
+  device = sys.argv[3]
+  if not is_block_device(device):
+    sys.stderr.write("%s is not a block device.\n" % device)
     sys.exit(1)
     pass
 
-  sys.exit(load_disk(sys.argv[1], sys.argv[2]))
+  sys.exit(load_disk(sys.argv[1], device, filesystem=sys.argv[2]))
+  pass

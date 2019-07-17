@@ -162,8 +162,21 @@ def run_load_image(ui, devname, imagefile, imagefile_size, efisrc, newhostname, 
 
   if id == "triage":
     partition_map='gpt' if efi_image is not None else 'msdos'
-    pplan = make_usb_stick_partition_plan(disk, efi_boot=efi_boot, ext4_version=ext4_version)
-    partition_id=1
+    partition_id = None
+    # You can have partition id for gpt, but not for dos partition map
+    if partition_map == 'gpt':
+      partition_id = 'Linux'
+      pplan = make_usb_stick_partition_plan(disk, efi_boot=efi_boot, ext4_version=ext4_version, partition_id=partition_id)
+    else:
+      pplan = make_usb_stick_partition_plan(disk, efi_boot=efi_boot, ext4_version=ext4_version)
+      # For ms-dos partition, you cannot have name so look for the ext4 partition and use
+      # the partition number.
+      for part in pplan:
+        if part.parttion == Partition.EXT4:
+          partition_id = part.no
+          break
+        pass
+      pass
     pass
   else:
     partition_map='gpt'
@@ -171,6 +184,9 @@ def run_load_image(ui, devname, imagefile, imagefile_size, efisrc, newhostname, 
     pplan = make_efi_partition_plan(disk, efi_boot=efi_boot, ext4_version=ext4_version)
     pass
 
+  if partition_id is None:
+    raise Exception("Partion ID is not known for resotring disk.")
+  
   runner = RestoreDiskRunner(ui, disk.device_name, disk, imagefile, imagefile_size, efisrc,
                              partition_id=partition_id, pplan=pplan, partition_map=partition_map,
                              newhostname=newhostname, restore_type=restore_type)
@@ -220,7 +236,7 @@ if __name__ == "__main__":
     do_it = True
     pass
   else:
-    ui = json_ui()
+    ui = json_ui(wock_event="loadimage")
     pass
 
   # Rehydrate the restore_type and make it to Python dict.
@@ -242,7 +258,7 @@ if __name__ == "__main__":
                        "filestem": "wce-mate18",
                        "name": "WCE Ubuntu 18.04LTS",
                        "timestamp": True, "efi_image":
-                       ".sda1-efi-part.partclone.gz",
+                       ".efi-512M.fat32.partclone.gz",
                        "partition_map": "gpt"}
     elif restore_type == "wce-16":
       restore_param = {"id": "wce-16",
@@ -252,7 +268,11 @@ if __name__ == "__main__":
                        "ext4_version": "1.42",
                        "partition_map": "gpt"}
     elif restore_type == "triage":
-      restore_param ={ "id": "triage", "filestem": "triage", "name": "Triage USB flash drive", "timestamp": True, "efi_image": ".sda1-efi-part.partclone.gz"}
+      restore_param ={ "id": "triage",
+                       "filestem": "triage",
+                       "name": "Triage USB flash drive",
+                       "timestamp": True,
+                       "efi_image": ".efi-part-32M.fat32.partclone.gz"}
     else:
       ui.log(devname, "restore_type is not a file path or json string.")
       sys.exit(1)

@@ -122,7 +122,7 @@ def read_disk_image_type(longpath):
   return result
 
 
-def make_disk_image_name(destdir, inname):
+def make_disk_image_name(destdir, inname, filesystem='ext4'):
   image_meta = read_disk_image_type(destdir)
   if image_meta is None:
     if inname == None:
@@ -138,11 +138,33 @@ def make_disk_image_name(destdir, inname):
     timestamp = datetime.date.today().isoformat()
     imagename = imagename + "-" + timestamp
     pass
-  imagename = imagename + ".partclone.gz"  
+  # Right now, this is making ext4
+  imagename = imagename + ".%s.partclone.gz" % filesystem
   return os.path.join(destdir, imagename)
+
+
+def get_file_system_from_source(source):
+  filesystem_ext = None
+  tail = ".partclone.gz"
+  if source.endswith(tail):
+    source = source[:-len(tail)]
+  else:
+    return None
+  try:
+    filesystem_ext = os.path.splitext(source)[1][1:]
+  except:
+    pass
+
+  if filesystem_ext in ['ext4', 'ext3', 'fat32', 'vfat', 'fat16']:
+    return filesystem_ext
+  return None
+
 
 #
 if __name__ == "__main__":
   print(read_disk_image_types())
   print(get_disk_images())
+  print(get_file_system_from_source("a.ext4.partclone.gz"))
+  print(get_file_system_from_source("a.ext4.partclone"))
+  print(get_file_system_from_source("a.partclone.gz"))
   pass

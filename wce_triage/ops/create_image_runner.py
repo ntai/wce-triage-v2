@@ -13,6 +13,13 @@ from wce_triage.lib.disk_images import *
 
 #
 class ImageDiskRunner(Runner):
+  '''Runner for creating disk image. does fsck, shrink partition, create disk 
+image and resize the file system back to the max.
+For now, this is only dealing with the EXT4 linux partition.
+'''
+  # FIXME: If I want to make this to a generic clone app, I need to deal with all of partitions on the disk.
+  # One step at a time.
+    
   def __init__(self, ui, runner_id, disk, destdir, suggestedname=None, partition_id='LINUX'):
     super().__init__(ui, runner_id)
     self.time_estimate = 600
@@ -46,23 +53,58 @@ class ImageDiskRunner(Runner):
 
   pass
 
+
 if __name__ == "__main__":
+  logging.basicConfig(level=logging.DEBUG,
+                      format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                      filename='/tmp/triage.log')
+
   if len(sys.argv) == 1:
-    print( 'devicename part destdir')
+    print( 'Unloader: devicename part destdir')
     sys.exit(0)
-    pass
+    # NOTREACHED
+    pass 
   devname = sys.argv[1]
-  part = sys.argv[2]
-  destdir = sys.argv[3]
-  disk = Disk(device_name=devname)
-  ui = console_ui()
-  if part == '1':
-    part = 1
+  if not is_block_device(devname):
+    print( '%s is not a block device.' % devname)
+    sys.exit(1)
+    # NOTREACHED
     pass
+
+  part = sys.argv[2] # This is a partition id
+  destdir = sys.argv[3] # Destination directory
+  disk = Disk(device_name=devname)
+
+  # Preflight is for me to see the tasks. http server runs this with json_ui.
+  do_it = True
+  if destdir == "preflight":
+    ui = console_ui()
+    do_it = False
+    pass
+  elif destdir == "testflight":
+    ui = console_ui()
+    do_it = True
+    pass
+  else:
+    ui = json_ui(wock_event="saveimage")
+    pass
+
+  if re.match(part, '\d+'):
+    part = int(part)
+    pass
+
   runner_id = disk.device_name
   runner = ImageDiskRunner(ui, runner_id, disk, destdir, partition_id=part)
-  runner.prepare()
-  runner.preflight()
-  runner.explain()
-  runner.run()
+  try:
+    runner.prepare()
+    runner.preflight()
+    runner.explain()
+    runner.run()
+    sys.exit(0)
+    # NOTREACHED
+  except Exception as exc:
+    sys.stderr.write(traceback.format_exc(exc) + "\n")
+    sys.exit(1)
+    # NOTREACHED
+    pass
   pass

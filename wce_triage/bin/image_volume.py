@@ -3,7 +3,7 @@
 #
 # This is used by runner.
 #
-# The status goes to the stdout. To make things simple, all of status
+# The status goes to the stderr. To make things simple, all of status
 # is prefixed and each status is a single line.
 #
 import os, sys, subprocess, urllib, datetime
@@ -15,8 +15,13 @@ from wce_triage.lib.util import *
 from wce_triage.lib.timeutil import *
 from wce_triage.bin.process_driver import *
 
-def save_disk(source, dest, encoding='iso-8859-1'):
+def save_disk(source, dest, filesystem=None, encoding='iso-8859-1'):
   if not is_block_device(source):
+    return 1
+
+  partclone_path = os.path.join('/', 'usr', 'sbin', 'partclone.%s' % filesystem)
+  if not os.path.exists(partclone_path):
+    print(partclone_path + " does not exist.")
     return 1
 
   # compressor to use (gzip!)
@@ -68,7 +73,7 @@ def save_disk(source, dest, encoding='iso-8859-1'):
     pass
 
   # partclone
-  argv_partclone = [ "partclone.ext4", "-f", "2", "-c", "-s", source, "-o", partclone_output ]
+  argv_partclone = [ partclone_path, "-f", "2", "-c", "-s", source, "-o", partclone_output ]
 
   # wire up the apps.
   pipes = []
@@ -119,8 +124,8 @@ def save_disk(source, dest, encoding='iso-8859-1'):
 
 
 if __name__ == "__main__":
-  if len(sys.argv) != 3:
-    sys.stderr.write('image_volume.py <source> <dest>\n  source: device file\n  dest: URL [?user=<usename>&password=<password>] or '-' for stdout\n')
+  if len(sys.argv) != 4:
+    sys.stderr.write('''image_volume.py <source> [ext4|fat32] <dest>\n  source: device file\n  dest: URL [?user=<usename>&password=<password>] or '-' for stdout\n''')
     sys.exit(1)
     pass
     
@@ -128,5 +133,5 @@ if __name__ == "__main__":
     sys.stderr.write("%s is not a block device.\n" % sys.argv[1])
     sys.exit(1)
     pass
-  sys.exit(save_disk(sys.argv[1], sys.argv[2]))
+  sys.exit(save_disk(sys.argv[1], sys.argv[3], filesystem=sys.argv[2]))
   

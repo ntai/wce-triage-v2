@@ -11,6 +11,7 @@ from wce_triage.lib.timeutil import *
 import functools
 from .estimate import *
 from wce_triage.lib.util import *
+from wce_triage.lib.disk_images import *
 tlog = get_triage_logger()
 
 #
@@ -122,7 +123,7 @@ class task_create_disk_image(task_partclone):
       self.set_progress(999, "No partion %s" % self.partition_id)
       return
     # Unlike others, image_volume outputs progress to stderr.
-    self.argv = ["python3", "-m", "wce_triage.bin.image_volume", part.device_name, self.imagename ]
+    self.argv = ["python3", "-m", "wce_triage.bin.image_volume", part.device_name, part.file_system, self.imagename ]
     super().setup()
     pass
 
@@ -150,7 +151,7 @@ class task_restore_disk_image(task_partclone):
     part = self.disk.find_partition(self.partition_id)
     if part is None:
       raise Exception("Partition %s is not found." % self.partition_id)
-    self.argv = ["python3", "-m", "wce_triage.bin.restore_volume", self.source, part.device_name]
+    self.argv = ["python3", "-m", "wce_triage.bin.restore_volume", self.source, get_file_system_from_source(self.source), part.device_name]
     super().setup()
     pass
 

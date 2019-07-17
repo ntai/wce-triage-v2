@@ -83,8 +83,24 @@ def jsoned_optical(optical):
           "model": optical.vendor + " " + optical.model_name }
 
 #
+# WebSocket sender.
 #
+# is a FIFO queue. You put in a message you want to send using _send().
+# http server polls the out side of queue, and send out a packet to
+# the listener.
 #
+# What's in the queue?
+# The element is 3-item length tuple.
+# 1: the sequence number of element.
+# 2: WebSocket's event
+# 3: WebSocket's data
+#
+# The event name here and UI side websocket need to match or else the
+# message is ignored.
+# FIXME: Have some kind of dictionary between the front/back ends.
+#
+# Known event type: message, diskupdate, triageupdate, loadimage, saveimage
+# 
 class Emitter:
   queue = None
   item_count = 0
@@ -461,8 +477,7 @@ class TriageWeb(object):
   async def route_disk_images(request):
     """Handles getting the list of disk images on local media"""
 
-    # Loading doesn't have to come from http server, but this is
-    # a good test for now.
+    # Loading doesn't have to come from http server, but this is a good test for now.
     disk_images = os.path.join(self.wcedir, "wce-disk-images", "wce-disk-images.json")
     if os.path.exists(disk_images):
       resp = aiohttp.web.FileResponse(disk_images)
@@ -514,6 +529,7 @@ class TriageWeb(object):
       newhostname = {'triage': 'wcetriage2', 'wce': 'wce' + uuid.uuid4().hex[:8]}.get(restore_type, 'host' + uuid.uuid4().hex[:8])
       pass
     
+    # Resetting the state - hack...
     await me.wock.emit("loadimage", { "device": devname, "runStatus": "", "totalEstimate" : 0, "steps" : [] })
     if not imagefile:
       Emitter.note("No image file selected.")
@@ -528,6 +544,7 @@ class TriageWeb(object):
     return aiohttp.web.json_response({})
 
 
+  # Callback for checking the restore process
   def check_restore_process(self):
     if self.restore:
       self.restore.poll()
@@ -541,7 +558,9 @@ class TriageWeb(object):
       pass
     pass
 
+  # 
   def restore_progress_report(self, pipe):
+    '''Callback for checking the output of restore process'''
     reader = self.pipe_readers.get(pipe)
     if reader is None:
       reader = PipeReader(pipe)

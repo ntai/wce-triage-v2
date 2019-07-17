@@ -30,8 +30,9 @@ def _describe_task(task):
 
 
 class json_ui(ops_ui):
-  def __init__(self):
+  def __init__(self, wock_event = "loadimage"):
     self.previous = None
+    self.wock_event = wock_event
     pass
 
   def send(self, event, obj):
@@ -42,25 +43,27 @@ class json_ui(ops_ui):
 
   # Called from preflight to just set up the flight plan
   def report_tasks(self, runner_id, run_estimate, tasks):
-    self.send("loadimage", { "device" : runner_id, 
-                             "runStatus" : "Prearing",
-                             "runEstimate" : round(in_seconds(run_estimate)),
-                             "runTime": 0,
-                             "steps" : [ _describe_task(task) for task in tasks ] } )
+    self.send(self.wock_event,
+              { "device" : runner_id, 
+                "runStatus" : "Prearing",
+                "runEstimate" : round(in_seconds(run_estimate)),
+                "runTime": 0,
+                "steps" : [ _describe_task(task) for task in tasks ] } )
     pass
 
   #
   def report_task_progress(self, runner_id, run_estimate, run_time, time_estimate, elapsed_time, progress, task, tasks):
-    self.send("loadimage", { "step": task.task_number,
-                             "device": runner_id,
-                             "runStatus": "Running step %d of %d tasks" % (task.task_number+1, len(tasks)),
-                             "runEstimate": round(run_estimate),
-                             "runTime": round(in_seconds(run_time)),
-                             "timeEstimate" : round(in_seconds(time_estimate)),
-                             "message": task.message,
-                             "progress" : round(progress, 1),
-                             "status": "running",
-                             "elapseTime": round(in_seconds(elapsed_time)) })
+    self.send(self.wock_event,
+              { "step": task.task_number,
+                "device": runner_id,
+                "runStatus": "Running step %d of %d tasks" % (task.task_number+1, len(tasks)),
+                "runEstimate": round(run_estimate),
+                "runTime": round(in_seconds(run_time)),
+                "timeEstimate" : round(in_seconds(time_estimate)),
+                "message": task.message,
+                "progress" : round(progress, 1),
+                "status": "running",
+                "elapseTime": round(in_seconds(elapsed_time)) })
     pass
 
   def report_task_failure(self,
@@ -74,14 +77,15 @@ class json_ui(ops_ui):
     else:
       verdict = task.message
       pass
-    self.send("loadimage", { "step": task.task_number,
-                             "device": runner_id,
-                             "runStatus": verdict,
-                             "timeEstimate": round(in_seconds(task_estimate)),
-                             "elapseTime": round(in_seconds(elapsed_time)),
-                             "message": task.message,
-                             "status": "fail",
-                             "progress" : progress } )
+    self.send(self.wock_event,
+              { "step": task.task_number,
+                "device": runner_id,
+                "runStatus": verdict,
+                "timeEstimate": round(in_seconds(task_estimate)),
+                "elapseTime": round(in_seconds(elapsed_time)),
+                "message": task.message,
+                "status": "fail",
+                "progress" : progress } )
     pass
 
   def report_task_success(self, runner_id, task_time_estimate, elapsed_time, task):
@@ -90,13 +94,14 @@ class json_ui(ops_ui):
     else:
       verdict = task.message
       pass
-    self.send("loadimage", { "step": task.task_number,
-                             "device": runner_id,
-                             "runStatus": verdict,
-                             "message": task.message,
-                             "progress" : 100,
-                             "status": "done",
-                             "elapseTime": round(in_seconds(elapsed_time)) } )
+    self.send(self.wock_event,
+              { "step": task.task_number,
+                "device": runner_id,
+                "runStatus": verdict,
+                "message": task.message,
+                "progress" : 100,
+                "status": "done",
+                "elapseTime": round(in_seconds(elapsed_time)) } )
     pass
 
   def report_run_progress(self,
@@ -121,11 +126,12 @@ class json_ui(ops_ui):
       status_message = "Running task (%d of %d): %s" % (step+1, len(tasks), description)
       pass
 
-    self.send("loadimage", { "device" : runner_id,
-                             "runStatus": status_message,
-                             "runEstimate" : round(in_seconds(run_estimate), 1),
-                             "runTime": round(in_seconds(run_time), 1),
-                             "steps" : [ _describe_task(task) for task in tasks ] } )
+    self.send(self.wock_event,
+              { "device" : runner_id,
+                "runStatus": status_message,
+                "runEstimate" : round(in_seconds(run_estimate), 1),
+                "runTime": round(in_seconds(run_time), 1),
+                "steps" : [ _describe_task(task) for task in tasks ] } )
     pass
 
   # Log message. Probably better to be stored in file so we can see it

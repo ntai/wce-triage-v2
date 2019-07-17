@@ -28,7 +28,7 @@ class Partition:
   def __init__(self,
                device_name=None,
                partition_name=None,
-               partition_type=None,
+               partition_type=None, # partition code such as '83'
                partition_number=None,
                partition_uuid=None,
                fs_uuid=None,
