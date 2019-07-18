@@ -15,7 +15,7 @@ Here is the things need to be solved.
      - Install GRUB
      - Bless
      
-   - For EFI boot, manipulate EFI
+   - For EFI boot, manipulate EFI (DONE)
      Most likely, I should push this to the future because
      90% of computers are still using MBR boot, and 100% of
      computers are MBR bootable.
@@ -28,15 +28,16 @@ Here is the things need to be solved.
    Disable auto-mount of usb media
    - systemctl mask udisks2
 
- - Restore disk image
+ - Restore disk image - DONE
 
  - Websocket based reporer for frontend
+   - basic plumbing is done.
 
  - http server
    This is kind of working.
    - serving static file - done
-   - serving restore disk
-   - serving create disk image
+   - serving restore disk - done
+   - serving create disk image - working
    
 ## Frontend
  need to learn a bit more about React.js

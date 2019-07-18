@@ -1,0 +1,7 @@
+include requirements.txt
+include wce_triage/setup/patches/etc/grub.d/10_linux
+include wce_triage/setup/patches/etc/pulse/default.pa.diff
+include wce_triage/setup/patches/etc/lighttpd/lighttpd.diff
+include wce_triage/setup/patches/etc/initramfs-tools/modules.diff
+include wce_triage/setup/patches/etc/initramfs-tools/scripts/init-bottom/__rootaufs
+include wce_triage/setup/patches/home/triage/Makefile

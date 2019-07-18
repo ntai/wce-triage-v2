@@ -6,7 +6,7 @@ PYPI_PASSWORD := $(shell echo $$PYPI_PASSWORD)
 
 default: setup
 
-setup:
+setup: 
 	python3 setup.py sdist bdist_wheel
 
 upload:
