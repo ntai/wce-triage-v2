@@ -50,7 +50,7 @@ kiosk_packages = [
 # I would have used the ubuntu package if provided.
 # semms to not work for now.
 #
-python_packages = ['python-socketio']
+python_packages = ['python-socketio', 'psutil']
 
 if __name__ == "__main__":
   packages = desktop_packages

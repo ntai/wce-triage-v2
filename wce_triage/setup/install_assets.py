@@ -82,7 +82,7 @@ EOF
 python3 $tempdir/get-mount-point.py $0
 
 echo $MOUNTPOINT
-cd $MOUNTPOINT/usr/local/share/wce/wce-triage-ui/wce-triage-ui
+cd $MOUNTPOINT/usr/local/share/wce/wce-triage-ui
 wget -q -O - http://release.cleanwinner.com/wce/wce-triage-ui.tgz | tar xzf -
 rm -fr $tempdir
 ''')
