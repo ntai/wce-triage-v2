@@ -1,0 +1,15 @@
+#
+# WCE Network Server boot setup.
+#
+GRUB_DEFAULT=0
+GRUB_TIMEOUT=10
+GRUB_DISTRIBUTOR=Ubuntu
+GRUB_CMDLINE_LINUX_DEFAULT=""
+GRUB_CMDLINE_LINUX=""
+GRUB_BACKGROUND="/usr/local/share/wce/triage/assets/wceboot2.png"
+GRUB_PRIMARY_MENU_TITLE="WCE Network Server - Ubuntu"
+#
+# For running in read-only mode
+#
+GRUB_CMDLINE_LINUX_DEFAULT_ALT="aufs=tmpfs"
+GRUB_MENU_TITLE_ALT="WCE Network Server - Read only mode"

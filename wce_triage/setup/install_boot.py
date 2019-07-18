@@ -4,13 +4,16 @@
 #
 import os, sys, subprocess
 
+subprocess.run(['sudo', 'rm', '-f', '/tmp/grub.cfg'])
+
 grub_cfg = open('/tmp/grub.cfg', 'w')
 grub_cfg.write('''GRUB_DEFAULT=0
 GRUB_TIMEOUT=10
 GRUB_DISTRIBUTOR=
 GRUB_CMDLINE_LINUX_DEFAULT="aufs=tmpfs"
 GRUB_CMDLINE_LINUX=""
-GRUB_BACKGROUND="/usr/local/share/wce/triage/assets/wceboot2.png"
+GRUB_BACKGROUND="/usr/local/share/wce/triage/assets/wceboot2.png
+GRUB_PRIMARY_MENU_TITLE="WCE Triage/Ubuntu"
 ''')
 grub_cfg.close()
 

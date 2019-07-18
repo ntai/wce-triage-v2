@@ -1,5 +1,5 @@
 
-.PHONY: update clean client
+.PHONY: update
 
 update:
 	#-sudo -H pip3 uninstall wce_triage
@@ -20,7 +20,3 @@ clean:
 	sudo rm -f /var/log/Xorg.*
 	sudo rm -f /var/log/apt/*
 	sudo rm -fr /var/log/installer/*
-	sudo rm -fr /root/Desktop
-
-client:
-	sudo rsync -av --delete /usr/local/lib/python3.6/dist-packages/ /var/lib/netclient/wcetriage.0.1.30/usr/local/lib/python3.6/dist-packages/

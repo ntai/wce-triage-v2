@@ -4,26 +4,28 @@
 #
 import os, sys, subprocess
 
-# alsa-utils pulseaudio pulseaudio-utils mpg123 - the audio. mpg123 is no longer used but included. mpg123 plays mp3 from console
-#
-# python3-aiohttp python3-aiohttp-cors - triage backend. yes, you can cross-domain
+# python3-aiohttp python3-aiohttp-cors - triage backend.
+# yes, you can cross-domain
 # probably, not used for live triage.
 
-
-desktop_packages = [
-  'python3-pip',   # bootstrapping pip3 ???
-  'gnupg',         # for Google key installation
-  'dmidecode',     # decoding bios, detects memory
-  'efibootmgr',    # for EFI boot (not yet implemented, sadly)
-  'grub2-common',  # boot manager
-  'grub-pc',       # boot manager
-  'pigz',          # parallel gzip
-  'partclone',     # partclone
-  'alsa-utils',
-  'pulseaudio',
-  'pulseaudio-utils',
-  'python3-aiohttp',       # for python http serve
-  'python3-aiohttp-cors'   # for python http serve
+triage_packages = [
+  'python3-pip',              # bootstrapping pip3 ???
+  'gnupg',                    # for Google key installation
+  'dmidecode',                # decoding bios, detects memory
+  'efibootmgr',               # for EFI boot (not yet implemented, sadly)
+  'gdisk',                    # gdisk
+  'grub2-common',             # boot manager
+  'grub-pc',                  # boot manager
+  'mg',                       # small emacs-like editor
+  'pigz',                     # parallel gzip
+  'partclone',                # partclone
+  'parted',                   # parted
+  'alsa-utils',               # Audio
+  'pulseaudio',               # Ubuntu audio server
+  'pulseaudio-utils',         # Ubuntu PA utils
+  'python3-aiohttp',          # for python http server
+  'python3-aiohttp-cors',     # for python http server
+  'python3-psutil'            # Socket IO to work with aiohttp
 ]
 
 # aufs-tools - for making usb stick to boot and mount memory file system as read/write over read-only usb storage
@@ -50,14 +52,29 @@ kiosk_packages = [
 # I would have used the ubuntu package if provided.
 # semms to not work for now.
 #
-python_packages = ['python-socketio', 'psutil']
+python_packages = ['python-socketio']
+
+#
+#
+#
+server_packages = [
+  'atftpd',
+  'lighttpd',
+  'dnsmasq',
+  'nfs-common',
+  'nfs-kernel-server'
+}
 
 if __name__ == "__main__":
-  packages = desktop_packages
+  packages = triage_packages
 
   if os.environ.get('WCE_TRIAGE_DISK') == "true":
     subprocess.run('sudo -H apt remove -y apparmor', shell=True)
     packages = packages + kiosk_packages
+    pass
+
+  if os.environ.get('WCE_SERVER') == "true":
+    packages = packages + server_packages
     pass
 
   installed_packages = {}

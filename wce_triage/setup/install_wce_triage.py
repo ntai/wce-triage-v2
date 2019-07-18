@@ -2,7 +2,9 @@
 
 import os, sys, subprocess
 
-wce_triage_sh = open('/tmp/wce-triage.sh', 'w')
+tmpfile = '/tmp/wce-triage.sh'
+
+wce_triage_sh = open(tmpfile, 'w')
 wce_triage_sh.write('''#!/bin/bash
 #
 python3 -m wce_triage.bin.start_network

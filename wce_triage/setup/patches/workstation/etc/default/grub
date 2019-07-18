@@ -1,0 +1,18 @@
+#
+# WCE Triage boot setup.
+#
+# Unlike stable desktop, we want to see the boot process.
+# no splash or quiet here.
+#
+GRUB_DEFAULT=0
+GRUB_TIMEOUT=10
+GRUB_DISTRIBUTOR=Ubuntu
+GRUB_CMDLINE_LINUX_DEFAULT="splash quiet"
+GRUB_CMDLINE_LINUX=""
+GRUB_BACKGROUND="/usr/local/share/wce/triage/assets/wceboot2.png"
+GRUB_PRIMARY_MENU_TITLE="WCE Ubuntu Workstation"
+#
+# For Read-only
+#
+GRUB_CMDLINE_LINUX_DEFAULT_ALT="splash quiet aufs=tmpfs"
+GRUB_MENU_TITLE_ALT="WCE Workstation - Read only mode"
