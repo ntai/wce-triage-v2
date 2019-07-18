@@ -9,7 +9,7 @@
 
 import datetime, re, subprocess, abc, os, select, time, uuid
 import wce_triage.components.pci as _pci
-from wce_triage.components.disk import Disk, Partition
+from wce_triage.components.disk import Disk, Partition, PartitionLister
 from wce_triage.lib.util import drain_pipe, drain_pipe_completely, get_triage_logger
 from wce_triage.ops.pplan import *
 import uuid
@@ -745,33 +745,19 @@ class task_install_mbr(op_task_process_simple):
 #
 class task_fetch_partitions(op_task_process_simple):
   #                          1:    2:           3:           4:           5:fs  6:name  7:flags   
-  partline_re = re.compile('^(\d+):([\d\.]+)MiB:([\d\.]+)MiB:([\d\.]+)MiB:(\w*):([^:]*):(.*);')
 
   def __init__(self, description, disk=None, **kwargs):
     self.disk = disk
-    argv = ["parted", "-m", disk.device_name, 'unit', 'MiB', 'print']
-    super().__init__(description, argv=argv, time_estimate=1, **kwargs)
+    self.lister = PartitionLister(disk)
+    super().__init__(description, argv=self.lister.argv, time_estimate=1, **kwargs)
     pass
   
   def poll(self):
     super().poll()
 
     if self.progress == 100:
-      self.disk.partitions = []
-      partclone_output = self.out.splitlines()
-      if partclone_output[0] != 'BYT;':
-        raise Exception('parted returned the first line other than BYT; This means the unit printed is not byte.')
-      # partclone_output[1] is for whole disk, and unused.
-      for line in partclone_output[2:]:
-        m = self.partline_re.match(line)
-        if m:
-          part = Partition(device_name = self.disk.device_name + m.group(1),
-                           partition_name = m.group(6),
-                           partition_number = int(m.group(1)),
-                           file_system = m.group(5))
-          self.disk.partitions.append(part)
-          pass
-        pass
+      self.lister.set_parted_output(self.out, self.err)
+      self.lister.parse_parted_output()
 
       if len(self.disk.partitions) == 0:
         self.set_progress(999, 'No partion found.')

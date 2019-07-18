@@ -21,7 +21,7 @@ import logging, logging.handlers
 import functools
 
 from wce_triage.components.computer import Computer
-from wce_triage.components.disk import Disk, Partition, DiskPortal
+from wce_triage.components.disk import Disk, Partition, DiskPortal, PartitionLister
 from wce_triage.lib.util import *
 from wce_triage.lib.timeutil import *
 from wce_triage.ops.ops_ui import ops_ui
@@ -165,6 +165,7 @@ class TriageWeb(object):
     HTTP request handler for triage
     """
     self.live_triage = live_triage
+    self.wcedir = wcedir
     self.asset_path = os.path.join(wcedir, "triage", "assets")
     app.router.add_routes(routes)
     app.router.add_static("/", rootdir)
@@ -476,9 +477,10 @@ class TriageWeb(object):
   @routes.get("/dispatch/disk-images.json")
   async def route_disk_images(request):
     """Handles getting the list of disk images on local media"""
+    global me
 
     # Loading doesn't have to come from http server, but this is a good test for now.
-    disk_images = os.path.join(self.wcedir, "wce-disk-images", "wce-disk-images.json")
+    disk_images = os.path.join(me.wcedir, "wce-disk-images", "wce-disk-images.json")
     if os.path.exists(disk_images):
       resp = aiohttp.web.FileResponse(disk_images)
       resp.content_type="application/json"
@@ -626,13 +628,60 @@ class TriageWeb(object):
     """Create disk image and save"""
     global me
     devname = request.query.get("deviceName")
-    imagefile = request.query.get("destination")
+    saveType = request.query.get("type")
+    destdir = request.query.get("destination")
+
+    if saveType is None:
+      tlog.info("saveimage - image type is not given.")
+      raise HTTPServiceUnavailable()
 
     await me.wock.emit("saveimage", { "device": devname, "runStatus": "", "totalEstimate" : 0, "steps" : [] })
 
+    target = None
+    for disk in me.disk_portal.disks:
+      if disk.device_name == devname:
+        target = disk
+        break
+      pass
+
+    if target is None:
+      tlog.info("No such disk " + devname)
+      raise HTTPServiceUnavailable()
+      
+    disk = me.disk_portal.find_disk_by_device_name(devname)
+    lister = PartitionLister(disk)
+    lister.execute()
+    part = disk.find_partition_by_file_system('ext4')
+    if part is None:
+      for partition in disk.partitions:
+        tlog.debug(str(partition))
+        pass
+      me.set_progress(999, "No EXT4 partition for imaging.")
+      return
+    
+    partition_id = disk.get_partition_id(part)
+    if partition_id is None:
+      me.set_progress(999, "Partition %s has not valid ID." % part.device_name)
+      return
+    
+    # saveType is a single word coming back from read_disk_image_types()
+    image_type = None
+    for _type in read_disk_image_types():
+      if _type["id"] == saveType :
+        image_type = _type
+        break
+      pass
+    if image_type is None:
+      me.set_progress(999, "Image type %s is not known." % saveType)
+      return
+    
+    destdir = image_type.get('catalogDirectory')
+    if destdir is None:
+      me.set_progress(999, "Imaging type info %s does not include the catalog directory." % image_type.get("id"))
+      return
+    
     # restore image runs its own course, and output will be monitored by a call back
-    me.restore = subprocess.Popen( ['python3', '-m', 'wce_triage.ops.create_image_runner', devname, imagefile, imagefile_size, newhostname, restore_type],
-                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    me.restore = subprocess.Popen( ['python3', '-m', 'wce_triage.ops.create_image_runner', devname, str(partition_id), destdir], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     asyncio.get_event_loop().add_reader(me.restore.stdout, functools.partial(me.restore_progress_report, me.restore.stdout))
     asyncio.get_event_loop().add_reader(me.restore.stderr, functools.partial(me.restore_progress_report, me.restore.stderr))
     return aiohttp.web.json_response({})

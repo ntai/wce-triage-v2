@@ -40,22 +40,26 @@ def get_disk_images():
   images = {}
   for subdir in get_maybe_disk_image_directories():
     for direntry in os.listdir(subdir):
-      longpath = os.path.join(subdir, direntry)
-      image_meta_file = os.path.join(longpath, IMAGE_META_JSON_FILE)
+      # Anything starting with "." is ignored
+      if direntry[0:1] == '.':
+        continue
+
+      catalog_dir = os.path.join(subdir, direntry)
+      image_meta_file = os.path.join(catalog_dir, IMAGE_META_JSON_FILE)
       if not os.path.exists(image_meta_file) or not os.path.isfile(image_meta_file):
         continue
 
-      # Anything starting with "." is ignored
-      if len(direntry) > 0 and direntry[0] == '.':
-        continue
-        
       if direntry.endswith(".partclone.gz"):
-        images[direntry] = (direntry, "", longpath)
+        images[direntry] = (direntry, "", catalog_dir)
         pass
-      if os.path.isdir(longpath):
-        for direntryinsubdir in os.listdir(longpath):
+
+      if os.path.isdir(catalog_dir):
+        for direntryinsubdir in os.listdir(catalog_dir):
+          # Anything starting with "." is ignored
+          if direntryinsubdir[0:1] == '.':
+            continue
           if direntryinsubdir.endswith(".partclone.gz"):
-            images[direntryinsubdir] = (direntryinsubdir, direntry, os.path.join(longpath, direntryinsubdir))
+            images[direntryinsubdir] = (direntryinsubdir, direntry, os.path.join(catalog_dir, direntryinsubdir))
             pass
           pass
         pass
@@ -89,8 +93,8 @@ def read_disk_image_types():
   image_metas = []
   for subdir in get_maybe_disk_image_directories():
     for direntry in os.listdir(subdir):
-      longpath = os.path.join(subdir, direntry)
-      image_meta = read_disk_image_type(longpath)
+      catalog_dir = os.path.join(subdir, direntry)
+      image_meta = read_disk_image_type(catalog_dir)
       if image_meta:
         image_metas.append(image_meta)
         pass
@@ -99,7 +103,7 @@ def read_disk_image_types():
   return image_metas
 
 
-def read_disk_image_type(longpath):
+def read_disk_image_type(catalog_dir):
   '''reads the disk image type file from the directory
 
     :arg dir
@@ -109,7 +113,7 @@ def read_disk_image_type(longpath):
   '''
   result = None
   try:
-    image_meta_file = os.path.join(longpath, IMAGE_META_JSON_FILE)
+    image_meta_file = os.path.join(catalog_dir, IMAGE_META_JSON_FILE)
     if not os.path.exists(image_meta_file) or not os.path.isfile(image_meta_file):
       return None
   
@@ -119,6 +123,8 @@ def read_disk_image_type(longpath):
     pass
   except:
     pass
+  # 
+  result["catalogDirectory"] = catalog_dir
   return result
 
 

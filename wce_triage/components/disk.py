@@ -104,10 +104,36 @@ class Disk:
     return None
   
 
+  # get a partition ID that this disk can find.
+  def get_partition_id(self, part):
+    if part in self.partitions:
+      if part.partition_name:
+        return part.partition_name
+      elif part.partition_number:
+        return part.partition_number
+      elif part.device_name:
+        return part.device_name
+      elif part.partition_uuid:
+        return part.partition_uuid
+      pass
+    return None
+
   # find a partition by partition type
   def find_partition_by_type(self, part_type):
     for part in self.partitions:
       if part.partition_type == part_type:
+        return part
+      pass
+    return None
+  
+
+  # find a partition by file system
+  # This works only because usually there is only one particular file system.
+  # If there are more than one, this would find the first one, and if there
+  # are multple, you'd be probably in trouble.
+  def find_partition_by_file_system(self, file_system):
+    for part in self.partitions:
+      if part.file_system == file_system:
         return part
       pass
     return None
@@ -348,6 +374,14 @@ class DiskPortal(Component):
     return len(self.disks)
 
 
+  def find_disk_by_device_name(self, device_name):
+    for disk in self.disks:
+      if disk.device_name == device_name:
+        return disk
+      pass
+    return None
+
+
   def decision(self, live_system=False, **kwargs):
     decisions = []
     if self.count() == 0:
@@ -379,6 +413,51 @@ class DiskPortal(Component):
     return decisions
   pass
 
+
+class PartitionLister:
+  #                          1:    2:           3:           4:           5:fs  6:name  7:flags   
+  partline_re = re.compile('^(\d+):([\d\.]+)MiB:([\d\.]+)MiB:([\d\.]+)MiB:(\w*):([^:]*):(.*);')
+
+  def __init__(self, disk):
+    self.disk = disk
+    self.argv = ["parted", "-m", disk.device_name, 'unit', 'MiB', 'print']
+    self.out = ""
+    pass
+  
+  def execute(self):
+    self.parted = subprocess.run(self.argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    self.out = self.parted.stdout.decode('iso-8859-1')
+    self.err = self.parted.stderr.decode('iso-8859-1')
+    self.parse_parted_output()
+    tlog.debug("Lister " + " ".join([ '%s' % arg for arg in self.argv]))
+    tlog.debug(self.out)
+    tlog.debug(self.err)
+    pass
+
+  def set_parted_output(self, out, err):
+    self.parted = None
+    self.out = out
+    self.err = err
+    pass
+
+  def parse_parted_output(self):
+    self.disk.partitions = []
+    partclone_output = self.out.splitlines()
+    if partclone_output[0] != 'BYT;':
+      raise Exception('parted returned the first line other than BYT; This means the unit printed is not byte.')
+    # partclone_output[1] is for whole disk, and unused.
+    for line in partclone_output[2:]:
+      m = self.partline_re.match(line)
+      if m:
+        part = Partition(device_name = self.disk.device_name + m.group(1),
+                         partition_name = m.group(6),
+                         partition_number = int(m.group(1)),
+                         file_system = m.group(5))
+        self.disk.partitions.append(part)
+        pass
+      pass
+    pass
+  pass
 #
 #
 #
