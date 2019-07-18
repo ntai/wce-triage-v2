@@ -12,6 +12,14 @@ from wce_triage.ops.runner import *
 from wce_triage.lib.disk_images import *
 from wce_triage.ops.json_ui import *
 
+# "Waiting", "Prepare", "Preflight", "Running", "Success", "Failed"]
+my_messages = { "Waiting":   "Saving disk is waiting.",
+                "Prepare":   "Savign disk is preparing.",
+                "Preflight": "Saving disk is preparing.",
+                "Running":   "{step} of {steps}: Running {task}",
+                "Success":   "Saving disk completed successfully.",
+                "Failed":    "Saving disk failed." }
+
 #
 class ImageDiskRunner(Runner):
   '''Runner for creating disk image. does fsck, shrink partition, create disk 
@@ -87,7 +95,7 @@ if __name__ == "__main__":
     do_it = True
     pass
   else:
-    ui = json_ui(wock_event="saveimage")
+    ui = json_ui(wock_event="saveimage", message_catalog=my_messages)
     pass
 
   if re.match(part, '\d+'):

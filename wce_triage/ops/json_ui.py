@@ -30,9 +30,10 @@ def _describe_task(task):
 
 
 class json_ui(ops_ui):
-  def __init__(self, wock_event = "loadimage"):
+  def __init__(self, wock_event = "loadimage", message_catalog=None):
     self.previous = None
     self.wock_event = wock_event
+    self.message_catalog = message_catalog
     pass
 
   def send(self, event, obj):
@@ -115,15 +116,16 @@ class json_ui(ops_ui):
     status_message = runner_state
 
     if runner_state == "Success":
-      status_message = "Loading disk image completed successfully."
+      status_message = self.message_catalog.get(runner_state, "Disk image operation completed successfully.")
     elif runner_state == "Failed":
-      status_message = "Loading disk image failed."
+      status_message = self.message_catalog.get(runner_state, "Disk image operation failed.")
     elif runner_state != "Running":
-      status_message = "Start loading."
+      status_message = self.message_catalog.get(runner_state, "Disk operation started.")
     elif step < len(tasks):
       this_task = tasks[step]
       description = this_task.description
-      status_message = "Running task (%d of %d): %s" % (step+1, len(tasks), description)
+      status_message_format = self.message_catalog.get(runner_state, "{step} of {steps}: Running {task}")
+      status_message = status_message_format.format(task=description, step=step+1, steps=len(tasks))
       pass
 
     self.send(self.wock_event,

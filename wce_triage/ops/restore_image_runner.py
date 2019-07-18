@@ -13,7 +13,14 @@ from wce_triage.ops.partclone_tasks import *
 from wce_triage.lib.util import is_block_device
 from wce_triage.ops.json_ui import *
 
-#
+# "Waiting", "Prepare", "Preflight", "Running", "Success", "Failed"]
+my_messages = { "Waiting":   "Disk image load is waiting.",
+                "Prepare":   "Disk image load is preparing.",
+                "Preflight": "Disk image load is preparing.",
+                "Running":   "{step} of {steps}: Running {task}",
+                "Success":   "Disk image load completed successfully.",
+                "Failed":    "Disk image load failed." }
+
 def make_random_hostname(stemname="wce"):
   return stemname + uuid.uuid4().hex[:8]
 #
@@ -236,7 +243,7 @@ if __name__ == "__main__":
     do_it = True
     pass
   else:
-    ui = json_ui(wock_event="loadimage")
+    ui = json_ui(wock_event="loadimage", message_catalog=my_messages)
     pass
 
   # Rehydrate the restore_type and make it to Python dict.
