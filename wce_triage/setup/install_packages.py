@@ -63,7 +63,7 @@ server_packages = [
   'dnsmasq',
   'nfs-common',
   'nfs-kernel-server'
-}
+]
 
 if __name__ == "__main__":
   packages = triage_packages

@@ -3,7 +3,7 @@
 import os, sys, subprocess
 
 TRIAGEUSER = os.environ.get("TRIAGEUSER", "wce")
-TRIAGEPASS = os.environ('TRIAGEPASS', 'wce123')
+TRIAGEPASS = os.environ.get('TRIAGEPASS', 'wce123')
 
 if __name__ == "__main__":
   #
