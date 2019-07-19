@@ -3,19 +3,20 @@
 # This is to set up a laptop or desktop to be used for
 # WCE's disk prep.
 #
-import os, sys
+import os, sys, subprocess
 
-os.environ['GRUB_DISABLE_OS_PROBER'] = 'true'
-os.environ['TRIAGEUSER'] = 'wce'
-os.environ['TRIAGEPASS'] = 'wce123'
+env = os.environ.copy()
+env['GRUB_DISABLE_OS_PROBER'] = 'true'
+env['TRIAGEUSER'] = 'wce'
+env['TRIAGEPASS'] = 'wce123'
 
 # Workstation gets all of packages
-os.environ['WCE_DESKTOP'] = 'true'
-os.environ['WCE_TRIAGE_DISK'] = 'true'
-os.environ['WCE_SERVER'] = 'true'
+env['WCE_DESKTOP'] = 'true'
+env['WCE_TRIAGE_DISK'] = 'true'
+env['WCE_SERVER'] = 'true'
 
 # 
-os.environ['PATCHES'] = 'workstation'
+env['PATCHES'] = 'workstation'
 
 if __name__ == "__main__":
   steps = ['install_packages',
@@ -29,6 +30,6 @@ if __name__ == "__main__":
   
   for step in steps:
     package_name = 'wce_triage.setup.' + step
-    subprocess.run(['sudo', '-H', 'python3', '-m', package_name])
+    subprocess.run(['sudo', '-E', '-H', 'python3', '-m', package_name], env=env)
     pass
   pass

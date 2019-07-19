@@ -5,14 +5,15 @@
 import os, sys, subprocess
 
 # For the setup user 
-os.environ['TRIAGEUSER'] = 'triage'
-os.environ['TRIAGEPASS'] = 'triage'
+env = os.environ.copy()
+env['TRIAGEUSER'] = 'triage'
+env['TRIAGEPASS'] = 'triage'
 
 # This affects the package installation
-os.environ['WCE_SERVER'] = 'true'
+env['WCE_SERVER'] = 'true'
 
 # This affects patch_system
-os.environ['PATCHES'] = 'server'
+env['PATCHES'] = 'server'
 
 if __name__ == "__main__":
   
@@ -27,7 +28,7 @@ if __name__ == "__main__":
   
   for step in steps:
     package_name = 'wce_triage.setup.' + step
-    subprocess.run(['sudo', '-H', 'python3', '-m', package_name])
+    subprocess.run(['sudo', '-E', '-H', 'python3', '-m', package_name], env=env)
     pass
   pass
 

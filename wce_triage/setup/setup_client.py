@@ -2,11 +2,13 @@
 
 import os, sys
 
-os.environ['GRUB_DISABLE_OS_PROBER'] = 'true'
-os.environ['TRIAGEUSER'] = 'wce'
-os.environ['TRIAGEPASS'] = 'wce123'
-os.environ['WCE_DESKTOP'] = 'true'
-os.environ['PATCHES'] = 'desktop'
+env = os.environ.copy()
+
+env['GRUB_DISABLE_OS_PROBER'] = 'true'
+env['TRIAGEUSER'] = 'wce'
+env['TRIAGEPASS'] = 'wce123'
+env['WCE_DESKTOP'] = 'true'
+env['PATCHES'] = 'desktop'
 
 if __name__ == "__main__":
   steps = ['install_packages',
@@ -20,6 +22,6 @@ if __name__ == "__main__":
   
   for step in steps:
     package_name = 'wce_triage.setup.' + step
-    subprocess.run(['sudo', '-H', 'python3', '-m', package_name])
+    subprocess.run(['sudo', '-E', '-H', 'python3', '-m', package_name], env=env)
     pass
   pass

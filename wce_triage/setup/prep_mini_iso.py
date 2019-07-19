@@ -7,12 +7,17 @@ TRIAGEUSER=os.environ.get("TRIAGEUSER", "triage")
 
 if __name__ == "__main__":
 
-  subprocess.run('sudo rm /swapfile', shell=True)
+  # USB stick is going to run with union-fs and using swapfile is harmful.
+  if os.path.exists('/swapfile'):
+    subprocess.run('sudo rm /swapfile', shell=True)
+    pass
 
-  os.environ['TRIAGE_SSID'] = 'wcetriage'
-  os.environ['TRIAGE_PASSWORD'] = 'thepasswordiswcetriage'
+  env = os.environ.copy()
+  env['TRIAGE_SSID'] = 'wcetriage'
+  env['TRIAGE_PASSWORD'] = 'thepasswordiswcetriage'
 
-  subprocess.run('sudo python3 wce_triage.bin.start_network', shell=True)
+  subprocess.run(['sudo', '-E', '-H', 'python3', '-m', 'wce_triage.bin.start_network'], env=env)
+  # yes, this was a shell script...
   subprocess.run('sudo apt install -y python3-pip', shell=True)
   subprocess.run('sudo -H pip3 install --no-cache-dir -i https://test.pypi.org/simple/ --no-deps wce_triage', shell=True)
 

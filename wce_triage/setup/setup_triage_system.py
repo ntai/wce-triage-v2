@@ -7,11 +7,13 @@
 
 import os, sys, subprocess
 
-os.environ['WCE_TRIAGE_DISK'] = 'true'
-os.environ['GRUB_DISABLE_OS_PROBER'] = 'true'
-os.environ['TRIAGEUSER'] = 'triage'
-os.environ['TRIAGEPASS'] = 'triage'
-os.environ['PATCHES'] = 'triage'
+env = os.environ.copy()
+
+env['WCE_TRIAGE_DISK'] = 'true'
+env['GRUB_DISABLE_OS_PROBER'] = 'true'
+env['TRIAGEUSER'] = 'triage'
+env['TRIAGEPASS'] = 'triage'
+env['PATCHES'] = 'triage'
 
 if __name__ == "__main__":
   
@@ -33,7 +35,7 @@ if __name__ == "__main__":
   # Install Ubunto packages (some are python packages)
   for step in steps:
     package_name = 'wce_triage.setup.' + step
-    subprocess.run(['sudo', '-H', 'python3', '-m', package_name])
+    subprocess.run(['sudo', '-E', '-H', 'python3', '-m', package_name], env=env)
     pass
   pass
 

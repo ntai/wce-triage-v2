@@ -2,7 +2,8 @@
 #
 import os, sys
 
-PATCH_SRC = 'patches/' + os.environ['PATCHES']
+patch_dir = os.path.dirname(__file__)
+PATCH_SRC = os.path.join(patch_dir, 'patches', os.environ['PATCHES'])
 SYSTEM_ROOT = '/'
 
 class patch_plan:
