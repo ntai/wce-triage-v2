@@ -62,7 +62,8 @@ server_packages = [
   'lighttpd',
   'dnsmasq',
   'nfs-common',
-  'nfs-kernel-server'
+  'nfs-kernel-server',
+  'openssh-server'
 ]
 
 if __name__ == "__main__":

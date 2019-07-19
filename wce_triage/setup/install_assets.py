@@ -45,15 +45,11 @@ def match(mount_roots, path):
     criteria = path.split('/')
     for c_len in range(len(criteria), 0, -1):
         candidate = '/'.join(criteria[:c_len])
-        if candidate == '':
-            candidate = '/'
-            pass
         found = mount_roots.get(candidate)
         if found:
             return found
         pass
-    # This should not happen
-    return None
+    return ''
 
 if __name__ == "__main__":
 
@@ -69,20 +65,17 @@ if __name__ == "__main__":
             pass
         pass
 
-    print(mount_roots.keys())
     path = sys.argv[1]
     if path[0] == '.':
       path = os.getcwd()
       pass
-    print (path)
     print(match(mount_roots, path))
     pass
-    pass
 EOF
-python3 $tempdir/get-mount-point.py $0
 
-echo $MOUNTPOINT
+MOUNTPOINT=$(python3 /tmp/get-mount-point.py pwd)
 cd $MOUNTPOINT/usr/local/share/wce/wce-triage-ui
+pwd
 wget -q -O - http://release.cleanwinner.com/wce/wce-triage-ui.tgz | tar xzf -
 rm -fr $tempdir
 ''')

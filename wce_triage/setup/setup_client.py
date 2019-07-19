@@ -17,7 +17,7 @@ if __name__ == "__main__":
            # Install triage software and services
            'install_assets',
            # patch up system and boot loader installation
-           'patch_system',
+           'patch_system'
   ]
   
   for step in steps:

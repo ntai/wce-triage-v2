@@ -13,5 +13,5 @@ python3 -m wce_triage.http.httpserver
 ''')
 wce_triage_sh.close()
 
-subprocess.run(['sudo', '-H', 'install', '-m', '0555', '/tmp/wce-triage.sh', '/usr/local/bin'])
+subprocess.run(['sudo', '-H', 'install', '-m', '0555', tmpfile, '/usr/local/bin'])
 

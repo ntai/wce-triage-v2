@@ -1,25 +1,13 @@
 #!/usr/bin/python3
 #
-# This is for Triage USB stick on mini system
-#
+# 
 import os, sys, subprocess
 
-subprocess.run(['sudo', 'rm', '-f', '/tmp/grub.cfg'])
-
-grub_cfg = open('/tmp/grub.cfg', 'w')
-grub_cfg.write('''GRUB_DEFAULT=0
-GRUB_TIMEOUT=10
-GRUB_DISTRIBUTOR=
-GRUB_CMDLINE_LINUX_DEFAULT="aufs=tmpfs"
-GRUB_CMDLINE_LINUX=""
-GRUB_BACKGROUND="/usr/local/share/wce/triage/assets/wceboot2.png
-GRUB_PRIMARY_MENU_TITLE="WCE Triage/Ubuntu"
-''')
-grub_cfg.close()
-
-subprocess.run(['sudo', 'install', '/tmp/grub.cfg', '/etc/default/grub'])
+if os.getuid() != 0:
+    print("***** install_boot would only work as root *****")
+    sys.exit(1)
 #
-subprocess.run(['sudo', 'update-grub'])
+subprocess.run(['update-grub'])
 #
-subprocess.run(['sudo', 'update-initramfs', '-u'])
+subprocess.run(['update-initramfs', '-u'])
                
