@@ -3,6 +3,8 @@ import os, sys, subprocess
 
 TRIAGEUSER=os.environ.get("TRIAGEUSER", "triage")
 
+subprocess.run('sudo rm -f /tmp/wce-kiosk.sh /tmp/wce-kiosk.service /tmp/wce-triage.service', shell=True)
+
 #
 # X11 has to run as root, and chrome has to run as triage.
 #
@@ -14,7 +16,10 @@ xhost + localhost SI:localuser:$TRIAGEUSER
 sudo -H -u $TRIAGEUSER DISPLAY=$$DISPLAY openbox-session &
 sudo -H -u $TRIAGEUSER DISPLAY=$$DISPLAY start-pulseaudio-x11
 while true; do
+  sleep 2
   if lsof -Pi :8312 -sTCP:LISTEN -t >/dev/null ; then
+      sudo -H -u triage DISPLAY=$DISPLAY pactl set-sink-mute 0 false
+      sudo -H -u triage DISPLAY=$DISPLAY pactl set-sink-volume 0 90%
       sudo -H -u triage rm -rf /home/triage/.{config,cache}/google-chrome/
       sudo -H -u triage google-chrome --display=$DISPLAY --kiosk --no-first-run 'http://localhost:8312'
   fi
