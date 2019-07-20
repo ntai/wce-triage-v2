@@ -14,6 +14,14 @@ def get_maybe_disk_image_directories():
         pass
       pass
     pass
+
+  # On network boot, there is no physical disks. I could go after
+  # moutns but there is only one location possible for netboot+NFS.
+  wce_images = "/usr/local/share/wce/wce-disk-images"
+  if os.path.exists(wce_images) and os.path.isdir(wce_images) and wce_images not in dirs:
+    dirs.append(wce_images)
+    pass
+
   return dirs
 
 #

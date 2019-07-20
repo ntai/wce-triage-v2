@@ -203,13 +203,6 @@ def get_lighttpd_server_port():
 
 #
 if __name__ == "__main__":
-  print ('my ip addr = ' + get_my_ip_address())
-
-  for diskimage in get_disk_images():
-    print (diskimage)
-    pass
-  
-
   sleep = subprocess.Popen("sleep 5", shell=True, stdout=subprocess.PIPE)
   
   for i in range(1, 10):

@@ -23,4 +23,9 @@ clean:
 	sudo rm -fr /root/Desktop
 
 client:
-	sudo rsync -av --delete /usr/local/lib/python3.6/dist-packages/ /var/lib/netclient/wcetriage.0.1.30/usr/local/lib/python3.6/dist-packages/
+	sudo rsync -av --delete /usr/local/lib/python3.6/dist-packages/ /var/lib/netclient/wcetriage/usr/local/lib/python3.6/dist-packages/
+	sudo rsync -av --delete /usr/local/share/wce/triage/ /var/lib/netclient/wcetriage/usr/local/share/wce/triage/
+	sudo rsync -av --delete /usr/local/share/wce/wce-triage-ui/ /var/lib/netclient/wcetriage/usr/local/share/wce/wce-triage-ui/
+	# sudo rsync -av --delete /usr/local/bin/ /var/lib/netclient/wcetriage/usr/local/bin/
+
+
