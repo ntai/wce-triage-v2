@@ -1,3 +1,7 @@
+#!/usr/bin/python3
+# Copyright (c) 2019 Naoyuki tai
+# MIT license - see LICENSE
+
 import os, subprocess
 from wce_triage.components.component import *
 

@@ -1,3 +1,7 @@
+#!/usr/bin/python3
+# Copyright (c) 2019 Naoyuki tai
+# MIT license - see LICENSE
+
 import subprocess
 from wce_triage.lib.util import *
 

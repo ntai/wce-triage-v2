@@ -1,6 +1,7 @@
-#
-# 
-#
+#!/usr/bin/python3
+# Copyright (c) 2019 Naoyuki tai
+# MIT license - see LICENSE
+
 import urllib.parse
 import os, sys
 
@@ -169,7 +170,7 @@ class Networks(Component):
       pass
     return decisions
 
-  def detect_changes(self):
+  def detect_changes(self) -> list:
     updates = []
     for netdev in self.networks:
       old_connected = netdev.connected

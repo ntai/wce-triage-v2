@@ -1,4 +1,6 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
+# Copyright (c) 2019 Naoyuki tai
+# MIT license - see LICENSE
 
 from wce_triage.components.component import *
 from wce_triage.components import pci as _pci
@@ -24,6 +26,11 @@ tlog = get_triage_logger()
 
 
 class Computer(Component):
+  """Computer class.
+
+Computer is a component but also an aggregator of all of components on the computer.
+"""
+
   def __init__(self):
     self.target = None # Installation destination
 
@@ -38,6 +45,10 @@ class Computer(Component):
   # 
 
   def gather_info(self):
+    """gathers info of computer.
+
+As a aggregator of components, it calls into the device detections and accumulates the info.
+"""
 
     self.cpu = _cpu.CPU()
     self.memory = _memory.Memory()
@@ -56,13 +67,30 @@ class Computer(Component):
     pass
 
 
-  def triage(self, live_system = False):
+  def triage(self, live_system = False) -> bool:
+    """gathers info of computer, and decides the overall triage status.
+
+arg: live_system -> bool
+
+live_system denotes this triage is done for live system.
+The difference between live/non-live system is, the mounted disk counts for live system while non-live triage excludes the monted disk.
+"""
+
+    # live_system denotes this triage is done for live system
+    # The difference between live/non-live system is, the mounted disk
+    # counts for live system while non-live triage excludes the monted disk.
     self.live_system = live_system
     self.gather_info();
     self.make_decision()
     return self.decision
 
   def make_decision(self):
+    """making decision based on the components' decision. 
+
+Each component has its own decision, and the computer honors it.
+Overall decision (self.decision) is True only when every component decision is good.
+"""
+    
     #
     for component in self.components:
       self.decisions = self.decisions + component.decision(live_system=self.live_system)
@@ -78,6 +106,14 @@ class Computer(Component):
 
   # This may be too invasive...
   def update_decision( self, keys, updates, overall_changed = None):
+    """updating decision of component. 
+
+When a status/decision of component changes, this is called to update the decision of component which may or may not change the overall decision as well.
+
+Since there is no way to listen to audio, only way to confirm the functionality of component is to listen to the sound played on the computer.
+A triaging person can decide whether not sound playing. Also, if you plug in Ethernet to a router, the network status changes (such as detecting carrier) so it's done through this.
+"""
+
     for decision in self.decisions:
       matched_decision = decision
 

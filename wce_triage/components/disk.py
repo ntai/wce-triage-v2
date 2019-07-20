@@ -1,3 +1,7 @@
+#!/usr/bin/python3
+# Copyright (c) 2019 Naoyuki tai
+# MIT license - see LICENSE
+
 import re, sys, os, subprocess, traceback, time
 import logging
 
@@ -19,6 +23,16 @@ wce_release_file_name = 'wce-release'
 #
 
 class Partition:
+  """Partition of disk.
+
+MBR - 'EF01': MBR partition. this isn't really a paritition but 1MB is reserved at the beginning of disk.
+
+BIOSBOOT - 'EF02': BIOS boot partition.
+UEFI - 'EF00': EFI system parition. 32MB for our triage USB stick and 512MB for normal use.
+SWAP - '8200': Linux swap partition.
+EXT4 - '8300': Linux ext4 file system. This can be any version of ext-fs but we only care ext4.
+"""
+
   MBR = 'EF01'
   BIOSBOOT = 'EF02'
   UEFI = 'EF00'
@@ -34,6 +48,15 @@ class Partition:
                fs_uuid=None,
                file_system=None,
                mounted=False):
+    """ctor of partition.
+device_name: Partition device name - ex. /dev/sda1
+partition_name: Name of partition - only valid for GPT.
+partition_type: partition code such as 82, 83.
+partition_number: Parition number - ex 1 for /dev/sda1
+partition_uuid: UUID of partition
+fs_uuid: UUID of file system
+mounted: true if the partition is mounted as file system.
+"""
     self.device_name = device_name
     self.partition_name = partition_name # aka volume name
     self.partition_type = partition_type
@@ -46,6 +69,10 @@ class Partition:
     pass
 
   def get_mount_point(self, root='/tmp/mnt'):
+    """returns the mount point for the partition.
+
+it's /tmp/mnt/<fs_uuid>.
+"""
     return os.path.join(root, self.fs_uuid)
   
   def __str__(self):

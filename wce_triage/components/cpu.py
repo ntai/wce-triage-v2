@@ -1,3 +1,7 @@
+#!/usr/bin/python3
+# Copyright (c) 2019 Naoyuki tai
+# MIT license - see LICENSE
+
 import os
 
 from wce_triage.components.component import *
@@ -7,13 +11,25 @@ CPUInfo = namedtuple('CPUInfo', 'cpu_class, cores, processors, vendor, model, bo
 
 
 def parse_cpu_info_tag_value(line):
+  """parse the /proc/cpuinfo."""
+  
   elems = line.split(":")
   if len(elems) == 2:
     return (elems[0].strip(), elems[1].strip())
   return (None, None)
 
-def detect_cpu_type():
-  '''Detect cpu type.'''
+def detect_cpu_type() -> CPUInfo:
+  '''Detect cpu type and returns CPUInfo.
+
+CPUInfo contains following:
+ cpu_class:  1-5 where 3 - P3, 4 - P4, 5 - P5
+ cores:      number of cores per CPU
+ processors  Number of CPUs
+ vendor:     Vendor of CPU
+ model:      Model of CPU
+ bogomips:   Bogomigs
+ speed:      Clock speed
+'''
   
   max_processor = 0
   cpu_vendor = "other"
@@ -110,20 +126,26 @@ def detect_cpu_type():
 
 
 class CPU(Component):
+  """CPU as component.
+
+
+"""
   def __init__(self):
     self.cpu_info = detect_cpu_type()
     pass
 
-  def get_component_type(self):
+  def get_component_type(self) -> str:
+    """CPU as component type."""
     return "CPU"
 
-  def decision(self, **kwargs):
+  def decision(self, **kwargs) -> list:
+    """As of now, WCE only accepts CPU better than P5 (aka dual core)"""
+
     cpu = self.cpu_info
     cpu_detail = "P%d %s %s %dMHz %d cores" % (cpu.cpu_class, cpu.vendor, cpu.model, cpu.speed, cpu.cores)
     return [{"component": self.get_component_type(),
              "result":  self.cpu_info.cpu_class >= 5,
              "message": cpu_detail}]
-    pass
   pass
 
 #
