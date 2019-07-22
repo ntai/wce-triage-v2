@@ -1,0 +1,7 @@
+#!/bin/sh
+netclinetdir=/var/lib/netclient/wcetriage
+
+cat /etc/resolv.conf > $netclinetdir/etc/resolv.conf
+mount --bind /dev/ $netclinetdir/dev
+/usr/sbin/chroot $netclinetdir /bin/sh /home/triage/update-triage
+rm $netclinetdir/etc/resolv.conf

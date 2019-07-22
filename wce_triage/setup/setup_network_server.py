@@ -24,7 +24,8 @@ if __name__ == "__main__":
            'install_assets',
            # patch up system and boot loader installation
            'patch_system',
-           'install_boot'
+           'install_boot',
+           'install_pxeboot'
   ]
   
   for step in steps:

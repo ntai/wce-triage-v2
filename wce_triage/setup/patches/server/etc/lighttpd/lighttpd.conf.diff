@@ -1,0 +1,19 @@
+*** lighttpd.conf~	2017-01-19 05:47:08.000000000 -0500
+--- lighttpd.conf	2019-07-11 00:17:13.799978006 -0400
+***************
+*** 11,17 ****
+  server.pid-file             = "/var/run/lighttpd.pid"
+  server.username             = "www-data"
+  server.groupname            = "www-data"
+! server.port                 = 80
+  
+  
+  index-file.names            = ( "index.php", "index.html", "index.lighttpd.html" )
+--- 11,17 ----
+  server.pid-file             = "/var/run/lighttpd.pid"
+  server.username             = "www-data"
+  server.groupname            = "www-data"
+! server.port                 = 8080
+  
+  
+  index-file.names            = ( "index.php", "index.html", "index.lighttpd.html" )

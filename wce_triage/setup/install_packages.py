@@ -63,7 +63,10 @@ server_packages = [
   'dnsmasq',
   'nfs-common',
   'nfs-kernel-server',
-  'openssh-server'
+  'openssh-server',
+  'pxelinux',
+  'syslinux',
+  'python3-distutils'
 ]
 
 if __name__ == "__main__":
