@@ -405,7 +405,7 @@ class task_mkfs(op_task_process_simple):
       #
       partname = self.part.partition_name
       if partname is None:
-        partname = "LINUX"
+        partname = "Linux"
         pass
       
       partuuid = self.part.partition_uuid
@@ -744,6 +744,8 @@ class task_install_mbr(op_task_process_simple):
 # succession.
 #
 class task_fetch_partitions(op_task_process_simple):
+  '''fetches partitions from disk and creates parition instances.'''
+
   #                          1:    2:           3:           4:           5:fs  6:name  7:flags   
 
   def __init__(self, description, disk=None, **kwargs):
@@ -768,6 +770,8 @@ class task_fetch_partitions(op_task_process_simple):
     
 
 class task_refresh_partitions(op_task_command):
+  '''refreshes (reads) partitions from disk.'''
+  
   props = {'PARTUUID':  'partition_uuid',
            # 
            'TYPE':      'partition_type',
@@ -780,6 +784,7 @@ class task_refresh_partitions(op_task_command):
     super().__init__(description, encoding='iso-8859-1', **kwargs)
     self.disk = disk
     self.time_estimate = 2
+    self.ext4_count = 0
     pass
   
   def poll(self):
@@ -827,6 +832,14 @@ class task_refresh_partitions(op_task_command):
 
     #
     self.log("Partition %d %s (%s) - UUID %s." % (part.partition_number, part.partition_type, part.partition_name, part.fs_uuid))
+
+    if part.partition_type == 'ext4':
+      self.ext4_count += 1
+      # If this is the first linux ext4 partition, and has no name, name it 'Linux'
+      if not part.partition_name and self.ext4_count == 1:
+        part.partition_name = 'Linux'
+        pass
+      pass
     pass
 
   def _estimate_progress(self, total_seconds):

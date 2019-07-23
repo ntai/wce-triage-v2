@@ -29,7 +29,7 @@ For now, this is only dealing with the EXT4 linux partition.
   # FIXME: If I want to make this to a generic clone app, I need to deal with all of partitions on the disk.
   # One step at a time.
     
-  def __init__(self, ui, runner_id, disk, destdir, suggestedname=None, partition_id='LINUX'):
+  def __init__(self, ui, runner_id, disk, destdir, suggestedname=None, partition_id='Linux'):
     super().__init__(ui, runner_id)
     self.time_estimate = 600
     self.disk = disk

@@ -2,14 +2,14 @@
 PYPI_USER := $(shell echo $$PYPI_USERNAME)
 PYPI_PASSWORD := $(shell echo $$PYPI_PASSWORD)
 
-.PHONY: setup upload install
+.PHONY: setup upload install manifest
 
 default: setup
 
-setup: 
+setup: manifest
 	python3 setup.py sdist bdist_wheel
 
-upload:
+upload: 
 	twine upload --repository-url https://test.pypi.org/legacy/ dist/* --skip-existing -u ${PYPI_USER} -p ${PYPI_PASSWORD}
 
 check:
@@ -20,3 +20,7 @@ install:
 
 uninstall:
 	sudo -H pip3 uninstall wce_triage
+
+manifest:
+	echo include requirements.txt> MANIFEST.in
+	find wce_triage/setup/patches -type f -print | sed -e 's/^/include /' >> MANIFEST.in

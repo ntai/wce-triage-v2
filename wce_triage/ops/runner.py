@@ -109,7 +109,11 @@ class Runner:
           self._run_task(task, self.ui)
         except Exception as exc:
           self.state = RunState.Failed;
-          self.ui.log(self.runner_id, "Task: " + task.description + "\n" + traceback.format_exc())
+          tb = traceback.format_exc()
+          fail_msg = "Task: " + task.description + "\n" + tb
+          self.ui.log(self.runner_id, fail_msg)
+          task.set_progress(999, 'Task failed due to internal error. See logging.')
+          task.verdict.append(tb)
           pass
         pass
       else:
