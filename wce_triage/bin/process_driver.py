@@ -13,7 +13,8 @@ from wce_triage.lib.timeutil import *
 from wce_triage.lib.pipereader import *
 from collections import deque
 import urllib.parse
-import os
+import os, signal
+
 
 tlog = get_triage_logger()
 
@@ -28,9 +29,9 @@ class DriverState(Enum):
   Done = 3
   pass
 
-def _kill_all(processes):
+def _terminate_all(processes):
   for proc_name, process in processes:
-    process.kill()
+    process.terminate()
     pass
   pass
 
@@ -59,7 +60,24 @@ class Printer:
   pass
 
 
+#
+#
+#
+def handler_stop_signals(signum, frame):
+  '''propagate terminate signal to children'''
+  global all_processes
+  _terminate_all(all_processes)
+  pass
+
+#
+# Probably it's better to make this to a class...
+#
 def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
+  global all_processes
+  all_processes = processes
+  signal.signal(signal.SIGINT, handler_stop_signals)
+  signal.signal(signal.SIGTERM, handler_stop_signals)
+
   #
   printer = Printer(name)
   
@@ -113,13 +131,13 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
             printer.print_error("%s exited with %d" % (proc_name, retcode))
             pass
           processes.remove((proc_name, process))
-          driver_state = DriverState.Done if len(processes) == 0 else driver_state
-          
+          driver_state = DriverState.Stopping if len(processes) == 0 else driver_state
+
           # Something went wrong. Try to kill the rest.
           if retcode != 0:
             # retcode sucks. cannot tell much about the failier.
             drive_process_retcode = retcode
-            _kill_all(processes)
+            _terminate_all(processes)
             pass
           pass
         pass
@@ -137,7 +155,9 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
             pass
 
           line = reader.readline()
+
           if line == b'':
+            tlog.debug("driver closing fd %d fo reading empty" % fd)
             gatherer.unregister(fd)
             del fd_map[fd]
             pipe_readers[pipe_name] = None
@@ -161,6 +181,12 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
           pipe_readers[pipe_name] = None
           pass
         pass
+
+      #
+      if len(fd_map) == 0:
+        driver_state = DriverState.Done
+        pass
+
       pass
 
     except KeyboardInterrupt as exc:
@@ -168,7 +194,7 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
       drive_process_retcode = 0
       exit_request_time = datetime.datetime.now() + datetime.timedelta(0, 10, 0)
       driver_state = DriverState.Stopping
-      _kill_all(processes)
+      _terminate_all(processes)
       pass
 
     except Exception as exc:
@@ -177,7 +203,7 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
       # Wait max of 10 seconds
       exit_request_time = datetime.datetime.now() + datetime.timedelta(0, 10, 0)
       driver_state = DriverState.Stopping
-      _kill_all(processes)
+      _terminate_all(processes)
       pass
     pass
   return drive_process_retcode

@@ -4,7 +4,7 @@
 # good/bad is printed in json.
 # Since thing this does is too simple, I'll do kind of one-off.
 #
-import os, sys, subprocess, urllib, datetime
+import os, sys, subprocess, urllib, datetime, traceback
 
 import urllib.parse
 from collections import deque

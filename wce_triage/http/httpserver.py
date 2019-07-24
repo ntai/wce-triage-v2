@@ -147,9 +147,16 @@ class Emitter:
 
   # This is to send message
   def note(message):
-    Emitter._send('message', {"message": message})
+    Emitter._send('message', {"message": message,
+                              "severity": 1})
     pass
 
+  # This is to send alert message (aka popping up a dialog
+  def alert(message):
+    tlog.info(message)
+    Emitter._send('message', {"message": message,
+                              "severity": 2})
+    pass
   pass
 
 
@@ -160,6 +167,9 @@ class Emitter:
 # is to use a singleton. IOW, this class is nothing more than a namespace.
 #
 class TriageWeb(object):
+  
+  wiper_output_re = re.compile(r'^WIPE: python3\.stderr:(.*)')
+
   def __init__(self, app, rootdir, wcedir, cors, loop, live_triage):
     """
     HTTP request handler for triage
@@ -190,6 +200,7 @@ class TriageWeb(object):
 
     self.restore = None
     self.imaging = None
+    self.wiper = None
     self.optests = []
 
     self.wock = wock
@@ -598,11 +609,12 @@ class TriageWeb(object):
   async def route_stop_load_image(request):
     global me
     if me.restore and me.restore.returncode is None:
-      me.restore.kill()
+      me.restore.terminate()
       pass
     return aiohttp.web.json_response({})
 
 
+  # FIXME: 
   @routes.get("/dispatch/disk-load-status.json")
   async def route_disk_load_status(request):
     """Load disk image to disk"""
@@ -610,6 +622,7 @@ class TriageWeb(object):
     return aiohttp.web.json_response(me.loading_status)
 
 
+  # FIXME:
   @routes.get("/dispatch/disk-save-status.json")
   async def route_disk_save_status(request):
     """Create and save disk image"""
@@ -656,12 +669,12 @@ class TriageWeb(object):
       for partition in disk.partitions:
         tlog.debug(str(partition))
         pass
-      me.set_progress(999, "No EXT4 partition for imaging.")
+      Emitter.alert("Device %s has no EXT4 partition for imaging." % disk.device_name)
       return
     
     partition_id = disk.get_partition_id(part)
     if partition_id is None:
-      me.set_progress(999, "Partition %s has not valid ID." % part.device_name)
+      Emitter.alert("Partition %s has not valid ID." % part.device_name)
       return
     
     # saveType is a single word coming back from read_disk_image_types()
@@ -672,12 +685,12 @@ class TriageWeb(object):
         break
       pass
     if image_type is None:
-      me.set_progress(999, "Image type %s is not known." % saveType)
+      Emitter.alert("Image type %s is not known." % saveType)
       return
     
     destdir = image_type.get('catalogDirectory')
     if destdir is None:
-      me.set_progress(999, "Imaging type info %s does not include the catalog directory." % image_type.get("id"))
+      Emitter.alert("Imaging type info %s does not include the catalog directory." % image_type.get("id"))
       return
     
     # restore image runs its own course, and output will be monitored by a call back
@@ -730,6 +743,94 @@ class TriageWeb(object):
 
     self.check_restore_process()
     pass
+
+
+  @routes.post("/dispatch/wipe")
+  async def route_wipe(request):
+    global me
+    me.disk_portal.detect_disks()
+    disks = me.disk_portal.disks
+
+    requested = request.query.get("deviceName")
+    target = None
+    for disk in disks:
+      if disk.device_name in requested:
+        if disk.mounted:
+          return aiohttp.web.json_response({})
+          pass
+        target = disk
+        break
+      pass
+        
+    # restore image runs its own course, and output will be monitored by a call back
+    me.wiper = subprocess.Popen( ['python3', '-m', 'wce_triage.bin.wipedriver', requested], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    asyncio.get_event_loop().add_reader(me.wiper.stdout, functools.partial(me.wiper_progress_report, me.wiper.stdout))
+    asyncio.get_event_loop().add_reader(me.wiper.stderr, functools.partial(me.wiper_progress_report, me.wiper.stderr))
+    return aiohttp.web.json_response({})
+    pass
+  
+
+  def wiper_progress_report(self, pipe):
+    reader = self.pipe_readers.get(pipe)
+    if reader is None:
+      reader = PipeReader(pipe)
+      self.pipe_readers[pipe] = reader
+      pass
+
+    line = reader.readline()
+    if line == b'':
+      asyncio.get_event_loop().remove_reader(pipe)
+      del self.pipe_readers[pipe]
+      pass
+    elif line is not None:
+      tlog.debug("FromWiper: '%s'" % line)
+      if self.wiper and pipe == self.wiper.stderr:
+        # This is a message from wiper driver. Unlike json_ui, the output contains the
+        # prefix from processDriver.
+        matched = self.wiper_output_re.match(line)
+        if matched:
+          packet = json.loads(matched.group(1))
+          Emitter._send(packet['event'], packet['message'])
+          pass
+        else:
+          tlog.debug("Unrecognized line from wiper: " +line)
+          pass
+        pass
+      else:
+        # This is from stdout
+        tlog.debug(line)
+        Emitter.note(line)
+        pass
+      pass
+
+    if self.wiper:
+      self.wiper.poll()
+      if self.wiper.returncode:
+        returncode = self.wiper.returncode
+        self.wiper = None
+        if returncode is not 0:
+          Emitter.alert("Wipe disk failed with error code %d" % returncode)
+          pass
+        pass
+      pass
+    pass
+
+
+  @routes.post("/dispatch/stop-wipe")
+  async def route_stop_wipe(request):
+    global me
+    if me.wiper and me.wiper.returncode is None:
+      me.wiper.terminate()
+      pass
+    return aiohttp.web.json_response({})
+
+  # FIXME:
+  @routes.get("/dispatch/disk-wipe-status.json")
+  async def route_disk_wipe_status(request):
+    global me
+    wiper_running = me.wiper and me.wiper.returncode is None
+
+    return aiohttp.web.json_response({"diskWiping": wiper_running})
 
 
   @routes.post("/dispatch/mount")

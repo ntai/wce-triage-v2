@@ -1,6 +1,9 @@
 
 from collections import deque
 import subprocess, sys
+from wce_triage.lib.util import *
+
+tlog = get_triage_logger()
 
 class PipeReader:
   def __init__(self, pipe, encoding='iso-8859-1'):
@@ -23,21 +26,29 @@ class PipeReader:
       # returning b'' is such an ugly hack. For more sane people,
       # throwing exception is neater.
       self.pipe = None
-      return b''
+      return self._flush_fragments()
     else:
       if ch in [ b'\n', b'\r']:
-        buffer = bytearray(len(self.fragments)+1)
-        for i in range(len(self.fragments)):
-          buffer[i] = ord(self.fragments[i])
-          pass
-        buffer[len(self.fragments)] = ord(b'\n')
-        self.fragments.clear()
-        return buffer.decode(self.encoding)
+        return self._flush_fragments()
       else:
         self.fragments.append(ch)
         return None
       pass
     pass
+
+
+  def _flush_fragments(self):
+    buffer = bytearray(len(self.fragments)+1)
+    for i in range(len(self.fragments)):
+      buffer[i] = ord(self.fragments[i])
+      pass
+    buffer[len(self.fragments)] = ord(b'\n')
+    self.fragments.clear()
+    return buffer.decode(self.encoding)
+
+  def flush(self):
+    return self._flush_fragments()
+
   pass
 
   
