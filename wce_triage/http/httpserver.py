@@ -42,7 +42,17 @@ wock = socketio.AsyncServer(async_mode='aiohttp', logger=get_triage_logger(), co
 async def route_version(request):
   """Get the version number of backend"""
   # FIXME: Front end version is in manifest.
-  fversion = "0.1.40"
+  fversion = "1.0.0"
+  try:
+    with open('/usr/local/share/wce/wce-triage-ui/manifest.json') as frontend_manifest:
+      manifest = json.load(frontend_manifest)
+      fversion = manifest.get('version', "1.0.0")
+      pass
+    pass
+  except Exception as exc:
+    tlog.info('Reading /usr/local/share/wce/wce-triage-ui/manifest.json failed with exception. ' + traceback.format_exc())
+    pass
+
   jsonified = { "version": {"backend": wce_triage.version.TRIAGE_VERSION, "frontend": fversion }}
   return aiohttp.web.json_response(jsonified)
 
