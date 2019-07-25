@@ -29,6 +29,7 @@ from wce_triage.lib.pipereader import *
 from wce_triage.components import optical_drive as _optical_drive
 from wce_triage.components import sound as _sound
 from wce_triage.lib.disk_images import *
+import wce_triage.version
 
 
 tlog = get_triage_logger()
@@ -40,29 +41,9 @@ wock = socketio.AsyncServer(async_mode='aiohttp', logger=get_triage_logger(), co
 @routes.get('/version.json')
 async def route_version(request):
   """Get the version number of backend"""
-
-  wce_triage_parent_dir = None
-  for pa in sys.path:
-    p_wce_triage = os.path.join(pa, "wce_triage")
-    if os.path.exists(p_wce_triage) and os.path.isdir(p_wce_triage):
-      wce_triage_parent_dir = pa
-      break
-    pass
-
-  # hack alert
-  dist_info_re = re.compile(r'wce_triage-(\d+\.\d+.\d+).dist-info')
-    
-  version = "Unknown"
-  for adir in os.listdir(wce_triage_parent_dir):
-    matched = dist_info_re.match(adir)
-    if matched:
-      version = matched.group(1)
-      break
-    pass
-
   # FIXME: Front end version is in manifest.
-  fversion = "0.0.1"
-  jsonified = { "version": [ {"backend": version },  {"frontend": fversion } ] }
+  fversion = "0.1.40"
+  jsonified = { "version": {"backend": wce_triage.version.TRIAGE_VERSION, "frontend": fversion }}
   return aiohttp.web.json_response(jsonified)
 
 #
