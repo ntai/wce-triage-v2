@@ -21,7 +21,7 @@ This package is designed around running a minimal Ubuntu/Linux, and gather compu
 For the operation of WCE, there are 4 categories of computers involved. 
 
 1. **Desktop client** - this is the product we produce
-2. **Triage app** - this is a standalone USB stick that the desktop client uses for running Triage app.
+2. **Triaging computer** - this is a computer being triageed by Triage app. The computer will be a desktop client when it passes the test, repaired or salvaged.
 3. **Network Server** - this is a Ubuntu/Linux server that is capable of running Triage app on PXE booted client over network, and thus allows PXE booted Desktop clients to install the disk image over network.
 4. **Workstation** - this is a Ubuntu/Linux desktop that is used for authoring WCE contents and disk images. The workstation is also a Network Server as well. This allows us to check out the disk image created immediately by connecting a desktop client to the workstation.
 
@@ -251,5 +251,6 @@ For triage app to run on USB stick or NFS mounted root which is read-only, it ne
 To this to work, initrd file contains a script to set up the aufs by creating tempfs, moving read-only file system to "/ro", and mount the aufs as root "/" file system. If you do not recreate (aka update) the initrd without this script, this does not work. triage.setup.setup_FOO installs the script and updates initrd file. If you use a stock initrd, this brakes down. If you are curious, you can take a look at the script for initrd. `wce-triage-v2/wce_triage/setup/patches/server/etc/initramfs-tools/scripts/init-bottom/__rootaufs` is the shell script for this. Same copy is included for triage and workstation, but not in the desktop client for obvious reason. 
 
 
-
-
+### Network Server Post Installation Configuration
+In order for network server to work properly, you have to manually configure the network interface (for now). This is because the network server (and workstation as well) need to prohibit offering DHCP on the NIC that is connected to your network. For PXE to work, it needs to have it's own subnet/separate network from your LAN, or else your LAN would be totally confused by more than one DHCP server running, and one of them is this destructive Triage app server. In some near future, I am thinking about the network setting to be done on the Triage web as well, but until I get there, you need to manually edit  /etc/dnsmasq.conf and /etc/netplan/foo.yaml for your network hardware.
+ 
