@@ -26,9 +26,6 @@ n_sectors: number of sectors.
 
   pattern_size = 4 * 1024 * 1024
   pattern = bytearray(pattern_size)
-  for i in range(pattern_size):
-    pattern[i] = 0
-    pass
   
   device = open(dest_dev, 'wb')
   remaining = n_sectors
@@ -46,7 +43,7 @@ n_sectors: number of sectors.
       device.write(pattern)
       remaining -= (pattern_size / 512)
     else:
-      device.write(pattern[0:remaining*512])
+      device.write(pattern[:remaining*512])
       remaining = 0
       pass
     device.flush()
@@ -69,6 +66,7 @@ n_sectors: number of sectors.
         pass
       sectors_per_second = sum(rates) / len(rates)
       time_reamining = remaining / sectors_per_second
+      progress = min(99, max(1, round(100*percentage_done)))
 
       report = { "event": "zerowipe",
                  "message": {"device": dest_dev,
@@ -76,7 +74,7 @@ n_sectors: number of sectors.
                              "runStatus": "Wiping disk - %d of %d sectors wiped." % (n_sectors - remaining, n_sectors),
                              "startTime": start_time.isoformat(),
                              "currentTime": current_time.isoformat(),
-                             "progress": min(99, max(1, round(100*percentage_done))),
+                             "progress": progress,
                              "timeReamining" : round(time_reamining),
                              "runTime" : round(in_seconds(dt_elapsed)),
                              "runEstimate" : round(time_reamining+in_seconds(dt_elapsed)),
@@ -128,12 +126,18 @@ n_sectors: number of sectors.
 
 
 if __name__ == "__main__":
-  if len(sys.argv) != 2:
-    sys.stderr.write('zerowipe.py <wiped>\n')
+  if len(sys.argv) < 2:
+    sys.stderr.write('zerowipe.py [-s] <wiped>\n')
     sys.exit(1)
     pass
     
+  short_wipe = False
   device = sys.argv[1]
+  if device == '-s':
+    short_wipe = True
+    device = sys.argv[2]
+    pass
+  
   if not is_block_device(device):
     sys.stderr.write("%s is not a block device.\n" % device)
     sys.exit(1)
@@ -155,6 +159,11 @@ if __name__ == "__main__":
         n_sectors = int(disksize)
         pass
       pass
+    pass
+
+  if short_wipe:
+    # wipe first 1Mb
+    n_sectors = 2*1024
     pass
 
   try:

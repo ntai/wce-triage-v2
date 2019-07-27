@@ -63,6 +63,32 @@ def jsoned_optical(optical):
   return {"deviceName": optical.device_name,
           "model": optical.vendor + " " + optical.model_name }
 
+
+#
+# This is ugly as hell. json_ui needs a better design.
+#
+def update_runner_status(runner_status, progress):
+  # load image event has two types, one from report_task_progress and other from report_tasks
+  # report_tasks contains the tasks, and task progress only updates the small part.
+
+  if progress.get("steps"):
+    runner_status = { "steps": progress["steps"]}
+    pass
+
+  if progress.get("step"):
+    step = progress["step"]
+    steps = runner_status.get("steps")
+    if steps and step < len(steps):
+      runner_status["steps"][step]["progress"] = progress["progress"]
+      runner_status["steps"][step]["elapseTime"] = progress["elapseTime"]
+      if progress["message"]:
+        runner_status["steps"][step]["message"] = progress["message"]
+        pass
+      runner_status["steps"][step]["status"] = progress["status"]
+      pass
+    pass
+  return runner_status
+
 #
 # WebSocket sender.
 #
@@ -105,13 +131,10 @@ class Emitter:
       try:
         elem = Emitter.queue.get(block=False)
         tlog.debug("EMITTER: sending %d: '%s' '%s'" % (elem[0], elem[1], elem[2]))
-        await wock.emit(elem[1], elem[2])
-
-        # so when browser asks with "get", I can answer the same
-        # result.
-        if elem[1] == "loadimage":
-          me.loading_status = elem[2]
-          pass
+        message = elem[2]
+        message['_sequence_'] = elem[0]
+        await wock.emit(elem[1], message)
+        me.peek_message(elem[1], message)
         pass
       except queue.Empty:
         running = False
@@ -140,6 +163,14 @@ class Emitter:
     pass
   pass
 
+#
+# id: ID used for front/back communication
+# name: displayed on web
+# arg: arg used for restore image runner.
+#
+WIPE_TYPES = [ {"id": "nowipe", "name": "No Wipe", "arg": ""},
+               {"id": "wipe", "name": "Full wipe", "arg": "-w" },
+               {"id": "shortwipe", "name": "Wipe first 1Mb", "arg": "--quickwipe" } ];
 
 #
 # TriageWeb
@@ -173,14 +204,17 @@ class TriageWeb(object):
     self.messages = []
     self.triage_timestamp = None
 
-    self.loading_status = { "pages": 1, "steps": [] }
+    self.loading_status = { "pages": 1, "steps": [], "diskRestroing": False }
+    self.saving_status = { "pages": 1, "steps": [], "diskSaving": False}
+    self.wiping_status = { "pages": 1, "steps": [], "diskWiping": False }
+
     # wock (web socket) channels.
     self.channels = {}
 
     self.pipe_readers = {}
 
     self.restore = None
-    self.imaging = None
+    self.saver = None
     self.wiper = None
     self.optests = []
 
@@ -203,7 +237,7 @@ class TriageWeb(object):
       (added, changed, removed) = me.disk_portal.detect_disks()
       
       if added or changed or removed:
-        disks = [ jsoned_disk(disk) for disk in me.disk_portal.disks ]
+        disks = {"disks": [ jsoned_disk(disk) for disk in me.disk_portal.disks ]}
         Emitter._send('diskupdate', disks)
         pass
 
@@ -221,6 +255,22 @@ class TriageWeb(object):
       pass
     pass
 
+  def peek_message(self, event, message):
+    '''get to observe the message sent to the browser. This gives the
+    HTTP server to see what's sent to the UI and have chance to update
+    the status so when UI comes back and asks staus, the server can reply.'''
+    # so when browser asks with "get", I can answer the same result.
+    # This is called from emitter as it sends the status to the browser.
+    if event == "loadimage":
+      self.loading_status = update_runner_status(self.loading_status, message)
+      pass
+    elif event == "saveimage":
+      self.saving_status = update_runner_status(self.saving_status, message)
+      pass
+    elif event == "zerowipe":
+      self.wiping_status = update_runner_status(self.wiping_status, message)
+      pass
+    pass
 
   @routes.get("/")
   async def route_root(request):
@@ -509,6 +559,15 @@ class TriageWeb(object):
     # disk image type is in lib/disk_images
     return aiohttp.web.json_response({ "restoreTypes": read_disk_image_types() })
 
+
+  # Disk wipe types.
+  #  
+  @routes.get("/dispatch/wipe-types.json")
+  async def route_restore_types(request):
+    """Returning wipe types."""
+    return aiohttp.web.json_response({ "wipeTypes": WIPE_TYPES})
+
+
   @routes.post("/dispatch/load")
   async def route_load_image(request):
     """Load disk image to disk"""
@@ -518,6 +577,7 @@ class TriageWeb(object):
     imagefile_size = request.query.get("size") # This comes back in bytes from sending sources with size. value in query is always string.
     newhostname = request.query.get("newhostname")
     restore_type = request.query.get("restoretype")
+    wipe_option = request.query.get("wipe")
 
     if newhostname is None:
       newhostname = {'triage': 'wcetriage2', 'wce': 'wce' + uuid.uuid4().hex[:8]}.get(restore_type, 'host' + uuid.uuid4().hex[:8])
@@ -531,8 +591,20 @@ class TriageWeb(object):
       return aiohttp.web.json_response({})
 
     # restore image runs its own course, and output will be monitored by a call back
-    me.restore = subprocess.Popen( ['python3', '-m', 'wce_triage.ops.restore_image_runner', devname, imagefile, imagefile_size, newhostname, restore_type],
-                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    # restore_image_runner.py [-h] [-m HOSTNAME] [-p] [-c] [-w] [--quickwipe] devname imagesource imagesize restore_type
+
+    argv = ['python3', '-m', 'wce_triage.ops.restore_image_runner']
+
+    for wipe_type in WIPE_TYPES:
+      if wipe_type.get("id") == wipe_option:
+        if wipe_type.get("arg"):
+          argv.append(wipe_type["arg"])
+          pass
+        break
+      pass
+    argv = argv + [devname, imagefile, imagefile_size, restore_type]
+    me.restore = subprocess.Popen(argv,
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     asyncio.get_event_loop().add_reader(me.restore.stdout, functools.partial(me.restore_progress_report, me.restore.stdout))
     asyncio.get_event_loop().add_reader(me.restore.stderr, functools.partial(me.restore_progress_report, me.restore.stderr))
     return aiohttp.web.json_response({})
@@ -595,21 +667,31 @@ class TriageWeb(object):
     return aiohttp.web.json_response({})
 
 
-  # FIXME: 
   @routes.get("/dispatch/disk-load-status.json")
   async def route_disk_load_status(request):
-    """Load disk image to disk"""
+    """Progress of load disk image to disk"""
     global me
-    return aiohttp.web.json_response(me.loading_status)
+    running = me.restore and me.restore.returncode is None
+    loading_status = me.loading_status
+    loading_status['diskRestoring'] = running
+    return aiohttp.web.json_response(loading_status)
 
 
-  # FIXME:
   @routes.get("/dispatch/disk-save-status.json")
   async def route_disk_save_status(request):
-    """Create and save disk image"""
-    # FIXME: Implement!
-    return aiohttp.web.json_response({})
+    """Progress of save disk image"""
+    global me
+    running = me.saver and me.sever.returncode is None
+    saving_status = me.loading_status
+    saving_status['diskSaving'] = running
+    return aiohttp.web.json_response(me.saving_status)
 
+
+  @routes.get("/dispatch/wiping-status.json")
+  async def route_wiping_status(request):
+    """Progress of disk wiping."""
+    global me
+    return aiohttp.web.json_response(me.wiping_status)
 
   @routes.get("/dispatch/download")
   async def route_download_image(request):
@@ -674,27 +756,13 @@ class TriageWeb(object):
       Emitter.alert("Imaging type info %s does not include the catalog directory." % image_type.get("id"))
       return
     
-    # restore image runs its own course, and output will be monitored by a call back
-    me.restore = subprocess.Popen( ['python3', '-m', 'wce_triage.ops.create_image_runner', devname, str(partition_id), destdir], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    asyncio.get_event_loop().add_reader(me.restore.stdout, functools.partial(me.restore_progress_report, me.restore.stdout))
-    asyncio.get_event_loop().add_reader(me.restore.stderr, functools.partial(me.restore_progress_report, me.restore.stderr))
+    # save image runs its own course, and output will be monitored by a call back
+    me.saver = subprocess.Popen( ['python3', '-m', 'wce_triage.ops.create_image_runner', devname, str(partition_id), destdir], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    asyncio.get_event_loop().add_reader(me.saver.stdout, functools.partial(me.saver_progress_report, me.saver.stdout))
+    asyncio.get_event_loop().add_reader(me.saver.stderr, functools.partial(me.saver_progress_report, me.saver.stderr))
     return aiohttp.web.json_response({})
 
-
-  def check_restore_process(self):
-    if self.restore:
-      self.restore.poll()
-      if self.restore.returncode:
-        returncode = self.restore.returncode
-        self.restore = None
-        if returncode is not 0:
-          Emitter.note("Restore failed with error code %d" % returncode)
-          pass
-        pass
-      pass
-    pass
-
-  def restore_progress_report(self, pipe):
+  def saver_progress_report(self, pipe):
     reader = self.pipe_readers.get(pipe)
     if reader is None:
       reader = PipeReader(pipe)
@@ -707,14 +775,14 @@ class TriageWeb(object):
       del self.pipe_readers[pipe]
       pass
     elif line is not None:
-      tlog.debug("FromRestore: '%s'" % line)
-      if self.restore and pipe == self.restore.stdout:
+      tlog.debug("FromSaver: '%s'" % line)
+      if self.saver and pipe == self.saver.stdout:
         # This is a message from loader
         try:
           packet = json.loads(line)
           Emitter._send(packet['event'], packet['message'])
         except Exception as exc:
-          tlog.info("FromRestore: BAD LINE '%s'" % line)
+          tlog.info("FromSaver: BAD LINE '%s'" % line)
           pass
         pass
       else:
@@ -722,9 +790,17 @@ class TriageWeb(object):
         pass
       pass
 
-    self.check_restore_process()
+    if self.saver:
+      self.saver.poll()
+      if self.saver.returncode:
+        returncode = self.saver.returncode
+        self.saver = None
+        if returncode is not 0:
+          Emitter.note("Saver failed with error code %d" % returncode)
+          pass
+        pass
+      pass
     pass
-
 
   @routes.post("/dispatch/wipe")
   async def route_wipe(request):
@@ -743,7 +819,7 @@ class TriageWeb(object):
         break
       pass
         
-    # restore image runs its own course, and output will be monitored by a call back
+    # wiper image runs its own course, and output will be monitored by a call back
     me.wiper = subprocess.Popen( ['python3', '-m', 'wce_triage.bin.wipedriver', requested], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     asyncio.get_event_loop().add_reader(me.wiper.stdout, functools.partial(me.wiper_progress_report, me.wiper.stdout))
     asyncio.get_event_loop().add_reader(me.wiper.stderr, functools.partial(me.wiper_progress_report, me.wiper.stderr))
@@ -810,9 +886,9 @@ class TriageWeb(object):
   async def route_disk_wipe_status(request):
     global me
     wiper_running = me.wiper and me.wiper.returncode is None
-
-    return aiohttp.web.json_response({"diskWiping": wiper_running})
-
+    wiping_status = me.wiping_status
+    wiping_status["diskWiping"] = wiper_running
+    return aiohttp.web.json_response(wiping_status)
 
   @routes.post("/dispatch/mount")
   async def route_mount_disk(request):

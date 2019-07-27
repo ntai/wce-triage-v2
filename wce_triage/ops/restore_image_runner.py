@@ -2,7 +2,7 @@
 # Restore disk
 #
 
-import datetime, re, subprocess, sys, os, uuid, traceback, logging
+import datetime, re, subprocess, sys, os, uuid, traceback, logging, argparse
 
 from wce_triage.ops.tasks import *
 from wce_triage.ops.ops_ui import *
@@ -31,8 +31,9 @@ class RestoreDiskRunner(PartitionDiskRunner):
                partition_map=None, 
                partition_id='Linux',
                pplan=None,
-               newhostname=make_random_hostname(),
-               restore_type=None):
+               newhostname=None,
+               restore_type=None,
+               wipe=None):
     #
     # FIXME: Well, not having restore type is probably a show stopper.
     #
@@ -46,12 +47,23 @@ class RestoreDiskRunner(PartitionDiskRunner):
 
     self.restore_type = restore_type
     efi_boot = self.restore_type.get('efi_image') is not None
-    super().__init__(ui, runner_id, disk, partition_plan=pplan, partition_map=partition_map, efi_boot=efi_boot)
+    super().__init__(ui, runner_id, disk, wipe=wipe, partition_plan=pplan, partition_map=partition_map, efi_boot=efi_boot)
 
     self.disk = disk
     self.source = src
     self.source_size = src_size
-    self.newhostname = newhostname
+    self.newhostname = None
+    if newhostname == "RANDOM":
+      self.newhostname = make_random_hostname()
+    elif newhostname == "ORIGINAL":
+      self.newhostname = None
+    elif isinstance(newhostname, str):
+      self.newhostname = newhostname
+    elif isinstance(newhostname, int):
+      self.newhostname = "ubuntu" + str(newhostname)
+    else:
+      self.newhostname = None
+      pass
     self.efi_source = efisrc # EFI partition is pretty small
     pass
 
@@ -137,14 +149,15 @@ def get_source_size(src):
 #
 # Running restore from 
 #
-def run_load_image(ui, devname, imagefile, imagefile_size, efisrc, newhostname, restore_type, do_it=True):
+def run_load_image(ui, devname, imagefile, imagefile_size, efisrc, newhostname, restore_type, wipe, do_it=True):
   '''Loading image to desk.
      :ui: User interface - instance of ops_ui
      :devname: Restroing device name
      :imagefile: compressed partclone image file
      :imagefile_size: Size of image file. If not known, 0 is used.
-     :newhostname: New host name assigned to the restored disk.
+     :newhostname: New host name assigned to the restored disk. ORIGINAL and RANDOM are special host name.
      :restore_type: dictionary describing the restore parameter. should come from .disk_image_type.json in the image file directory.
+     :wipe: 0: no wipe, 1: quick wipe, 2: full wipe
   '''
   # Should the restore type be json or the file?
   disk = Disk(device_name = devname)
@@ -196,7 +209,7 @@ def run_load_image(ui, devname, imagefile, imagefile_size, efisrc, newhostname, 
   
   runner = RestoreDiskRunner(ui, disk.device_name, disk, imagefile, imagefile_size, efisrc,
                              partition_id=partition_id, pplan=pplan, partition_map=partition_map,
-                             newhostname=newhostname, restore_type=restore_type)
+                             newhostname=newhostname, restore_type=restore_type, wipe=wipe)
   runner.prepare()
   runner.preflight()
   runner.explain()
@@ -211,40 +224,37 @@ if __name__ == "__main__":
                       format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                       filename='/tmp/triage.log')
 
-  if len(sys.argv) == 1:
-    print( 'Flasher: devname imagesource imagesize hostname [preflight] restore_type')
-    sys.exit(0)
-    # NOTREACHED
-    pass 
-  devname = sys.argv[1]
-  if not is_block_device(devname):
-    print( '%s is not a block device.' % devname)
-    sys.exit(1)
-    # NOTREACHED
-    pass
+  parser = argparse.ArgumentParser(description="Restore Disk image using partclone disk image.")
 
-  src = sys.argv[2]
-  src_size = int(sys.argv[3])
-  if src_size == 0:
-    src_size = get_source_size(src)
-  hostname = sys.argv[4]
-  restore_type = sys.argv[5]
+  parser.add_argument("devname", help="Device name. This is /dev/sdX, not the partition.")
+  parser.add_argument("imagesource", help="Image source file. File path or URL.")
+  parser.add_argument("imagesize", type=int, help="Size of image. If this the disk image file is on disk, size can be 0, and the loader gets the actual file size.")
+  parser.add_argument("restore_type", help="Restore type. This can be a path to the disk image metadata file or a keyword.")
 
-  # Preflight is for me to see the tasks. http server runs this with json_ui.
-  do_it = True
-  if restore_type == "preflight":
-    restore_type = sys.argv[6]
+  parser.add_argument("-m", "--hostname", help="new hostname. two keyword can be used for hostname. RANDOM and ORIGINAL")
+  parser.add_argument("-p", "--preflight", action="store_true", help="Does preflight only.")
+  parser.add_argument("-c", "--cli", action="store_true", help="Creates console UI instead of JSON UI for testing.")
+  parser.add_argument("-w", "--fullwipe", action="store_true", help="wipes full disk before partitioning")
+  parser.add_argument("--quickwipe", action="store_true", help="wipes first 1MB before partitioning, thus clearning the partition map.")
+
+  args = parser.parse_args()
+  
+  if args.cli:
     ui = console_ui()
-    do_it = False
-    pass
-  elif restore_type == "testflight":
-    restore_type = sys.argv[6]
-    ui = console_ui()
-    do_it = True
-    pass
   else:
     ui = json_ui(wock_event="loadimage", message_catalog=my_messages)
     pass
+
+  wipe = None
+  if args.fullwipe:
+    wipe = 2
+  elif args.quickwipe:
+    wipe = 1
+    pass
+
+  src = args.imagesource
+  
+  restore_type = args.restore_type
 
   # Rehydrate the restore_type and make it to Python dict.
   # From Web interface, it should be json string. Only time this is
@@ -296,7 +306,15 @@ if __name__ == "__main__":
     pass
   
   try:
-    run_load_image(ui, devname, src, src_size, efi_source, hostname, restore_param, do_it=do_it)
+    run_load_image(ui,
+                   args.devname,
+                   src,
+                   args.imagesize,
+                   efi_source,
+                   args.hostname,
+                   restore_param,
+                   wipe,
+                   do_it=not args.preflight)
     sys.exit(0)
     # NOTREACHED
   except Exception as exc:

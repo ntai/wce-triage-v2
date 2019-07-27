@@ -22,16 +22,28 @@ from wce_triage.lib.util import *
 # create a new gpt partition from partition plan
 #
 class PartitionDiskRunner(Runner):
-  def __init__(self, ui, runner_id, disk, partition_plan, partition_map='gpt', efi_boot=False):
+  def __init__(self, ui, runner_id, disk, partition_plan, partition_map='gpt', efi_boot=False, wipe=None):
     super().__init__(ui, runner_id)
     self.partition_map = partition_map # label is the parted's partition map type
     self.disk = disk
     self.pplan = partition_plan
     self.efi_boot = efi_boot
+    self.wipe = wipe
     pass
 
   def prepare(self):
     super().prepare()
+
+    # wipe?
+    if self.wipe == 1 or self.wipe == 2:
+      if self.wipe == 1:
+        desc = "Wipe first 1Mb of disk"
+      else:
+        desc = "Wipe whole disk"
+        pass
+      self.tasks.append(op_task_wipe_disk(desc, disk=self.disk, short=(self.wipe == 1)))
+      pass
+
     # Calling parted
     argv = ['parted', '-s', '-a', 'optimal', self.disk.device_name, 'unit', 'MiB', 'mklabel', self.partition_map]
     for part in self.pplan:
@@ -59,7 +71,7 @@ class PartitionDiskRunner(Runner):
     # new partitions and partition device file not read for the follwing mkks.
     argv = ['partprobe']
     tlog.debug("partprobe: " + str(argv))
-    self.tasks.append(op_task_process_simple('Sync partitions', argv=argv, time_estimate=1,
+    self.tasks.append(op_task_process_simple('Sync partitions', argv=argv, time_estimate=2,
                                              progress_finished="Partitions synced with kernel"))
 
     for part in self.pplan:

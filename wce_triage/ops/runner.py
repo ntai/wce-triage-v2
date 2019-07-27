@@ -156,7 +156,8 @@ class Runner:
                                 task.time_estimate,
                                 task_elapsed_time,
                                 task.progress,
-                                task, self.tasks)
+                                task,
+                                self.tasks)
         pass
 
       # Update the estimate time with actual elapsed time.

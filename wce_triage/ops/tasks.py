@@ -7,7 +7,7 @@
 # exec runs through the tasks.
 #
 
-import datetime, re, subprocess, abc, os, select, time, uuid
+import datetime, re, subprocess, abc, os, select, time, uuid, json, traceback
 import wce_triage.components.pci as _pci
 from wce_triage.components.disk import Disk, Partition, PartitionLister
 from wce_triage.lib.util import drain_pipe, drain_pipe_completely, get_triage_logger
@@ -27,7 +27,7 @@ class op_task(object, metaclass=abc.ABCMeta):
     self.kwargs = kwargs
     self.runner = None
     self.step_number = None # Runner assigns this. It's an ID for the task in the runner
-    self.time_estimate = time_estimate
+    self.time_estimate = time_estimate # Time estimate is not time remaining. This is the task's whole time in seconds.
     self.encoding = encoding
     self.description = description
     self.is_started = False
@@ -1054,6 +1054,10 @@ UUID=%s none            swap    sw              0       0
 # Create various files for blessed installation
 #
 class task_finalize_disk(op_task_python_simple):
+  '''sets up /etc/fstab and /etc/hostname.
+fstab is always adjusted to the new partition UUID.
+new hostname set up is only done if the new hostname is provided. If it's None, it's untouched.
+'''
   def __init__(self, description, disk=None, newhostname=None, partition_id='Linux', efi_id = None, **kwargs):
     super().__init__(description, time_estimate=1, **kwargs)
     self.newhostname = newhostname
@@ -1307,6 +1311,67 @@ class task_uninstall_bcmwl(task_uninstall_package):
       pass
     else:
       self._noop()
+      pass
+    pass
+  pass
+
+#
+#
+#
+class op_task_wipe_disk(op_task_process):
+  #
+  def __init__(self, description, disk=None, short=False, **kwargs):
+    self.disk = disk
+    argv = ["python3", "-m", "wce_triage.bin.zerowipe"]
+
+    estimate = 2
+    if short:
+      argv.append("-s")
+    else:
+      estimate += self.disk.get_byte_size()/40000000
+      pass
+    argv.append(disk.device_name)
+    super().__init__(description, argv=argv, time_estimate=estimate, **kwargs)
+    pass
+
+  def poll(self):
+    super().poll()
+
+    # nothing to look at.
+    if len(self.err) == 0:
+      return
+
+    # look for a line
+    while True:
+      newline = self.err.find('\n')
+      if newline < 0:
+        break
+      line = self.err[:newline]
+      self.err = self.err[newline+1:]
+
+      # what's coming out from zerowipe is json.
+      report = None
+      try:
+        # From wiper, this is a complete "event" + "message", but I don't need the event
+        # part for a task.
+        report = json.loads(line)
+        # it's a bit confusing but this message is the payload for status
+        message = report.get("message") 
+        self.set_progress(message.get('progress', 50), message.get('message', 'Wipe is running.'))
+        self.time_estimate = message.get("runEstimate")
+        pass
+      except Exception as exc:
+        tlog.info("bad wipe ouptut? " + traceback.format_exc() + "\n" + line)
+        pass
+      pass
+
+    while True:
+      newline = self.out.find('\n')
+      if newline < 0:
+        break
+      line = self.out[:newline]
+      self.out = self.out[newline+1:]
+      self.log(line)
       pass
     pass
   pass

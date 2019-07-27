@@ -55,8 +55,8 @@ class json_ui(ops_ui):
   #
   def report_task_progress(self, runner_id, run_estimate, run_time, time_estimate, elapsed_time, progress, task, tasks):
     self.send(self.wock_event,
-              { "step": task.task_number,
-                "device": runner_id,
+              { "device": runner_id,
+                "step": task.task_number,
                 "runStatus": "Running step %d of %d tasks" % (task.task_number+1, len(tasks)),
                 "runEstimate": round(run_estimate),
                 "runTime": round(in_seconds(run_time)),
