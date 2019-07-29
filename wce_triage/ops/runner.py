@@ -118,9 +118,9 @@ class Runner:
     self.state = RunState.Running
 
     self.start_time = datetime.datetime.now()
-    self.report_run_state()
-    
     while self.task_step < len(self.tasks):
+      self.report_run_state()
+
       task = self.tasks[self.task_step]
 
       if self.state == RunState.Running or task.teardown_task:
@@ -139,7 +139,6 @@ class Runner:
         pass
 
       self.task_step = self.task_step + 1
-      self.report_run_state()
       pass
 
     if self.state == RunState.Running:

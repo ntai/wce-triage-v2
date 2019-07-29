@@ -92,7 +92,7 @@ def get_disk_images():
   return result
 
 
-def read_disk_image_types():
+def read_disk_image_types(verbose=False):
   '''scans the known drectories for disk image and returns the list of disk image types
 
     :arg none
@@ -102,9 +102,16 @@ def read_disk_image_types():
   '''
   image_metas = []
   for subdir in get_maybe_disk_image_directories():
+    if verbose:
+      print("Checking subdir " + subdir)
+      pass
     for direntry in os.listdir(subdir):
       catalog_dir = os.path.join(subdir, direntry)
       image_meta = read_disk_image_type(catalog_dir)
+      if verbose:
+        print("Catalog dir " + catalog_dir)
+        print(image_meta)
+        pass
       if image_meta:
         image_metas.append(image_meta)
         pass
@@ -186,7 +193,7 @@ def get_file_system_from_source(source):
 
 #
 if __name__ == "__main__":
-  print(read_disk_image_types())
+  print(read_disk_image_types(verbose=True))
   print(get_disk_images())
   print(get_file_system_from_source("a.ext4.partclone.gz"))
   print(get_file_system_from_source("a.ext4.partclone"))

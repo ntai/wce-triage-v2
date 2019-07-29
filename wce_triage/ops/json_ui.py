@@ -117,7 +117,7 @@ run_time: run elapsed time so far.
 step: index to tasks
 tasks: array of tasks
 '''
-    status_message = runner_state
+    status_message = RUN_STATE[runner_state.value]
 
     if runner_state == RunState.Success:
       status_message = self.message_catalog.get(runner_state, "Disk image operation completed successfully.")
@@ -131,6 +131,8 @@ tasks: array of tasks
       status_message_format = self.message_catalog.get("runProgress", "{step} of {steps}: Running {desc}")
       status_message = status_message_format.format(desc=description, step=step+1, steps=len(tasks))
       pass
+    elif step == len(tasks):
+      raise Exception("You bonehead. Fix this first.")
 
     self.send(self.wock_event,
               { "report": "run_progress",
