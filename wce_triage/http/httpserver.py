@@ -81,20 +81,25 @@ def update_runner_status(runner_status, progress):
   # load image event has two types, one from report_task_progress and other from report_tasks
   # report_tasks contains the tasks, and task progress only updates the small part.
 
-  if progress.get("steps"):
-    runner_status = { "steps": progress["steps"]}
+  # If it includes all of tasks, use it.
+  if progress.get("tasks"):
+    runner_status = {"tasks": progress["tasks"]}
     pass
 
-  if progress.get("step"):
+  # If it includes the task and it's step number,
+  # update the task.
+  # FIXME: Probalby it's better to replace the task
+  if progress.get("task") and progress.get("step"):
     step = progress["step"]
-    steps = runner_status.get("steps")
-    if steps and step < len(steps):
-      runner_status["steps"][step]["progress"] = progress["progress"]
-      runner_status["steps"][step]["elapseTime"] = progress["elapseTime"]
-      if progress["message"]:
-        runner_status["steps"][step]["message"] = progress["message"]
+    task = progress["task"]
+    tasks = runner_status.get("tasks")
+    if tasks and step < len(tasks):
+      runner_status["tasks"][step]["taskProgress"] = task["taskProgress"]
+      runner_status["tasks"][step]["taskElapse"] = task["taskElapse"]
+      if task["taskMessage"]:
+        runner_status["tasks"][step]["taskMessage"] = task["taskMessage"]
         pass
-      runner_status["steps"][step]["status"] = progress["status"]
+      runner_status["tasks"][step]["taskStatus"] = task["taskStatus"]
       pass
     pass
   return runner_status
@@ -214,15 +219,16 @@ class TriageWeb(object):
     self.messages = []
     self.triage_timestamp = None
 
-    self.loading_status = { "pages": 1, "steps": [], "diskRestroing": False }
-    self.saving_status = { "pages": 1, "steps": [], "diskSaving": False}
-    self.wiping_status = { "pages": 1, "steps": [], "diskWiping": False }
+    self.loading_status = { "pages": 1, "tasks": [], "diskRestroing": False }
+    self.saving_status = { "pages": 1, "tasks": [], "diskSaving": False}
+    self.wiping_status = { "pages": 1, "tasks": [], "diskWiping": False }
 
     # wock (web socket) channels.
     self.channels = {}
 
     self.pipe_readers = {}
 
+    self.target_disks = []
     self.restore = None
     self.saver = None
     self.wiper = None
@@ -583,41 +589,74 @@ class TriageWeb(object):
     """Load disk image to disk"""
     global me
     devname = request.query.get("deviceName")
-    imagefile = request.query.get("source")
-    imagefile_size = request.query.get("size") # This comes back in bytes from sending sources with size. value in query is always string.
-    newhostname = request.query.get("newhostname")
-    restore_type = request.query.get("restoretype")
-    wipe_option = request.query.get("wipe")
+    devnames = request.query.get("deviceNames")
 
-    if newhostname is None:
-      newhostname = {'triage': 'wcetriage2', 'wce': 'wce' + uuid.uuid4().hex[:8]}.get(restore_type, 'host' + uuid.uuid4().hex[:8])
+    if devnames is not None:
+      target_disks = devnames.split(',')
       pass
-    
+    elif devname and devnames is None:
+      target_disks = [devname]
+    else:
+      tlog.info("no devices specified.")
+      raise HTTPServiceUnavailable()
+
     # Resetting the state - hack...
-    await me.wock.emit("loadimage", { "device": devname, "runStatus": "", "totalEstimate" : 0, "steps" : [] })
-    if not imagefile:
+    if request.query.get('source'):
+      me.target_disks = target_disks
+      me.load_disk_options = request.query
+      me.start_load_disks()
+    else:
       Emitter.note("No image file selected.")
       await Emitter.flush()
-      return aiohttp.web.json_response({})
+      pass
+    return aiohttp.web.json_response({})
+
+  def _get_load_option(self, tag):
+    value = self.load_disk_options.get(tag)
+    if isinstance(value, tuple):
+      value = value[0]
+      pass
+    return value
+
+  def start_load_disks(self):
+    if not self.target_disks:
+      return
+
+    devname = self.target_disks[0]
+    self.target_disks = self.target_disks[1:]
+
+    # hack to reset the runner state
+    Emitter._send("loadimage", { "device": devname, "runStatus": "", "totalEstimate" : 0, "tasks" : [] })
 
     # restore image runs its own course, and output will be monitored by a call back
     # restore_image_runner.py [-h] [-m HOSTNAME] [-p] [-c] [-w] [--quickwipe] devname imagesource imagesize restore_type
-
     argv = ['python3', '-m', 'wce_triage.ops.restore_image_runner']
 
+    wipe_request = self._get_load_option("wipe")
     for wipe_type in WIPE_TYPES:
-      if wipe_type.get("id") == wipe_option:
+      if wipe_type.get("id") == wipe_request:
         if wipe_type.get("arg"):
           argv.append(wipe_type["arg"])
           pass
         break
       pass
+
+    newhostname = self._get_load_option("newhostname")
+    if newhostname:
+      argv.append('-m')
+      argv.append(newhostname)
+      pass
+
+    imagefile = self._get_load_option("source")
+    imagefile_size = self._get_load_option("size") # This comes back in bytes from sending sources with size. value in query is always string.
+    restore_type = self._get_load_option("restoretype")
+
     argv = argv + [devname, imagefile, imagefile_size, restore_type]
-    me.restore = subprocess.Popen(argv,
-                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    asyncio.get_event_loop().add_reader(me.restore.stdout, functools.partial(me.restore_progress_report, me.restore.stdout))
-    asyncio.get_event_loop().add_reader(me.restore.stderr, functools.partial(me.restore_progress_report, me.restore.stderr))
-    return aiohttp.web.json_response({})
+    tlog.debug(argv)
+    self.restore = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    asyncio.get_event_loop().add_reader(self.restore.stdout, functools.partial(self.restore_progress_report, self.restore.stdout))
+    asyncio.get_event_loop().add_reader(self.restore.stderr, functools.partial(self.restore_progress_report, self.restore.stderr))
+    return
 
 
   # Callback for checking the restore process
@@ -631,6 +670,7 @@ class TriageWeb(object):
           Emitter.note("Restore failed with error code %d" % returncode)
           pass
         pass
+      self.start_load_disks()
       pass
     pass
 
@@ -691,7 +731,7 @@ class TriageWeb(object):
   async def route_disk_save_status(request):
     """Progress of save disk image"""
     global me
-    running = me.saver and me.sever.returncode is None
+    running = me.saver and me.saver.returncode is None
     saving_status = me.loading_status
     saving_status['diskSaving'] = running
     return aiohttp.web.json_response(me.saving_status)
@@ -721,7 +761,7 @@ class TriageWeb(object):
       tlog.info("saveimage - image type is not given.")
       raise HTTPServiceUnavailable()
 
-    await me.wock.emit("saveimage", { "device": devname, "runStatus": "", "totalEstimate" : 0, "steps" : [] })
+    await me.wock.emit("saveimage", { "device": devname, "runStatus": "", "totalEstimate" : 0, "tasks" : [] })
 
     target = None
     for disk in me.disk_portal.disks:

@@ -11,6 +11,7 @@ import datetime, re, subprocess, abc, os, select, time, uuid, json, traceback
 import wce_triage.components.pci as _pci
 from wce_triage.components.disk import Disk, Partition, PartitionLister
 from wce_triage.lib.util import drain_pipe, drain_pipe_completely, get_triage_logger
+from wce_triage.lib.timeutil import *
 from wce_triage.ops.pplan import *
 import uuid
 
@@ -83,18 +84,24 @@ class op_task(object, metaclass=abc.ABCMeta):
     self.progress = 999
     self.messages = msg
     self.verdict.append(msg)
-    self.end_time = datetime.datetime.now()
+    self._set_end_time_now()
     self.is_done = True
     pass
   
   # teardown is called just after the run
   def teardown(self):
     '''teardown is called just after the run'''
-    self.end_time = datetime.datetime.now()
+    self._set_end_time_now()
     self.is_done = True
     pass
 
   # This is to declare the task is teardown task.
+  def _set_end_time_now(self):
+    self.end_time = datetime.datetime.now()
+    self.time_estimate = in_seconds(self.end_time - self.start_time)
+    pass
+  
+
   def set_teardown_task(self):
     self.teardown_task = True
     pass

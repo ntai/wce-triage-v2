@@ -1,5 +1,7 @@
 
-import os, psutil, datetime, json
+import os, psutil, datetime, json, traceback
+from wce_triage.lib.util import *
+
 IMAGE_META_JSON_FILE = ".disk_image_type.json"
 
 # gets the potential directories to look for disk images
@@ -129,10 +131,18 @@ def read_disk_image_type(catalog_dir):
       result = json.load(meta_file)
       pass
     pass
+  except json.decoder.JSONDecodeError:
+    get_triage_logger().debug('catalog_dir %s: JSON parse error. Check the contents.' % catalog_dir);
+    pass
   except:
+    # If anything goes wrong, just ignore the directory.
+    get_triage_logger().debug('catalog_dir %s: %s' % (catalog_dir, traceback.format_exc()))
     pass
   # 
-  result["catalogDirectory"] = catalog_dir
+  if result:
+    result["catalogDirectory"] = catalog_dir
+    pass
+  
   return result
 
 

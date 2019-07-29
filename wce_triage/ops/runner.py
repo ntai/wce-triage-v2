@@ -10,7 +10,7 @@
 #
 
 import datetime, re, subprocess, traceback
-from wce_triage.ops.run_state import RunState
+from wce_triage.ops.run_state import *
 from wce_triage.lib.timeutil import *
 from wce_triage.ops.tasks import op_task
 import functools
@@ -25,8 +25,20 @@ class Runner:
     self.ui = ui
     self.runner_id = runner_id
     self.tasks = []
+
+    # total run estimate
     self.run_estimate = 0
+
+    # current run time
     self.run_time = 0
+    
+    self.task_step = None
+
+    # runner start time
+    self.start_time = None
+
+    # runner's current time
+    self.current_time = None
     pass
 
   def prepare(self):
@@ -49,6 +61,7 @@ class Runner:
       raise Exception("Run state is not Prepare")
 
     self.state = RunState.Preflight
+    self.current_time = datetime.datetime.now()
 
     # Tell the tasks I'm the runner.
     task_number = 0
@@ -64,7 +77,7 @@ class Runner:
       pass
 
     self._update_run_estimate()
-    self.ui.report_tasks(self.runner_id, self.run_estimate, self.tasks)
+    self.ui.report_tasks(self.runner_id, self.current_time, self.run_estimate, self.tasks)
     pass
 
   def _update_run_estimate(self):
@@ -79,18 +92,24 @@ class Runner:
   
   # Explaining what's going to happen
   def explain(self):
-    self.ui.report_tasks(self.runner_id, self.run_estimate, self.tasks)
+    current_time = self.start_time
+    self.ui.report_tasks(self.runner_id, current_time, self.run_estimate, self.tasks)
     pass
 
   def report_run_state(self):
-    self.current_time = datetime.datetime.now()
-    self.run_time = self.current_time - self.start_time
     self._update_run_estimate()
-    self.ui.report_run_progress(self.runner_id, self.get_state_name(), self.task_step, self.tasks, self.run_estimate, self.run_time)
+    if self.state in [ RunState.Success, RunState.Failed ]:
+      self.run_time = self.run_estimate
+    else:
+      self.current_time = datetime.datetime.now()
+      self.run_time = self.current_time - self.start_time
+      pass
+    
+    self.ui.report_run_progress(self.runner_id, self.current_time, self.state, self.run_estimate, self.run_time, self.task_step, self.tasks)
     pass
 
-  def get_state_name(self):
-    return ["Waiting", "Prepare", "Preflight", "Running", "Success", "Failed"][self.state.value]
+  def get_run_state_name(self):
+    return RUN_STATE[self.state.value]
       
   #
   def run(self):
@@ -127,22 +146,24 @@ class Runner:
       self.state = RunState.Success
       self.report_run_state()
       pass
-
     pass
 
 
   def _run_task(self, task, ui):
     task.setup()
-    current_time = datetime.datetime.now()
-    run_time = current_time - self.start_time
+    current_time = task.start_time
+    self.current_time = task.start_time
+    run_time = self.current_time - self.start_time
     last_progress_time = current_time
 
-    ui.report_task_progress(self.runner_id, self.run_estimate, run_time, task.time_estimate, 0, 0, task, self.tasks)
+    ui.report_task_progress(self.runner_id, self.current_time, self.run_estimate, run_time, task, self.tasks)
 
     while task.progress < 100:
       task.poll()
       current_time = datetime.datetime.now()
-      task_elapsed_time = current_time - task.start_time
+      task.current_time = current_time
+      self.current_time = current_time
+      run_time = current_time - self.start_time
 
       if in_seconds(current_time - last_progress_time) >= 0.75:
         last_progress_time = current_time
@@ -150,35 +171,23 @@ class Runner:
 
         # When the poll comes back too fast, this creates a lot of traffic.
         # Need to tame down a little
-        ui.report_task_progress(self.runner_id,
-                                self.run_estimate,
-                                current_time - self.start_time,
-                                task.time_estimate,
-                                task_elapsed_time,
-                                task.progress,
-                                task,
-                                self.tasks)
+        ui.report_task_progress(self.runner_id, self.current_time, self.run_estimate, run_time, task, self.tasks)
         pass
 
       # Update the estimate time with actual elapsed time.
       if task.progress >= 100:
         task.teardown()
-        task.time_estimate = in_seconds(task_elapsed_time)
         pass
 
       if task.progress > 100:
         # something went wrong.
         self.state = RunState.Failed
-        ui.report_task_failure(self.runner_id,
-                               task.time_estimate,
-                               task_elapsed_time,
-                               task.progress,
-                               task)
+        ui.report_task_failure(self.runner_id, self.current_time, run_time, task)
         break
 
       if task.progress == 100:
         # done
-        ui.report_task_success(self.runner_id, task.time_estimate, task_elapsed_time, task)
+        ui.report_task_success(self.runner_id, self.current_time, run_time, task)
         pass
       pass
     pass

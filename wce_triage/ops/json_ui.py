@@ -5,28 +5,43 @@ import sys, os
 from wce_triage.ops.ops_ui import *
 import json
 from wce_triage.ops.run_state import *
+from wce_triage.lib.util import *
+
+tlog = get_triage_logger()
 
 TASK_STATUS = ["waiting", "running", "done", "fail"]
 
 #
 # 
 #
-def _describe_task(task):
-  if task.is_done and task.end_time:
-    elapsed_time = round(in_seconds(task.end_time - task.start_time), 1)
+def _describe_task(task, current_time):
+  result = {}
+  task_state = task._get_status()
+  if task_state == 0:
+    elapsed_time = 0
+  elif task_state == 1:
+    elapsed_time = round(in_seconds(current_time - task.start_time) if task.start_time else 0, 1)
   else:
-    elapsed_time = round(in_seconds(datetime.datetime.now() - task.start_time) if task.start_time else 0, 1)
+    elapsed_time = round(in_seconds(task.end_time - task.start_time), 1)
     pass
-  return {"category" : task.get_description(),
-          "status": TASK_STATUS[task._get_status()],
-          "progress": task.progress,
-          "timeEstimate": round(task.time_estimate, 1),
-          "elapseTime": elapsed_time,
-          "details": task.explain(),
-          "step" : task.task_number if task.task_number else "",
-          "message" : task.message,
-          "explain" : task.explain(),
-          "verdict": task.verdict }
+  result["step"] = task.task_number if task.task_number else ""
+  result["taskCategory"] = task.get_description()
+  result["taskProgress"] = task.progress
+  result["taskEstimate"] = round(task.time_estimate, 1)
+  result["taskElapse"] = elapsed_time
+  result["taskStatus"] = TASK_STATUS[task._get_status()]
+  result["taskMessage"] = task.message
+  result["taskExplain"] = task.explain()
+
+  if task._get_status() > 1:
+    if task.verdict:
+      result["taskVerdict"] = " ".join(task.verdict)
+    else:
+      result["taskVerdict"] = task.message
+      pass
+    pass
+
+  return result
 
 
 class json_ui(ops_ui):
@@ -43,106 +58,101 @@ class json_ui(ops_ui):
     pass
 
   # Called from preflight to just set up the flight plan
-  def report_tasks(self, runner_id, run_estimate, tasks):
+  def report_tasks(self, runner_id, current_time, run_estimate, tasks):
+    describe_tasks = [ _describe_task(task, current_time) for task in tasks ]
     self.send(self.wock_event,
-              { "device" : runner_id, 
-                "runStatus" : "Prearing",
+              { "report": "tasks",
+                "device" : runner_id, 
+                "runStatus" : RUN_STATE[RunState.Preflight.value],
+                "runMessage" : "Prearing",
                 "runEstimate" : round(in_seconds(run_estimate)),
                 "runTime": 0,
-                "steps" : [ _describe_task(task) for task in tasks ] } )
+                "tasks" : describe_tasks } )
     pass
 
   #
-  def report_task_progress(self, runner_id, run_estimate, run_time, time_estimate, elapsed_time, progress, task, tasks):
+  def report_task_progress(self, runner_id, current_time, run_estimate, run_time, task, tasks):
     self.send(self.wock_event,
-              { "device": runner_id,
-                "step": task.task_number,
-                "runStatus": "Running step %d of %d tasks" % (task.task_number+1, len(tasks)),
-                "runEstimate": round(run_estimate),
-                "runTime": round(in_seconds(run_time)),
-                "timeEstimate" : round(in_seconds(time_estimate)),
-                "message": task.message,
-                "progress" : round(progress, 1),
-                "status": "running",
-                "elapseTime": round(in_seconds(elapsed_time)) })
+              {"report": "task_progress",
+               "device": runner_id,
+               "runStatus": RUN_STATE[RunState.Running.value],
+               "runMessage": "Running step %d of %d tasks" % (task.task_number+1, len(tasks)),
+               "runEstimate": round(run_estimate),
+               "runTime": round(in_seconds(run_time)),
+               "step": task.task_number,
+               "task": _describe_task(task, current_time)})
     pass
 
-  def report_task_failure(self,
-                          runner_id,
-                          task_estimate,
-                          elapsed_time,
-                          progress,
-                          task):
-    if task.verdict:
-      verdict = " ".join(task.verdict)
-    else:
-      verdict = task.message
-      pass
-    self.send(self.wock_event,
-              { "step": task.task_number,
-                "device": runner_id,
-                "runStatus": verdict,
-                "timeEstimate": round(in_seconds(task_estimate)),
-                "elapseTime": round(in_seconds(elapsed_time)),
-                "message": task.message,
-                "status": "fail",
-                "progress" : progress } )
+
+  def report_task_failure(self, runner_id, current_time, run_time, task):
+    self.send(self.wock_event, {
+      "report": "task_failure",
+      "device": runner_id,
+      "runMessage": "Task {step} failed".format(step=task.task_number+1), 
+      "runStatus": RUN_STATE[RunState.Failed.value],
+      "runTime": round(in_seconds(run_time)),
+      "step": task.task_number,
+      "task": _describe_task(task, current_time)})
     pass
 
-  def report_task_success(self, runner_id, task_time_estimate, elapsed_time, task):
-    if task.verdict:
-      verdict = " ".join(task.verdict)
-    else:
-      verdict = task.message
-      pass
-    self.send(self.wock_event,
-              { "step": task.task_number,
-                "device": runner_id,
-                "runStatus": verdict,
-                "message": task.message,
-                "progress" : 100,
-                "status": "done",
-                "elapseTime": round(in_seconds(elapsed_time)) } )
+  def report_task_success(self, runner_id, current_time, run_time, task):
+    self.send(self.wock_event, {
+      "report": "task_success",
+      "device": runner_id,
+      "runMessage": "Task {step} completed.".format(step=task.task_number+1), 
+      "runStatus": RUN_STATE[RunState.Running.value],
+      "runTime": round(in_seconds(run_time)),
+      "step": task.task_number,
+      "task": _describe_task(task, current_time)})
     pass
 
-  def report_run_progress(self,
-                          runner_id,
-                          runner_state,
-                          step,
-                          tasks,
-                          run_estimate,
-                          run_time):
 
+  def report_run_progress(self, runner_id, current_time, runner_state, run_estimate, run_time, step, tasks):
+    '''forms a json from run progress.
+runner_id: is a device
+current_time: datetime
+runner_state: RunState enum
+run_estimate: duration in seconds
+run_time: run elapsed time so far.
+step: index to tasks
+tasks: array of tasks
+'''
     status_message = runner_state
 
-    if runner_state == "Success":
+    if runner_state == RunState.Success:
       status_message = self.message_catalog.get(runner_state, "Disk image operation completed successfully.")
-    elif runner_state == "Failed":
+    elif runner_state == RunState.Failed:
       status_message = self.message_catalog.get(runner_state, "Disk image operation failed.")
-    elif runner_state != "Running":
+    elif runner_state != RunState.Running:
       status_message = self.message_catalog.get(runner_state, "Disk operation started.")
     elif step < len(tasks):
       this_task = tasks[step]
       description = this_task.description
-      status_message_format = self.message_catalog.get(runner_state, "{step} of {steps}: Running {task}")
-      status_message = status_message_format.format(task=description, step=step+1, steps=len(tasks))
+      status_message_format = self.message_catalog.get("runProgress", "{step} of {steps}: Running {desc}")
+      status_message = status_message_format.format(desc=description, step=step+1, steps=len(tasks))
       pass
 
     self.send(self.wock_event,
-              { "device" : runner_id,
-                "runStatus": status_message,
+              { "report": "run_progress",
+                "device" : runner_id,
+                "runStatus": RUN_STATE[runner_state.value],
+                "runMessage": status_message,
                 "runEstimate" : round(in_seconds(run_estimate), 1),
                 "runTime": round(in_seconds(run_time), 1),
-                "steps" : [ _describe_task(task) for task in tasks ] } )
+                "tasks" : [ _describe_task(task, current_time) for task in tasks ] } )
     pass
 
   # Log message. Probably better to be stored in file so we can see it
   # FIXME: probably should use python's logging.
   def log(self, runner_id, msg):
-    print(msg)
+    tlog.info(msg)
     self.send('message', {"message": runner_id + ": " + msg})
     pass
 
   pass
 
+#
+if __name__ == "__main__":
+  print (TASK_STATUS)
+  pass
 
