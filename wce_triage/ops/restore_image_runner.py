@@ -12,6 +12,8 @@ import wce_triage.components.video
 from wce_triage.ops.partclone_tasks import *
 from wce_triage.lib.util import is_block_device
 from wce_triage.ops.json_ui import *
+from wce_triage.lib.disk_images import *
+
 
 # "Waiting", "Prepare", "Preflight", "Running", "Success", "Failed"]
 my_messages = { "Waiting":   "Disk image load is waiting.",
@@ -179,9 +181,15 @@ def run_load_image(ui, devname, imagefile, imagefile_size, efisrc, newhostname, 
   # Let's make "triage" id special. This is the only case using usb stick
   # partition plan makse sense.
   # I can use the restore_type parameter but well, this is a sugar.
+  # In addition, make usb stick type partition if it is requested.
+  #
+  # THOUGHTS: Making disk image meta being too complicated is probably not
+  # a way to go. It's possible to make everything (parititon map, swap size, etc.)
+  # customizable through the metadata but that is going to make things error prone
+  # and when something goes wrong, really hard to debug.
 
-  if id == "triage":
-    partition_map='gpt' if efi_image is not None else 'msdos'
+  if id == "triage" or (restore_type.get("partition_plan") == "triage"):
+    partition_map = restore_type.get('partition_map', 'gpt' if efi_image is not None else 'msdos')
     partition_id = None
     # You can have partition id for gpt, but not for dos partition map
     if partition_map == 'gpt':
@@ -192,7 +200,7 @@ def run_load_image(ui, devname, imagefile, imagefile_size, efisrc, newhostname, 
       # For ms-dos partition, you cannot have name so look for the ext4 partition and use
       # the partition number.
       for part in pplan:
-        if part.parttion == Partition.EXT4:
+        if part.filesys == Partition.EXT4:
           partition_id = part.no
           break
         pass
@@ -256,6 +264,12 @@ if __name__ == "__main__":
   
   restore_type = args.restore_type
 
+  #
+  image_metas = {}
+  for image_meta in read_disk_image_types():
+    image_metas[image_meta.get("id")] = image_meta
+    pass
+  
   # Rehydrate the restore_type and make it to Python dict.
   # From Web interface, it should be json string. Only time this is
   # file is when I am typing from terminal for manual restore.
@@ -270,6 +284,8 @@ if __name__ == "__main__":
     elif restore_type[0] == "{":
       restore_param = json.loads(restore_type)
       pass
+    elif image_metas.get(restore_type):
+      restore_param = image_metas[restore_type]
     elif restore_type in [ "wce", "wce-18" ]:
       restore_param = {"id": "wce-18",
                        "filestem": "wce-mate18",
@@ -291,7 +307,7 @@ if __name__ == "__main__":
                        "timestamp": True,
                        "efi_image": ".efi-part-32M.fat32.partclone.gz"}
     else:
-      ui.log(devname, "restore_type is not a file path or json string.")
+      ui.log(args.devname, "restore_type is not a file path or json string.")
       sys.exit(1)
       pass
     pass

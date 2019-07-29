@@ -669,8 +669,8 @@ class TriageWeb(object):
         if returncode is not 0:
           Emitter.note("Restore failed with error code %d" % returncode)
           pass
+        self.start_load_disks()
         pass
-      self.start_load_disks()
       pass
     pass
 
@@ -706,7 +706,6 @@ class TriageWeb(object):
 
     self.check_restore_process()
     pass
-
 
   @routes.post("/dispatch/stop-load")
   async def route_stop_load_image(request):
