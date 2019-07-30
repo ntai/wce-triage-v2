@@ -150,7 +150,7 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
         if event & (select.POLLIN | select.POLLPRI):
           reader = pipe_readers.get(pipe_name)
           if reader is None:
-            reader = PipeReader(pipe)
+            reader = PipeReader(pipe, tag=pipe_name)
             pipe_readers[pipe_name] = reader
             pass
 

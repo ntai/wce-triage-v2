@@ -7,7 +7,7 @@
 # exec runs through the tasks.
 #
 
-import datetime, re, subprocess, abc, os, select, time, uuid, json, traceback
+import datetime, re, subprocess, abc, os, select, time, uuid, json, traceback, shutil
 import wce_triage.components.pci as _pci
 from wce_triage.components.disk import Disk, Partition, PartitionLister
 from wce_triage.lib.util import drain_pipe, drain_pipe_completely, get_triage_logger
@@ -696,14 +696,14 @@ class task_create_wce_tag(op_task_python_simple):
   pass
 
 
-# This is to purge the persistent rules for network and cd devices so that the clone
-# installation will have correct device names
-class task_remove_persistent_rules(op_task_python_simple):
+#  Remove files
+class task_remove_files(op_task_python_simple):
     #
-  def __init__(self, description, disk=None, partition_id='Linux', **kwargs):
+  def __init__(self, description, disk=None, files=[], partition_id='Linux', **kwargs):
     super().__init__(description, time_estimate=1, **kwargs)
     self.disk = disk
     self.partition_id = partition_id
+    self.files = files
     pass
 
   def run_python(self):
@@ -713,23 +713,59 @@ class task_remove_persistent_rules(op_task_python_simple):
       return
     
     rootpath = part.get_mount_point()
+    n = len(self.files)
+    i = 0
+    # Protect myself from stupidity
+    toplevels = os.listdir("/")
+    toplevels.append("")
+    for filename in files:
+      if filename in toplevels:
+        continue
+      path = os.path.join(rootpath, filename)
+      i = i + 1
+      if os.path.exists(path):
+        try:
+          if os.path.isdir(path):
+            shutil.rmtree(path)
+            tlog.debug("Dir %s deleted." % path)
+            pass
+          else:
+            os.remove(path)
+            tlog.debug("File %s deleted." % path)
+            pass
+          pass
+        except:
+          pass
+        pass
+      else:
+        tlog.debug("Path %s does not exist." % path)
+        pass
+      pass
+    pass
+  pass
+
+
+# This is to purge the persistent rules for network and cd devices so that the clone
+# installation will have correct device names
+class task_remove_persistent_rules(task_remove_files):
+    #
+  def __init__(self, description, disk=None, partition_id='Linux', **kwargs):
     files = ["etc/wce-release",
              "var/lib/world-computer-exchange/access-timestamp",
              "var/lib/world-computer-exchange/computer-uuid",
              "etc/udev/rules.d/70-persistent-cd.rules",
              "etc/udev/rules.d/70-persistent-net.rules"]
-    n = len(files)
-    i = 0
-    for filename in files:
-      path = os.path.join(rootpath, filename)
-      i = i + 1
-      if os.path.exists(path):
-        try:
-          os.remove(path)
-        except:
-          pass
-        pass
-      pass
+    super().__init__(description, disk=disk, partition_id=partition_id, files=files, time_estimate=1, **kwargs)
+    pass
+  pass
+
+
+# This is to purge the system logs. It's no use to restored machines.
+class task_remove_logs(task_remove_files):
+    #
+  def __init__(self, description, disk=None, partition_id='Linux', **kwargs):
+    files = [ "var/log/" + filename for filename in ["kern.log", "syslog", "alternatives.log", "auth.log",  "fontconfig.log", "dpkg.log", "boot.log", "unattended-upgrades/unattended-upgrades-shutdown.log", "apt/history.log", "apt/term.log", "var/log/installer" ]]
+    super().__init__(description, disk=disk, partition_id=partition_id, files=files, time_estimate=1, **kwargs)
     pass
   pass
 

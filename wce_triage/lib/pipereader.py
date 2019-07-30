@@ -6,10 +6,11 @@ from wce_triage.lib.util import *
 tlog = get_triage_logger()
 
 class PipeReader:
-  def __init__(self, pipe, encoding='iso-8859-1'):
+  def __init__(self, pipe, tag=None, encoding='iso-8859-1'):
     self.encoding = encoding
     self.pipe = pipe
     self.fragments = deque()
+    self.tag = tag
     pass
   
   def reading(self):

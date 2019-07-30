@@ -49,6 +49,7 @@ For now, this is only dealing with the EXT4 linux partition.
 
     self.tasks.append(task_mount("Mount the target disk", disk=self.disk, partition_id=self.partition_id))
     self.tasks.append(task_remove_persistent_rules("Remove persistent rules", disk=self.disk, partition_id=self.partition_id))
+    self.tasks.append(task_remove_logs("Remove/Clean Logs", disk=self.disk, partition_id=self.partition_id))
     task = task_unmount("Unmount target", disk=self.disk, partition_id=self.partition_id)
     task.set_teardown_task()
     self.tasks.append(task)
