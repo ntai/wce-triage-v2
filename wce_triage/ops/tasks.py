@@ -117,9 +117,11 @@ class op_task(object, metaclass=abc.ABCMeta):
   def set_progress(self, progress, msg):
     self.is_started = True
     self.progress = progress
-    self.message = msg
-    if progress >= 100:
-      self.verdict.append(msg)
+    if msg:
+      self.message = msg
+      if progress >= 100:
+        self.verdict.append(msg)
+        pass
       pass
     pass
 
@@ -700,7 +702,7 @@ class task_create_wce_tag(op_task_python_simple):
 class task_remove_files(op_task_python_simple):
     #
   def __init__(self, description, disk=None, files=[], partition_id='Linux', **kwargs):
-    super().__init__(description, time_estimate=1, **kwargs)
+    super().__init__(description, **kwargs)
     self.disk = disk
     self.partition_id = partition_id
     self.files = files
@@ -718,7 +720,7 @@ class task_remove_files(op_task_python_simple):
     # Protect myself from stupidity
     toplevels = os.listdir("/")
     toplevels.append("")
-    for filename in files:
+    for filename in self.files:
       if filename in toplevels:
         continue
       path = os.path.join(rootpath, filename)

@@ -3,6 +3,7 @@
 import os, sys, subprocess, urllib, datetime, json, traceback, signal
 from wce_triage.lib.util import *
 from wce_triage.lib.timeutil import *
+from wce_triage.ops.run_state import *
 
 start_time = datetime.datetime.now()
 
@@ -70,8 +71,8 @@ n_sectors: number of sectors.
 
       report = { "event": "zerowipe",
                  "message": {"device": dest_dev,
-                             "message": "%d of %d sectors wiped." % (n_sectors - remaining, n_sectors),
-                             "runStatus": "Wiping disk - %d of %d sectors wiped." % (n_sectors - remaining, n_sectors),
+                             "runMessage": "%d of %d sectors wiped." % (n_sectors - remaining, n_sectors),
+                             "runStatus": RUN_STATE[RunState.Running.value],
                              "startTime": start_time.isoformat(),
                              "currentTime": current_time.isoformat(),
                              "progress": progress,
@@ -94,8 +95,8 @@ n_sectors: number of sectors.
   if running:
     report = { "event": "zerowipe",
                "message" : {"device": dest_dev,
-                            "message": "%d of %d sectors wiped." % (n_sectors - remaining, n_sectors),
-                            "runStatus": "Complete",
+                            "runMessage": "%d of %d sectors wiped." % (n_sectors - remaining, n_sectors),
+                            "runStatus": RUN_STATE[RunState.Success.value],
                             "startTime": start_time.isoformat(),
                             "currentTime": current_time.isoformat(),
                             "progress": 100,
@@ -108,8 +109,8 @@ n_sectors: number of sectors.
   else:
     report = { "event": "zerowipe",
                "message" : {"device": dest_dev,
-                            "message": "%d of %d sectors wiped." % (n_sectors - remaining, n_sectors),
-                            "runStatus": "Aborted - %d of %d sectors wiped." % (n_sectors - remaining, n_sectors),
+                            "runMessage": "%d of %d sectors wiped." % (n_sectors - remaining, n_sectors),
+                            "runStatus": RUN_STATE[RunState.Failed.value],
                             "startTime": start_time.isoformat(),
                             "currentTime": current_time.isoformat(),
                             "progress": 999,
@@ -125,24 +126,8 @@ n_sectors: number of sectors.
   pass
 
 
-if __name__ == "__main__":
-  if len(sys.argv) < 2:
-    sys.stderr.write('zerowipe.py [-s] <wiped>\n')
-    sys.exit(1)
-    pass
-    
-  short_wipe = False
-  device = sys.argv[1]
-  if device == '-s':
-    short_wipe = True
-    device = sys.argv[2]
-    pass
-  
-  if not is_block_device(device):
-    sys.stderr.write("%s is not a block device.\n" % device)
-    sys.exit(1)
-    pass
 
+def wipe(short_wipe, device):
   parted = subprocess.run(['parted', device, 'unit', 's', 'print'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   disk_line = 'Disk %s:' % device
   n_sectors = None
@@ -173,7 +158,8 @@ if __name__ == "__main__":
     error_message = traceback.format_exc()
     report = { "event": "zerowipe",
                "message": {"device": device,
-                           "runStatus": "Wiping failed with " + error_message,
+                           "runMessage": "Wiping failed with " + error_message,
+                           "runStatus": RUN_STATE[RunState.Failed.value],
                            "progress": 999,
                            "runTime" : run_time,
                            "runEstimate" : run_time}}
@@ -183,6 +169,34 @@ if __name__ == "__main__":
     tlog.info(error_message)
     sys.exit(1)
     pass
-  sys.exit(0)
   pass
 
+
+
+
+if __name__ == "__main__":
+  if len(sys.argv) < 2:
+    sys.stderr.write('zerowipe.py [-s] <wiped>\n')
+    sys.exit(1)
+    pass
+    
+  short_wipe = False
+  device = sys.argv[1]
+  if device == '-s':
+    short_wipe = True
+    device = sys.argv[2]
+    pass
+  
+  if not is_block_device(device):
+    sys.stderr.write("%s is not a block device.\n" % device)
+    sys.exit(1)
+    pass
+
+  try:
+    wipe(short_wipe, device)
+  except Exception as exc:
+    sys.stdout.write(traceback.format_exc())
+    sys.exit(1)
+    pass
+  pass
+    

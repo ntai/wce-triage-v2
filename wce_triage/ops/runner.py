@@ -143,8 +143,8 @@ class Runner:
 
     if self.state == RunState.Running:
       self.state = RunState.Success
-      self.report_run_state()
       pass
+    self.report_run_state()
     pass
 
 

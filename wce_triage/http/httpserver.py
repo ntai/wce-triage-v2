@@ -135,7 +135,7 @@ class Emitter:
   async def _task():
     while True:
       await Emitter.flush()
-      await asyncio.sleep(0.2)
+      await asyncio.sleep(0.1)
       pass
     pass
 
@@ -441,8 +441,8 @@ class TriageWeb(object):
                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
       
-      asyncio.get_event_loop().add_reader(optical_test.stdout, functools.partial(me.watch_optest, PipeReader(optical_test.stdout, tag="stdout")))
-      asyncio.get_event_loop().add_reader(optical_test.stderr, functools.partial(me.watch_optest, PipeReader(optical_test.stderr, tag="stderr")))
+      PipeReader.add_to_event_loop(optical_test.stdout, me.watch_optest, "stdout")
+      PipeReader.add_to_event_loop(optical_test.stdout, me.watch_optest, "stderr")
       me.optests.append((optical_test, optical.device_name))
       pass
     return aiohttp.web.json_response({})
@@ -475,7 +475,7 @@ class TriageWeb(object):
     line = pipereader.readline()
     if line == b'':
       tlog.debug("FromOptest: optical test stream ended.")
-      asyncio.get_event_loop().remove_reader(pipereader.pipe)
+      pipereader.remove_reader()
       pass
     elif line is not None:
       tlog.debug("FromOptest: '%s'" % line)
@@ -584,21 +584,13 @@ class TriageWeb(object):
   async def route_load_image(request):
     """Load disk image to disk"""
     global me
-    devname = request.query.get("deviceName")
-    devnames = request.query.get("deviceNames")
 
-    if devnames is not None:
-      target_disks = devnames.split(',')
-      pass
-    elif devname and devnames is None:
-      target_disks = [devname]
-    else:
-      tlog.info("no devices specified.")
+    me.target_disks = get_target_devices_from_request(request)
+    if me.target_disks is None:
       raise HTTPServiceUnavailable()
 
     # Resetting the state - hack...
     if request.query.get('source'):
-      me.target_disks = target_disks
       me.load_disk_options = request.query
       me.start_load_disks('start from request')
     else:
@@ -621,9 +613,6 @@ class TriageWeb(object):
     devname = self.target_disks[0]
     self.target_disks = self.target_disks[1:]
     tlog.debug(log + " Targets : " + ",".join(self.target_disks))
-
-    # hack to reset the runner state
-    Emitter._send("loadimage", { "device": devname, "runStatus": "", "totalEstimate" : 0, "tasks" : [] })
 
     # restore image runs its own course, and output will be monitored by a call back
     # restore_image_runner.py [-h] [-m HOSTNAME] [-p] [-c] [-w] [--quickwipe] devname imagesource imagesize restore_type
@@ -648,54 +637,42 @@ class TriageWeb(object):
     imagefile_size = self._get_load_option("size") # This comes back in bytes from sending sources with size. value in query is always string.
     restore_type = self._get_load_option("restoretype")
 
+
     argv = argv + [devname, imagefile, imagefile_size, restore_type]
     tlog.debug(argv)
+
+    # FIXME: I think I can refactor the run subprocess / gather thing. Up to this point,
+    # this is about making argv, after this, thing to do is the same. However, looking at the
+    # callbacks, there aren't much to do in it so how much I can buy from refactoring is not much.
+
     self.restore = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    asyncio.get_event_loop().add_reader(self.restore.stdout, functools.partial(self.restore_progress_report, PipeReader(self.restore.stdout, tag="loadimage")))
-    asyncio.get_event_loop().add_reader(self.restore.stderr, functools.partial(self.restore_progress_report, PipeReader(self.restore.stderr, tag="message")))
+    PipeReader.add_to_event_loop(self.restore.stdout, me.restore_progress_report, "loadimage")
+    PipeReader.add_to_event_loop(self.restore.stderr, me.restore_progress_report, "message")
     return
 
-
-  # Callback for checking the restore process
-  def check_restore_process(self, log):
-    if self.restore:
-      # tlog.debug(log + " Restore is running")
-      self.restore.poll()
-      if self.restore.returncode is not None:
-        returncode = self.restore.returncode
-        self.restore = None
-        if returncode is not 0:
-          Emitter.note("Restore failed with error code %d" % returncode)
-          pass
-        # Before starting next one, flush all events to UI so it looks consistent.
-        Emitter.flush()
-        #
-        self.start_load_disks(log + " Process ended with {returncode}".format(returncode=returncode))
-        pass
-      pass
-    else:
-      self.start_load_disks(log + " Restore is not running")
-      pass
-    pass
-
   # 
-  def restore_progress_report(self, pipereader):
-    '''Callback for checking the output of restore process'''
-
+  def _runner_progress_report(self, runner, pipereader):
     line = pipereader.readline()
     if line == b'':
-      asyncio.get_event_loop().remove_reader(pipereader.pipe)
+      if pipereader.asyncio_reader:
+        try:
+          pipereader.remove_from_event_loop()
+          pass
+        except Exception as exc:
+          tlog.debug("%s: remove_reader %s" % (runner, traceback.format_exc()))
+          pass
+        pass
       pass
     elif line is not None:
       if line.strip() != '':
-        tlog.debug("FromRestore: '%s'" % line)
-        if pipereader.tag == "loadimage":
+        tlog.debug("%s: '%s'" % (runner, line))
+        if pipereader.tag == runner:
           # This is a message from loader
           try:
             packet = json.loads(line)
             Emitter._send(packet['event'], packet['message'])
           except Exception as exc:
-            tlog.info("FromRestore: BAD LINE '%s'\n%s" % (line, traceback.format_exc()))
+            tlog.info("%s: BAD LINE '%s'\n%s" % (runner, line, traceback.format_exc()))
             Emitter.note(line)
             pass
           pass
@@ -704,8 +681,34 @@ class TriageWeb(object):
           pass
         pass
       pass
+    pass
+  
 
-    self.check_restore_process('check restore process from status')
+  # Callback for checking the restore process
+  def _runner_check_process(self, runner, process, log):
+    if process:
+      # tlog.debug(log + " Restore is running")
+      process.poll()
+      if process.returncode is not None:
+        returncode = process.returncode
+        if returncode is not 0:
+          Emitter.note("Restore failed with error code %d" % returncode)
+          pass
+        # hack to reset the runner state - no runner id.
+        Emitter._send(runner, {"device": ''})
+        pass
+      pass
+    pass
+
+  def restore_progress_report(self, pipereader):
+    '''Callback for checking the output of restore process'''
+    self._runner_progress_report("loadimage", pipereader)
+    if self.restore:
+      self._runner_check_process("loadimage", self.restore, 'check restore process from status')
+      if self.restore.returncode is not None:
+        self.restore = None
+        self.start_load_disks(log + " {runner} is not running.".format(runner=runner))
+      pass
     pass
 
   @routes.post("/dispatch/stop-load")
@@ -809,41 +812,16 @@ class TriageWeb(object):
     # save image runs its own course, and output will be monitored by a call back
     me.saver = subprocess.Popen( ['python3', '-m', 'wce_triage.ops.create_image_runner', devname, str(partition_id), destdir], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    asyncio.get_event_loop().add_reader(me.saver.stdout, functools.partial(me.saver_progress_report, PipeReader(me.saver.stdout, tag="saveimage")))
-    asyncio.get_event_loop().add_reader(me.saver.stderr, functools.partial(me.saver_progress_report, PipeReader(me.saver.stderr, tag="message")))
+    PipeReader.add_to_event_loop(me.saver.stdout, me.saver_progress_report, "saveimage")
+    PipeReader.add_to_event_loop(me.saver.stderr, me.saver_progress_report, "message")
     return aiohttp.web.json_response({})
 
   def saver_progress_report(self, pipereader):
-    line = pipereader.readline()
-    if line == b'':
-      asyncio.get_event_loop().remove_reader(pipereader.pipe)
-      pass
-    elif line is not None:
-      if line.strip() != "":
-        tlog.debug("FromSaver: '%s'" % line)
-        if pipereader.tag == "saveimage":
-          # This is a progress from loader
-          try:
-            packet = json.loads(line)
-            Emitter._send(packet['event'], packet['message'])
-          except Exception as exc:
-            tlog.info("FromSaver: BAD LINE '%s'" % line)
-            pass
-          pass
-        else:
-          Emitter.note(line)
-          pass
-        pass
-      pass
-
+    self._runner_progress_report("saveimage", pipereader)
     if self.saver:
-      self.saver.poll()
+      self._runner_check_process("saveimage", self.saver, ' check saver process from progress report')
       if self.saver.returncode is not None:
-        returncode = self.saver.returncode
         self.saver = None
-        if returncode is not 0:
-          Emitter.note("Saver failed with error code %d" % returncode)
-          pass
         pass
       pass
     pass
@@ -851,13 +829,17 @@ class TriageWeb(object):
   @routes.post("/dispatch/wipe")
   async def route_wipe(request):
     global me
+
     me.disk_portal.detect_disks()
     disks = me.disk_portal.disks
 
-    requested = request.query.get("deviceName")
+    me.target_disks = get_target_devices_from_request(request)
+    if me.target_disks is None:
+      raise HTTPServiceUnavailable()
+
     target = None
     for disk in disks:
-      if disk.device_name in requested:
+      if disk.device_name in me.target_disks:
         if disk.mounted:
           return aiohttp.web.json_response({})
           pass
@@ -865,13 +847,24 @@ class TriageWeb(object):
         break
       pass
         
-    # wiper image runs its own course, and output will be monitored by a call back
-    me.wiper = subprocess.Popen( ['python3', '-m', 'wce_triage.bin.wipedriver', requested], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    asyncio.get_event_loop().add_reader(me.wiper.stdout, functools.partial(me.wiper_progress_report, PipeReader(me.wiper.stdout, tag="wipe")))
-    asyncio.get_event_loop().add_reader(me.wiper.stderr, functools.partial(me.wiper_progress_report, PipeReader(me.wiper.stderr, tag="wipemessage")))
+    me.start_wiper()
     return aiohttp.web.json_response({})
+
+
+  def start_wiper(self):
+    if not self.target_disks:
+      return
+
+    devname = self.target_disks[0]
+    self.target_disks = self.target_disks[1:]
+    tlog.debug( "Wipe targets : " + ",".join(self.target_disks))
+
+    # wiper image runs its own course, and output will be monitored by a call back
+    me.wiper = subprocess.Popen( ['python3', '-m', 'wce_triage.bin.wipedriver', devname], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    PipeReader.add_to_event_loop(me.wiper.stdout, me.wiper_progress_report, "message")
+    PipeReader.add_to_event_loop(me.wiper.stderr, me.wiper_progress_report, "wipe")
     pass
-  
+
 
   def wiper_progress_report(self, pipereader):
     line = pipereader.readline()
@@ -903,13 +896,10 @@ class TriageWeb(object):
       pass
 
     if self.wiper:
-      self.wiper.poll()
+      self._runner_check_process("wipe", self.wiper, " check process from wipe update")
       if self.wiper.returncode is not None:
-        returncode = self.wiper.returncode
         self.wiper = None
-        if returncode is not 0:
-          Emitter.alert("Wipe disk failed with error code %d" % returncode)
-          pass
+        self.start_wiper()
         pass
       pass
     pass
@@ -1011,6 +1001,23 @@ def disconnect(wockid):
     tlog.debug("WOCK: %s disconnect from stranger" % (wockid))
     pass
   pass
+
+
+def get_target_devices_from_request(request):
+  devname = request.query.get("deviceName")
+  devnames = request.query.get("deviceNames")
+
+  if devnames is not None:
+    target_disks = devnames.split(',')
+    pass
+  elif devname and devnames is None:
+    target_disks = [devname]
+  else:
+    target_disks = None
+    pass
+  return target_disks
+
+
 
 # Define and parse the command line arguments
 import socket

@@ -18,7 +18,7 @@ tlog = get_triage_logger()
 import json
 
 def reply_result(result):
-  jata = json.dumps( { "event": "triageupdate", "message": result } )
+  jata = json.dumps( { "event": "triageupdate", "runMessage": result } )
   tlog.debug(jata)
   print(jata)
   sys.stdout.flush()
@@ -54,7 +54,7 @@ def test_optical(password, source, encoding='iso-8859-1'):
     reply_result({"component": "Optical drive",
                   "result": False,
                   "device": source,
-                  "message": "Device %s is not a block device." % source})
+                  "runMessage": "Device %s is not a block device." % source})
     return 1
 
   mountpoint = "/tmp/wcetriage.optest%s" % source
@@ -64,7 +64,7 @@ def test_optical(password, source, encoding='iso-8859-1'):
     reply_result({"component": "Optical drive",
                   "result": False,
                   "device": source,
-                  "message": "Failed creating mount point %s" % mountpoint})
+                  "runMessage": "Failed creating mount point %s" % mountpoint})
     return 1
 
   error_message = ""
@@ -84,7 +84,7 @@ def test_optical(password, source, encoding='iso-8859-1'):
     end_time = datetime.datetime.now()
     reply_result({"component": "Optical drive",
                   "result": False,
-                  "message" : "The device %s failed to mount." % source,
+                  "runMessage" : "The device %s failed to mount." % source,
                   "verdict" : [error_message, out.decode('iso-8859-1'), err.decode('iso-8859-1')],
                   "device": source,
                   "elapseTime": deltatime(start_time, end_time)})
@@ -103,7 +103,7 @@ def test_optical(password, source, encoding='iso-8859-1'):
     all_the_messages.append(error_message)
     reply_result({"component": "Optical drive",
                   "result": False,
-                  "message" : "The device %s failed to mount." % source,
+                  "runMessage" : "The device %s failed to mount." % source,
                   "verdict" : all_the_messages,
                   "device": source,
                   "elapseTime": deltatime(start_time, end_time)})
@@ -128,7 +128,7 @@ def test_optical(password, source, encoding='iso-8859-1'):
   result = { "device": source, "elapseTime": deltatime(start_time, end_time) }
   reply_result({"component": "Optical drive",
                 "result": okay,
-                "message" : "The device %s passed the test." % source,
+                "runMessage" : "The device %s passed the test." % source,
                 "verdict": all_the_messages,
                 "device": source,
                 "elapseTime": deltatime(start_time, end_time)})

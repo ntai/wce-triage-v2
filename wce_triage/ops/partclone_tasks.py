@@ -26,7 +26,8 @@ class task_partclone(op_task_process):
   error_re = re.compile(r'^(\w+\.ERROR): (.*)')
 
   def __init__(self, description, **kwargs):
-    # 
+    #
+    kwargs['progress_running'] = None
     super().__init__(description, **kwargs)
 
     self.start_re = []
