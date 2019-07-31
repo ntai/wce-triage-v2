@@ -625,8 +625,9 @@ class task_fsck(op_task_process):
     if part1 is None:
       error_message = "fsck: disk %s partition %s is not found" % (self.disk.device_name, self.partition_id)
       tlog.warn(error_message)
-      self.set_progress(999, error_message)
-      pass
+      self._setup_failed(error_message)
+      return
+
     self.argv = ["/sbin/e2fsck", "-f", "-y", part1.device_name]
     super().setup()
     pass
