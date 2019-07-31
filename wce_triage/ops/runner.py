@@ -149,6 +149,7 @@ class Runner:
 
 
   def _run_task(self, task, ui):
+    task.pre_setup()
     task.setup()
     current_time = task.start_time
     self.current_time = task.start_time

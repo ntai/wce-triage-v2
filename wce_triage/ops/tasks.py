@@ -71,10 +71,15 @@ class op_task(object, metaclass=abc.ABCMeta):
        position is in the execution, and you can adjust your estimation."""
     pass
   
+  # pre_setup is called right before setup()
+  def pre_setup(self):
+    """pre_setup is called right before setup()."""
+    self.start_time = datetime.datetime.now()
+    pass
+  
   # setup is called at the beginning of running.
   def setup(self):
     """setup is called at the beginning of running."""
-    self.start_time = datetime.datetime.now()
     pass
   
   # setup failed
