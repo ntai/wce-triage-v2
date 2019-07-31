@@ -76,7 +76,7 @@ if __name__ == "__main__":
     chunk = reader.readline()
     if chunk == b'':
       break
-    if chunk != None:
+    if chunk is not None:
       sys.stdout.write(chunk)
       pass
     pass

@@ -20,17 +20,18 @@ class BlessDiskRunner(runner.Runner):
     # FIXME: may become a task
     self.disk.detect_disk()
     self.time_estimate = 2
+    self.partition_id = partition_id
     pass
 
   def prepare(self):
     super().prepare()
     self.tasks.append(tasks.task_fetch_partitions("Fetch disk information", disk))
     self.tasks.append(tasks.task_refresh_partitions("Refresh partition information", disk))
-    self.tasks.append(tasks.task_mount("Mount disk %s" % disk.device_name, disk, partition_id=partition_id))
+    self.tasks.append(tasks.task_mount("Mount disk %s" % disk.device_name, disk, partition_id=self.partition_id))
     mock_video = (0, 0, 1)
-    self.tasks.append(tasks.task_install_grub('Install GRUB boot manager', disk=disk, detected_videos=mock_video, partition_id=partition_id))
-    self.tasks.append(tasks.task_finalize_disk('Finalize disk', disk, partition_id=partition_id))
-    unmounter = tasks.task_unmount("Unmount disk %s" % disk.device_name, disk, partition_id=partition_id)
+    self.tasks.append(tasks.task_install_grub('Install GRUB boot manager', disk=disk, detected_videos=mock_video, partition_id=self.partition_id))
+    self.tasks.append(tasks.task_finalize_disk('Finalize disk', disk, partition_id=self.partition_id))
+    unmounter = tasks.task_unmount("Unmount disk %s" % disk.device_name, disk, partition_id=self.partition_id)
     unmounter.set_teardown_task()
     self.tasks.append(unmounter)
     pass

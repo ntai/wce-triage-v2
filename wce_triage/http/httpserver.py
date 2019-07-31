@@ -322,7 +322,7 @@ class TriageWeb(object):
   async def route_triage(request):
     """Handles requesting triage result"""
     global me
-    hello = me.computer == None
+    hello = me.computer is None
     await me.triage()
     computer = me.computer
 

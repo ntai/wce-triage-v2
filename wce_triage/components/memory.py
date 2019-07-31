@@ -272,7 +272,7 @@ class Memory(Component):
     return "Memory"
 
   def decision(self, **kwargs):
-    if self.memory == None:
+    if self.memory is None:
       self.memory = detect_memory()
       pass
     

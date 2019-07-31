@@ -20,7 +20,6 @@ tlog = get_triage_logger()
 from .estimate import *
 
 class op_task(object, metaclass=abc.ABCMeta):
-
   def __init__(self, description, encoding='utf-8', time_estimate=None, estimate_factors=None, **kwargs):
     if not isinstance(description, str):
       raise Exception("Description must be a string")
@@ -67,20 +66,20 @@ class op_task(object, metaclass=abc.ABCMeta):
   
   # preflight is called from runner's preflight
   def preflight(self, tasks):
-    '''preflight is called from runner's preflight. you get to know 
+    """preflight is called from runner's preflight. you get to know
        other tasks. task number is given so you know where your 
-       position is in the execution, and you can adjust your estimation.'''
+       position is in the execution, and you can adjust your estimation."""
     pass
   
   # setup is called at the beginning of running.
   def setup(self):
-    '''setup is called at the beginning of running.'''
+    """setup is called at the beginning of running."""
     self.start_time = datetime.datetime.now()
     pass
   
   # setup failed
   def _setup_failed(self, msg):
-    '''setup failed is called during setup.'''
+    """setup failed is called during setup."""
     self.progress = 999
     self.messages = msg
     self.verdict.append(msg)
@@ -90,7 +89,7 @@ class op_task(object, metaclass=abc.ABCMeta):
   
   # teardown is called just after the run
   def teardown(self):
-    '''teardown is called just after the run'''
+    """teardown is called just after the run"""
     self._set_end_time_now()
     self.is_done = True
     pass
@@ -108,7 +107,7 @@ class op_task(object, metaclass=abc.ABCMeta):
 
   @abc.abstractmethod
   def poll(self):
-    '''poll is called while the execution is going on'''
+    """poll is called while the execution is going on"""
     pass
 
   def get_description(self):
@@ -218,6 +217,12 @@ class op_task_process(op_task):
     self.process = None
     self.select_timeout = select_timeout
     self.good_returncode = [0]
+    self.process = None
+    self.stdout = None
+    self.stderr = None
+    self.read_set = []
+    self.out = ""
+    self.err = ""
     pass
 
   def set_time_estimate(self, time_estimate):
@@ -247,6 +252,7 @@ class op_task_process(op_task):
     selecting = True
     while selecting:
       selecting = False
+      rlist = wlist = xlist = None
       try:
         rlist, wlist, xlist = select.select(self.read_set, [], [], self.select_timeout)
       except select.error as exc:
@@ -319,8 +325,8 @@ class op_task_process(op_task):
 
 
 class op_task_process_simple(op_task_process):
-  def __init__(self, description, argv=None, **kwargs):
-    super().__init__(description, argv=argv, **kwargs)
+  def __init__(self, description, **kwargs):
+    super().__init__(description, **kwargs)
     pass
 
   # For simple process task, report this as half done
@@ -360,12 +366,12 @@ class op_task_command(op_task):
 class task_mkdir(op_task_python_simple):
 
   def __init__(self, description, dir_path, **kwargs):
-    '''
+    """
     :param op: diskop instance
     :param description: description of operation
     :param dir_path: path to do mkdir
 
-    '''
+    """
     super().__init__(description, time_estimate=1, **kwargs)
     self.dir_path = dir_path
     pass
@@ -464,6 +470,8 @@ class task_unmount(op_task_process_simple):
     self.disk = disk
     self.partition_id = partition_id
     self.force = force_unmount
+    self.part = None
+    self.partition_is_mounted = False
     super().__init__(description, argv=["/bin/umount"], time_estimate=1, **kwargs)
     pass
 
@@ -502,12 +510,12 @@ class task_unmount(op_task_process_simple):
 #
 #
 class task_mount(op_task_process_simple):
-  '''mount a partition on disk'''
+  """mount a partition on disk"""
 
   def __init__(self, description, disk=None, partition_id='Linux', **kwargs):
     self.disk = disk
     self.partition_id = partition_id
-
+    self.part = None
     super().__init__(description, argv = ["/bin/mount"], time_estimate=2, **kwargs)
     pass
   
@@ -523,8 +531,8 @@ class task_mount(op_task_process_simple):
     if not os.path.exists(mount_point):
       try:
         os.makedirs(mount_point)
-      except:
-        self.set_progress(999, "Creating mount point failed.")
+      except Exception as exc:
+        self.set_progress(999, "Creating mount point failed. " + traceback.format_exc())
         pass
       pass
     super().setup()
@@ -572,8 +580,8 @@ class task_assign_uuid_to_partition(op_task_process_simple):
 def task_get_uuid_from_partition(op_task_process_simple):
   def __init__(self, description, partition=None, **kwargs):
     self.part = partition
-    self.argv = ["/sbin/blkid", part.device_name]
-    super().__init__(description, argv, time_estimate=2, **kwargs)
+    arg = ["/sbin/blkid", part.device_name]
+    super().__init__(description, argv=arg, time_estimate=2, **kwargs)
     pass
 
   def setup(self):
@@ -609,7 +617,7 @@ class task_fsck(op_task_process):
   def setup(self):
     #
     part1 = self.disk.find_partition(self.partition_id)
-    if part1 == None:
+    if part1 is None:
       error_message = "fsck: disk %s partition %s is not found" % (self.disk.device_name, self.partition_id)
       tlog.warn(error_message)
       self.set_progress(999, error_message)
@@ -641,7 +649,7 @@ class task_expand_partition(op_task_process):
       self.set_progress(999, "Partition %s does not exist on %s" % (self.partition_id, self.disk.device_name))
       return
 
-    self.argv = ["resize2fs", (part1.device_name)]
+    self.argv = ["resize2fs", part1.device_name]
     super().setup()
     return
 
@@ -668,7 +676,7 @@ class task_shrink_partition(op_task_process):
       self.set_progress(999, "Partition %s does not exist on %s" % (self.partition_id, self.disk.device_name))
       return
 
-    self.argv = ["resize2fs", "-M", (part1.device_name)]
+    self.argv = ["resize2fs", "-M", part1.device_name]
     super().setup()
     return
 
@@ -701,11 +709,11 @@ class task_create_wce_tag(op_task_python_simple):
 #  Remove files
 class task_remove_files(op_task_python_simple):
     #
-  def __init__(self, description, disk=None, files=[], partition_id='Linux', **kwargs):
+  def __init__(self, description, disk=None, files=None, partition_id='Linux', **kwargs):
     super().__init__(description, **kwargs)
     self.disk = disk
     self.partition_id = partition_id
-    self.files = files
+    self.files = [] if files is None else files
     pass
 
   def run_python(self):
@@ -794,7 +802,7 @@ class task_install_mbr(op_task_process_simple):
 # succession.
 #
 class task_fetch_partitions(op_task_process_simple):
-  '''fetches partitions from disk and creates parition instances.'''
+  """fetches partitions from disk and creates parition instances."""
 
   #                          1:    2:           3:           4:           5:fs  6:name  7:flags   
 
@@ -820,7 +828,7 @@ class task_fetch_partitions(op_task_process_simple):
     
 
 class task_refresh_partitions(op_task_command):
-  '''refreshes (reads) partitions from disk.'''
+  """refreshes (reads) partitions from disk."""
   
   props = {'PARTUUID':  'partition_uuid',
            # 
@@ -925,7 +933,7 @@ class task_set_partition_uuid(op_task_process_simple):
 #
 #
 class task_install_syslinux(op_task_process):
-  '''Installs syslinux on the device'''
+  """Installs syslinux on the device"""
   def __init__(self, description, disk=None, **kwargs):
     argv = ["/usr/bin/syslinux", "-maf", disk.device_name]
     self.disk = disk
@@ -946,6 +954,10 @@ class task_install_grub(op_task_process):
     self.disk = disk
     self.partition_id = partition_id
     (self.n_nvidia, self.n_ati, self.n_vga) = detected_videos
+    self.linuxpart = None
+    self.mount_dir = None
+    self.script_path = None
+    self.script = None
 
     # FIXME: Time estimate is very different between USB stick and hard disk.
 
@@ -1076,7 +1088,7 @@ class task_zero_partition(op_task_python_simple):
 
   pass
 
-fstab_template = '''# /etc/fstab: static file system information.
+fstab_template = """# /etc/fstab: static file system information.
 #
 # This file is auto-generated by WCE installation.
 #
@@ -1088,32 +1100,35 @@ fstab_template = '''# /etc/fstab: static file system information.
 proc            /proc           proc    nodev,noexec,nosuid 0       0
 #
 UUID=%s /               ext4    errors=remount-ro 0       1
-'''
+"""
 
 # UUID should be available after re-fetching partition info.
 # Original was 9ABD-4363
-efi_template = '''# /boot/efi was on /dev/sda1 during installation
+efi_template = """# /boot/efi was on /dev/sda1 during installation
 UUID=%s  /boot/efi       vfat    umask=0077      0       1
-'''
+"""
 
-swap_template = '''# swap partition. should match with blkid output.
+swap_template = """# swap partition. should match with blkid output.
 UUID=%s none            swap    sw              0       0
-'''
+"""
 
 #
 # Create various files for blessed installation
 #
 class task_finalize_disk(op_task_python_simple):
-  '''sets up /etc/fstab and /etc/hostname.
+  """sets up /etc/fstab and /etc/hostname.
 fstab is always adjusted to the new partition UUID.
 new hostname set up is only done if the new hostname is provided. If it's None, it's untouched.
-'''
+"""
   def __init__(self, description, disk=None, newhostname=None, partition_id='Linux', efi_id = None, **kwargs):
     super().__init__(description, time_estimate=1, **kwargs)
     self.newhostname = newhostname
     self.disk = disk
     self.partition_id = partition_id
     self.efi_id = efi_id
+    self.efi_part = None
+    self.swappart = None
+    self.mount_dir = None
     pass
    
 
@@ -1282,6 +1297,7 @@ class task_finalize_efi(op_task_python_simple):
 class task_mount_nfs_destination(op_task_process):
 
   def __init__(self, description, **kwargs):
+    super().__init__(description, **kwargs)
     pass
   
   def setup(self):

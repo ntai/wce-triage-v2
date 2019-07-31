@@ -277,7 +277,11 @@ class Disk:
     else:
       self.is_disk = False
       pass
-      
+
+    if err.strip():
+      tlog.info(err)
+      pass
+
     return self.is_disk
 
   def list_partitions(self):

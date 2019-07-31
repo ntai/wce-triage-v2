@@ -42,7 +42,7 @@ def _ext4_version_to_mkfs_opts(ext4_version):
 # This is univeral partition plan, should work for efi or traditional boot.
 # I think Ubuntu 18.04LTS and up should use EFI boot.
 # 
-def make_efi_partition_plan(disk, ext4_version=None, efi_boot=False):
+def make_efi_partition_plan(disk, ext4_version=None, efi_boot=False, partition_id=None):
   diskmbsize = int(disk.get_byte_size() / (1024*1024))
   # Use up to 5% of disk for swap, but stop at 8GB. 
   swapsize = int(diskmbsize * 0.05)
@@ -58,12 +58,16 @@ def make_efi_partition_plan(disk, ext4_version=None, efi_boot=False):
     bios_part_opt = 'boot'
     efi_part_opt = None
     pass
-  
-  pplan = [PartPlan(0, None,     None,         0,        2, Partition.MBR,      None,          None),
-           PartPlan(1, 'BOOT',   None,         0,       32, Partition.BIOSBOOT, bios_part_opt, None),
-           PartPlan(2, EFI_NAME, 'fat32',      0,      512, Partition.UEFI,     efi_part_opt,  None),
-           PartPlan(3, 'SWAP',   'linux-swap', 0, swapsize, Partition.SWAP,     None,          None),
-           PartPlan(4, 'Linux',  'ext4',       0,        0, Partition.EXT4,     None,          mkfs_opts) ]
+
+  if partition_id is None:
+    partition_id = 'Linux'
+    pass
+
+  pplan = [PartPlan(0, None,         None,         0,        2, Partition.MBR,      None,          None),
+           PartPlan(1, 'BOOT',       None,         0,       32, Partition.BIOSBOOT, bios_part_opt, None),
+           PartPlan(2, EFI_NAME,     'fat32',      0,      512, Partition.UEFI,     efi_part_opt,  None),
+           PartPlan(3, 'SWAP',       'linux-swap', 0, swapsize, Partition.SWAP,     None,          None),
+           PartPlan(4, partition_id, 'ext4',       0,        0, Partition.EXT4,     None,          mkfs_opts) ]
   partion_start = 0
   for part in pplan:
     part.start = partion_start

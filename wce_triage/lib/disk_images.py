@@ -156,7 +156,7 @@ def read_disk_image_type(catalog_dir):
 def make_disk_image_name(destdir, inname, filesystem='ext4'):
   image_meta = read_disk_image_type(destdir)
   if image_meta is None:
-    if inname == None:
+    if inname is None:
       raise Exception("Directory %s does not have '" + IMAGE_META_JSON_FILE + "' file.")
     return inname
 

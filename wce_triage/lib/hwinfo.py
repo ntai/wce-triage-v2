@@ -20,7 +20,7 @@ def run_lshw():
 
 
 def find_class(found_func, data, class_name):
-  if data == None:
+  if data is None:
     return None
 
   if data.get('class') == class_name:
