@@ -707,7 +707,7 @@ class TriageWeb(object):
       self._runner_check_process("loadimage", self.restore, 'check restore process from status')
       if self.restore.returncode is not None:
         self.restore = None
-        self.start_load_disks(log + " {runner} is not running.".format(runner=runner))
+        self.start_load_disks("loadimage finished.")
       pass
     pass
 
@@ -950,12 +950,48 @@ class TriageWeb(object):
   @routes.post("/dispatch/unmount")
   async def route_unmount_disk(request):
     """Unmount disk"""
-    disks = requst.query.get("deviceName")
-    for disk in disks:
-      subprocess.run(["umount", disk])
-      pass
-    return aiohttp.web.json_response(fake_status)
+    global me
+    unmountingDisks = get_target_devices_from_request(request)
+    tlog.debug("unmounting " + ",".join(unmountingDisks))
+    response = []
 
+    for disk in me.disk_portal.disks:
+      if disk.device_name in unmountingDisks:
+        mounted = disk.mounted
+        if mounted:
+          # Normally, partitions are not detected.
+          lister = PartitionLister(disk)
+          lister.execute()
+          mounted = False
+          for partition in disk.partitions:
+            tlog.debug("Unmounting partition %s" % partition.device_name)
+            umount = subprocess.run(["umount", partition.device_name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if umount.returncode != 0:
+              mounted = True
+              tlog.debug("Unmounting partition %s failed with retcode %d" % (partition.device_name, umount.returncode))
+              pass
+            out = umount.stdout.decode('iso-8859-1').strip()
+            err = umount.stderr.decode('iso-8859-1').strip()
+            if out:
+              tlog.debug(out)
+              pass
+            if err:
+              tlog.debug(err)
+              pass
+              
+            pass
+          disk.mounted = mounted
+          pass
+        else:
+          tlog.debug("disk %s is not mounted." % disk.device_name)
+          pass
+        pass
+      else:
+        tlog.debug('ummounting %s is not requested.' % disk.device_name)
+        pass
+      response.append({ "device": disk.device_name, "mounted": disk.mounted })
+      pass
+    return aiohttp.web.json_response(response)
 
   @routes.post("/dispatch/shutdown")
   async def route_shutdown(request):

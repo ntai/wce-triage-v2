@@ -720,6 +720,11 @@ class task_remove_files(op_task_python_simple):
     # Protect myself from stupidity
     toplevels = os.listdir("/")
     toplevels.append("")
+    # except swapfile! go ahead and remove swapfile if you need
+    try:
+      toplevels.remove("swapfile")
+    except:
+      pass
     for filename in self.files:
       if filename in toplevels:
         continue

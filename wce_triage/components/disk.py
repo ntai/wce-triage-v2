@@ -307,7 +307,7 @@ class DiskPortal(Component):
 
     # Known mounted disks. 
     # These cannot be the target
-    mount_re = re.compile(r"(/dev/[a-z]+)([0-9]*) ([a-z0-9/\.]+) ([a-z0-9]+) (.*)")
+    mount_re = re.compile(r"(/dev/[a-z]+)([0-9]*) ([a-z0-9/\.\-_\+\=,]+) ([a-z0-9]+) (.*)")
     with open('/proc/mounts') as mount_f:
       for one_mount in mount_f.readlines():
         m = mount_re.match(one_mount)
@@ -491,5 +491,12 @@ class PartitionLister:
 
 if __name__ == "__main__":
   portal = DiskPortal(live_system=True)
-  print(portal.decision(live_system=True))
+  disks = portal.decision(live_system=True)
+  for disk in disks:
+    print(disk)
+    pass
+  for disk in portal.disks:
+    print("%s is %s" % (disk.device_name, "mounted." if disk.mounted else "not mounted."))
+    pass
+  
   pass
