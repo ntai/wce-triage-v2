@@ -1,6 +1,7 @@
 
 import os, psutil, datetime, json, traceback
 from wce_triage.lib.util import *
+tlog = get_triage_logger()
 
 IMAGE_META_JSON_FILE = ".disk_image_type.json"
 
@@ -139,11 +140,11 @@ def read_disk_image_type(catalog_dir):
       pass
     pass
   except json.decoder.JSONDecodeError:
-    get_triage_logger().debug('catalog_dir %s: JSON parse error. Check the contents.' % catalog_dir);
+    tlog.debug('catalog_dir %s: JSON parse error. Check the contents.' % catalog_dir);
     pass
   except:
     # If anything goes wrong, just ignore the directory.
-    get_triage_logger().debug('catalog_dir %s: %s' % (catalog_dir, traceback.format_exc()))
+    tlog.debug('catalog_dir %s: %s' % (catalog_dir, traceback.format_exc()))
     pass
   # 
   if result:
@@ -157,7 +158,8 @@ def make_disk_image_name(destdir, inname, filesystem='ext4'):
   image_meta = read_disk_image_type(destdir)
   if image_meta is None:
     if inname is None:
-      raise Exception("Directory %s does not have '" + IMAGE_META_JSON_FILE + "' file.")
+      exc_msg = "Directory {dir} does not have '{json_file}' file.".format(dir=destdir, json_file=IMAGE_META_JSON_FILE)
+      raise Exception(exc_msg)
     return inname
 
   imagename = image_meta["filestem"]
@@ -193,9 +195,14 @@ def get_file_system_from_source(source):
 
 #
 if __name__ == "__main__":
+  logging.basicConfig(level=logging.DEBUG,
+                      format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                      filename='/tmp/disk_images.log')
+  
   print(read_disk_image_types(verbose=True))
   print(get_disk_images())
   print(get_file_system_from_source("a.ext4.partclone.gz"))
   print(get_file_system_from_source("a.ext4.partclone"))
   print(get_file_system_from_source("a.partclone.gz"))
+  print(read_disk_image_type("/usr/local/share/wce/wce-disk-images/triage"))
   pass
