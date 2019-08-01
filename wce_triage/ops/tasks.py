@@ -156,7 +156,7 @@ class op_task(object, metaclass=abc.ABCMeta):
     pass
 
   def _estimate_progress_from_time_estimate(self, total_seconds):
-    progress = 100 * total_seconds / self.time_estimate
+    progress = 100 * total_seconds / max(1, self.time_estimate)
     if progress > 99:
       self.time_estimate = total_seconds+1
       return 99
@@ -1038,7 +1038,7 @@ class task_install_grub(op_task_process):
   # grub-install may take long time. time out only when
   # it takes 2x of time estmate.
   def _estimate_progress(self, total_seconds):
-    progress = int(100.0 * total_seconds / self.time_estimate)
+    progress = int(100.0 * total_seconds / max(1, self.time_estimate))
     if progress > 1000:
       return 999
     elif progress > 99:
