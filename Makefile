@@ -23,7 +23,7 @@ uninstall:
 
 manifest:
 	echo include requirements.txt> MANIFEST.in
-	find wce_triage/setup/patches -type f -print | sed -e 's/^/include /' >> MANIFEST.in
+	find wce_triage/setup/patches -type f -print |sort | sed -e 's/^/include /' >> MANIFEST.in
 
 bootstrap:
 	sudo python3 -m pip install --upgrade setuptools wheel twine
