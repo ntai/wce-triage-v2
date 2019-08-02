@@ -21,7 +21,7 @@ class task_partclone(op_task_process):
   t0 = datetime.datetime.strptime('00:00:00', '%H:%M:%S')
 
   # This needs to match with process driver's output format.
-  progress_re = re.compile(r'^\w+: partclone\.stderr:Elapsed: (\d\d:\d\d:\d\d), Remaining: (\d\d:\d\d:\d\d), Completed:\s+(\d+.\d*)%,\s+[^\/]+/min,')
+  progress_re = re.compile(r'\w+: partclone\.stderr:Elapsed: (\d\d:\d\d:\d\d), Remaining: (\d\d:\d\d:\d\d), Completed:\s+(\d+.\d*)%,\s+[^\/]+/min,')
   output_re = re.compile(r'^\w+: partclone\.stderr:(.*)')
   error_re = re.compile(r'^(\w+\.ERROR): (.*)')
 

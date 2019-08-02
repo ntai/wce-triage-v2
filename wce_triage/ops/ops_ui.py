@@ -55,7 +55,7 @@ class ops_ui(object):
     pass
 
   def task_log(self, runner_id, task, msg):
-    self.log(runner_id, "%s: (%s) %s" % (runner_id, task.description, msg))
+    self.log(runner_id, "(%s) %s" % (task.description, msg))
     pass
   pass
 

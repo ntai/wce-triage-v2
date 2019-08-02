@@ -637,7 +637,6 @@ class TriageWeb(object):
     imagefile_size = self._get_load_option("size") # This comes back in bytes from sending sources with size. value in query is always string.
     restore_type = self._get_load_option("restoretype")
 
-
     argv = argv + [devname, imagefile, imagefile_size, restore_type]
     tlog.debug(argv)
 
