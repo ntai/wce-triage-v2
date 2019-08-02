@@ -54,18 +54,7 @@ class RestoreDiskRunner(PartitionDiskRunner):
     self.disk = disk
     self.source = src
     self.source_size = src_size
-    self.newhostname = None
-    if newhostname == "RANDOM":
-      self.newhostname = make_random_hostname()
-    elif newhostname == "ORIGINAL":
-      self.newhostname = None
-    elif isinstance(newhostname, str):
-      self.newhostname = newhostname
-    elif isinstance(newhostname, int):
-      self.newhostname = "ubuntu" + str(newhostname)
-    else:
-      self.newhostname = None
-      pass
+    self.newhostname = newhostname
     self.efi_source = efisrc # EFI partition is pretty small
     pass
 
@@ -215,6 +204,18 @@ def run_load_image(ui, devname, imagefile, imagefile_size, efisrc, newhostname, 
   if partition_id is None:
     raise Exception("Partion ID is not known for resotring disk.")
   
+  # If new host name is not given, and if restore type asks for new host name,
+  # let's do it.
+  if newhostname is None:
+    newhostname = restore_type.get("hostname")
+    if newhostname:
+      if restore_type.get("randomize_hostname"):
+        newhostname = make_random_hostname(stemname=newhostname)
+        tlog.debug("Randomized hostname generated: %s" % newhostname)
+        pass
+      pass
+    pass
+
   runner = RestoreDiskRunner(ui, disk.device_name, disk, imagefile, imagefile_size, efisrc,
                              partition_id=partition_id, pplan=pplan, partition_map=partition_map,
                              newhostname=newhostname, restore_type=restore_type, wipe=wipe)

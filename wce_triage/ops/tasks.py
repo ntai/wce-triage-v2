@@ -151,7 +151,6 @@ class op_task(object, metaclass=abc.ABCMeta):
     pass
 
   def log(self, msg):
-    tlog.info(msg)
     self.runner.log(self, msg)
     pass
 
