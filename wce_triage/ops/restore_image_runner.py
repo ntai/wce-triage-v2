@@ -85,7 +85,7 @@ class RestoreDiskRunner(PartitionDiskRunner):
     self.tasks.append(task_restore_disk_image("Load disk image", disk=disk, partition_id=partition_id, source=self.source, source_size=self.source_size))
 
     # Make sure it went right.
-    self.tasks.append(task_fsck("fsck partition", disk=disk, partition_id=partition_id))
+    self.tasks.append(task_fsck("fsck partition", disk=disk, partition_id=partition_id, payload_size=self.source_size/4))
 
     # Loading disk image changes file system's UUID. 
     if self.restore_type["id"] != 'clone':
@@ -119,7 +119,7 @@ class RestoreDiskRunner(PartitionDiskRunner):
       pass
 
     # fsck/expand partition
-    self.tasks.append(task_fsck("fsck partition", disk=disk, partition_id=partition_id))
+    self.tasks.append(task_fsck("fsck partition", disk=disk, partition_id=partition_id, payload_size=self.source_size/10))
     self.tasks.append(task_expand_partition("Expand the partion back", disk=disk, partition_id=partition_id))
 
     if self.efi_source:
@@ -152,7 +152,7 @@ def run_load_image(ui, devname, imagefile, imagefile_size, efisrc, newhostname, 
   '''
   # Should the restore type be json or the file?
   disk = Disk(device_name = devname)
-
+  
   id = restore_type.get("id")
   if id is None:
     return
@@ -215,6 +215,8 @@ def run_load_image(ui, devname, imagefile, imagefile_size, efisrc, newhostname, 
         pass
       pass
     pass
+
+  disk.detect_disk()
 
   runner = RestoreDiskRunner(ui, disk.device_name, disk, imagefile, imagefile_size, efisrc,
                              partition_id=partition_id, pplan=pplan, partition_map=partition_map,

@@ -21,7 +21,8 @@ class task_partclone(op_task_process):
   t0 = datetime.datetime.strptime('00:00:00', '%H:%M:%S')
 
   # This needs to match with process driver's output format.
-  progress_re = re.compile(r'\w+: partclone\.stderr:Elapsed: (\d\d:\d\d:\d\d), Remaining: (\d\d:\d\d:\d\d), Completed:\s+(\d+.\d*)%,\s+[^\/]+/min,')
+  progress0_re = re.compile(r'partclone\.stderr:Elapsed: (\d\d:\d\d:\d\d), Remaining: (\d\d:\d\d:\d\d), Completed:\s+(\d+\.\d*)%,\s+[^\/]+/min,')
+  progress1_re = re.compile(r'partclone\.stderr:current block:\s+(\d+), total block:\s+(\d+), Complete:\s+(\d+\.\d*)%')
   output_re = re.compile(r'^\w+: partclone\.stderr:(.*)')
   error_re = re.compile(r'^(\w+\.ERROR): (.*)')
 
@@ -74,7 +75,7 @@ class task_partclone(op_task_process):
       # passed the start marker
 
       if len(self.start_re) == 0:
-        m = self.progress_re.search(line)
+        m = self.progress0_re.search(line)
         if m:
           elapsed = m.group(1)
           remaining = m.group(2)
@@ -110,6 +111,7 @@ class task_partclone(op_task_process):
 class task_create_disk_image(task_partclone):
   
   def __init__(self, description, disk=None, partition_id="Linux", imagename=None, partition_size=None, **kwargs):
+    # FIXME: This time_estimate is so wrong in so many levels.
     super().__init__(description, time_estimate=disk.get_byte_size() / 500000000, **kwargs)
     self.disk = disk
     self.partition_id = partition_id
@@ -144,13 +146,15 @@ class task_restore_disk_image(task_partclone):
   # Restore partclone image file to the first partition
   def __init__(self, description, disk=None, partition_id="Linux", source=None, source_size=None, **kwargs):
     #
-    super().__init__(description, time_estimate=source_size / 3000000, **kwargs)
+    speed = disk.estimate_speed(operation="restore")
+    super().__init__(description, time_estimate=2*source_size/speed, **kwargs)
     self.disk = disk
     self.partition_id = partition_id
     self.source = source
     self.source_size = source_size
     if self.source is None:
       raise Exception("bone head. it needs the source image.")
+    self.percent_done = None
     pass
 
   def setup(self):
@@ -167,7 +171,7 @@ class task_restore_disk_image(task_partclone):
   # ignore parsing partclone progress. for restore, it is 100$ wrong.
   def parse_partclone_progress(self):
     #
-    # Check the progress. driver prints everything to stderr
+    # Check the progress.
     #
     if len(self.err) == 0:
       return
@@ -196,21 +200,49 @@ class task_restore_disk_image(task_partclone):
 
       # passed the start marker
       if len(self.start_re) == 0:
-        m = self.progress_re.search(line)
+        m = self.progress1_re.search(line)
         if m:
-          self.log(line.strip())
+          self.percent_done = m.group(1)
+          dt = current_time - self.start_time
+          # self.set_progress(self._estimate_progress_from_time_estimate(dt.total_seconds()), "elapsed: %s remaining: %s" % (elapsed, remaining))
+          percent = self._estimate_progress_from_time_estimate(dt.total_seconds())
+          try:
+            percent = min(float(m.group(3)), 99)
+            if percent > 10:
+              sofar = percent/100
+              # Progress coming back from partclone is always super optimistic
+              # it doesn't include the cache flushing at the end. In other word, it
+              # is reporting how much input it got, not how much it is written to the
+              # destination.
+              fudge = (1.05 + 0.1 * (1-sofar))
+              # This will still overestimate a lot but probably okay
+              new_estimate = sum([self.time_estimate, (in_seconds(dt) / sofar) * fudge])/2
+              self.set_time_estimate(new_estimate)
+              pass
+            pass
+          except:
+            pass
+          current_block = m.group(1)
+          total_blocks = m.group(2)
+          self.set_progress(percent, "{current} of {total} blocks completed.".format(current=current_block, total=total_blocks))
+          pass
+
+        m = self.progress0_re.search(line)
+        if m:
+          tlog.debug(line.strip())
           pass
         else:
           m = self.output_re.match(line)
           if m:
             msg = m.group(1).strip()
             if msg:
-              self.log(msg)
+              tlog.debug(msg)
               pass
             pass
 
           m = self.error_re.match(line)
           if m:
+            self.log(line)
             self.verdict.append(m.group(2).strip())
             pass
           pass

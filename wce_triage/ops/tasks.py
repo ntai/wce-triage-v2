@@ -612,10 +612,13 @@ def task_get_uuid_from_partition(op_task_process_simple):
 #
 class task_fsck(op_task_process):
   #
-  def __init__(self, description, disk=None, partition_id=None, **kwargs):
+  def __init__(self, description, disk=None, partition_id=None, payload_size=None, **kwargs):
     self.disk = disk
     self.partition_id = partition_id
-    super().__init__(description, argv=["/sbin/e2fsck", "-f", "-y", disk.device_name, partition_id], time_estimate=self.disk.get_byte_size()/5000000000+2, **kwargs)
+    self.payload_size = payload_size
+    speed = self.disk.estimate_speed("fsck")
+    estimate_size = self.disk.get_byte_size() if self.payload_size is None else self.payload_size
+    super().__init__(description, argv=["/sbin/e2fsck", "-f", "-y", disk.device_name, partition_id], time_estimate=estimate_size/speed+2, **kwargs)
     pass
 
   def setup(self):
@@ -642,9 +645,13 @@ class task_expand_partition(op_task_process):
   def __init__(self, description, disk=None, partition_id=None, **kwargs):
     self.disk = disk
     self.partition_id = partition_id
+
+    # obviously, expanding does small writes but amount is much smaller than the disk
+    expand_fs_write = self.disk.get_byte_size() / 100 / 1024
+    speed = self.disk.estimate_speed("expand")
     super().__init__(description,
                      argv = ["resize2fs", disk.device_name, str(partition_id)],
-                     time_estimate = self.disk.get_byte_size() / 500000000+2, **kwargs) # FIXME time_estimate is bogus
+                     time_estimate = expand_fs_write / speed + 2, **kwargs) # FIXME time_estimate is bogus
     pass
 
   def setup(self):
@@ -669,8 +676,14 @@ class task_shrink_partition(op_task_process):
   def __init__(self, description, disk=None, partition_id=None, **kwargs):
     self.disk = disk
     self.partition_id = partition_id
+
+    # time estiamte for shrinking partition is not possible.
+    # it might move some files and there is no way of knowing
+    shrink_fs_write = self.disk.get_byte_size() / 1024
+    speed = self.disk.estimate_speed("shrink")
+
     super().__init__(description,
-                     time_estimate=self.disk.get_byte_size() / 1000000000, # FIXME: bogus estimate
+                     time_estimate=shrink_fs_write / speed, # FIXME: still bogus estimate
                      argv=["resize2fs", "-M", disk.device_name, partition_id], **kwargs)
     pass
 
@@ -965,9 +978,13 @@ class task_install_grub(op_task_process):
     self.script = None
 
     # FIXME: Time estimate is very different between USB stick and hard disk.
-
+    # grub copies a bunch of files
+    grub_read_size = 4 * 2**20
+    grub_write_size = 4 * 2**20
+    grub_size = grub_read_size + grub_write_size
+    speed = self.disk.estimate_speed("grub")
     # argv is a placeholder
-    super().__init__(description, argv=['/usr/sbin/grub-install', disk.device_name], time_estimate=45, **kwargs)
+    super().__init__(description, argv=['/usr/sbin/grub-install', disk.device_name], time_estimate=grub_size/speed, **kwargs)
     pass
 
   #

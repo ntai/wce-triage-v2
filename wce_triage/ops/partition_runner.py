@@ -82,11 +82,17 @@ class PartitionDiskRunner(Runner):
                             partition_number=part.no)
 
       if part.filesys in ['fat32', 'vfat', 'ext4']:
-        mkfs_desc = "Create file system %s on %s" % (part.filesys, partition.device_name)
+        mkfs_desc = "Create file system %s (%d) on %s" % (part.filesys, part.size, partition.device_name)
+        part_byte_size = part.size * 2**10
+        if part.filesys == 'ext4':
+          estimate_size = (part_byte_size/2)
+        else:
+          estimate_size = 16 * 2**10
+          pass
         mkfs = task_mkfs(mkfs_desc,
                          partition=partition,
                          progress_finished="mkfs %s on %s completed." % (part.filesys, partition.device_name),
-                         time_estimate=4*part.size/1024 + 3,
+                         time_estimate=3 + estimate_size/self.disk.estimate_speed("mkfs"),
                          mkfs_opts=part.mkfs_opts)
         self.tasks.append(mkfs)
         mkfs=None
