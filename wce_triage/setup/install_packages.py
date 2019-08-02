@@ -16,6 +16,7 @@ triage_packages = [
   'gdisk',                    # gdisk
   'grub2-common',             # boot manager
   'grub-pc',                  # boot manager
+  'iwconfig',                 # for seeing wifi device list
   'mg',                       # small emacs-like editor
   'pigz',                     # parallel gzip
   'partclone',                # partclone
@@ -25,7 +26,8 @@ triage_packages = [
   'pulseaudio-utils',         # Ubuntu PA utils
   'python3-aiohttp',          # for python http server
   'python3-aiohttp-cors',     # for python http server
-  'python3-psutil'            # Socket IO to work with aiohttp
+  'python3-psutil',           # Socket IO to work with aiohttp
+  'rfkill'                    # rfkill reports the wifi hardware/software switches
 ]
 
 # aufs-tools - for making usb stick to boot and mount memory file system as read/write over read-only usb storage
