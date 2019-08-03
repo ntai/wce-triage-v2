@@ -20,7 +20,7 @@ Here is the things need to be solved.
      90% of computers are still using MBR boot, and 100% of
      computers are MBR bootable.
      - Creating partition using parted - done
-     - Creating EFI parition - unknown
+     - Creating EFI parition - working
 
  - Create disk image
    Instead of hardcoding the destination, since there is a UI,
@@ -31,13 +31,22 @@ Here is the things need to be solved.
  - Restore disk image - DONE
 
  - Websocket based reporer for frontend
-   - basic plumbing is done.
+   - basic plumbing is done. 
+   - most things working pretty well
 
- - http server
+ - http server 
    This is kind of working.
    - serving static file - done
    - serving restore disk - done
    - serving create disk image - working
+   - wiping seems working
+   
+ - Disk image directories
+   - disk image metadata NEEDS DOC!
+
+ - Supporting parallel execution of restore images.
+   - currently sequencial is working. parallel creates a lot of issues. the biggest issue is to manage the resource contention such as CPU usage and bus contention. Payload is gzipped and unzipping requires a lot of CPU power if loading multiple local disks. If single source/multi desination, this needs some plumbing done along with the performance monitoring etc.
+   
    
 ## Frontend
  need to learn a bit more about React.js
@@ -49,18 +58,21 @@ Here is the things need to be solved.
    - Make the progress rows using individual state in table so the
      state can be updated through websocket.
 
+## Live triage
+ - It's sketched out and may be working
+ 
+## Documentation
+ - 
+ 
+## Triage app distriubtion
+
+## Content versioning
+
+## Some other ideas
+ - Make the WCE content as separate partition. Since the content is already super compressed, and it's kind of useless to gzip/unzip for save/load. We may able to load the content as single binary blob into partition, and don't bother using partclone or gzip. This has an advantage of mounting the partition as read-only as well. 
 
 ## current task
 
-Installing for i386-pc platform.
-/usr/sbin/grub-install: warning: this GPT partition label contains no BIOS Boot Partition; embedding won't be possible.
-/usr/sbin/grub-install: warning: Embedding is not possible.  GRUB can only be installed in this setup by using blocklists.  However, blocklists are UNRELIABLE and their use is discouraged..
-/usr/sbin/grub-install: error: will not proceed with blocklists.
-Sourcing file `/etc/default/grub'
-Generating grub configuration file ...
-Found linux image: /boot/vmlinuz-4.15.0-51-generic
-Found initrd image: /boot/initrd.img-4.15.0-51-generic
-Found Ubuntu 18.04.2 LTS (18.04) on /dev/sda1
-Found Windows Recovery Environment on /dev/sdb2
-Found Windows 8 on /dev/sdb4
-done
+ - Testing out the live triage.
+ - UI needs to kill all of FIXME things.
+ 
