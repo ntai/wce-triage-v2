@@ -356,7 +356,7 @@ class Disk:
   def estimate_speed(self, operation=None):
     props = self.get_storage_property()
     if operation == "restore":
-      return sum([props.write_speed, props.write_speed_4k])/2
+      return sum([props.write_speed*2, props.write_speed_4k])/3
     elif operation == "mkfs":
       return props.write_speed_4k
     elif operation == "grub":

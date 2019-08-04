@@ -147,7 +147,8 @@ class task_restore_disk_image(task_partclone):
   def __init__(self, description, disk=None, partition_id="Linux", source=None, source_size=None, **kwargs):
     #
     speed = disk.estimate_speed(operation="restore")
-    super().__init__(description, time_estimate=2*source_size/speed, **kwargs)
+    self.initial_time_estimate=2*source_size/speed
+    super().__init__(description, time_estimate=self.initial_time_estimate, **kwargs)
     self.disk = disk
     self.partition_id = partition_id
     self.source = source
@@ -216,8 +217,9 @@ class task_restore_disk_image(task_partclone):
               # destination.
               fudge = (1.05 + 0.1 * (1-sofar))
               # This will still overestimate a lot but probably okay
-              new_estimate = sum([self.time_estimate, (in_seconds(dt) / sofar) * fudge])/2
+              new_estimate = sum([self.time_estimate, (in_seconds(dt) / sofar) * fudge, self.initial_time_estimate])/3
               self.set_time_estimate(new_estimate)
+              percent = self._estimate_progress_from_time_estimate(dt.total_seconds())
               pass
             pass
           except:

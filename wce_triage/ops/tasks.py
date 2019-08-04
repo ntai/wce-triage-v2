@@ -1464,3 +1464,52 @@ class op_task_wipe_disk(op_task_process):
     pass
   pass
 
+
+class task_sync_partitions(op_task_process_simple):
+  """After creating partitions, let kernel sync up and create device files.
+Pretty often, the following mkfs fails due to kernel not acknowledging the
+new partitions and partition device file not read for the follwing mkks."""
+
+  def __init__(self, description, disk=None, n_partitions=None, **kwargs):
+
+    argv = ['partprobe']
+    self.disk = disk
+    self.n_partitions = n_partitions
+    super().__init__(description,
+                     argv=argv,
+                     progress_finished="Partitions synced with kernel",
+                     **kwargs)
+    pass
+
+  def poll(self):
+    self._poll_process()
+    if self.process.returncode is None:
+      self._update_progress()
+      pass
+    else:
+      if self.process.returncode in self.good_returncode:
+        if self.confirm_partition_device_files():
+          self._update_progress()
+          pass
+        else:
+          tlog.debug("{dev}{part}".fomat(dev=self.disk.device_name, part=self.n_partitions) + " Disks: " + ",".join([ node for node in os.listdir('/dev') if node[:2] == 'sd']))
+          self.set_progress(99, self.kwargs.get('progress_synching', "Syncing with OS" ) )
+          pass
+        pass
+      else:
+        self._update_progress()
+        pass
+      pass
+    pass
+
+  def confirm_partition_device_files(self):
+    """see the partition device files appeared"""
+    for part_no in range(self.n_partitions):
+      part_device_name = "%s%d" % (self.disk.device_name, part_no+1)
+      if not os.path.exists(part_device_name):
+        return False
+      pass
+    return True
+
+  pass
+
