@@ -197,15 +197,21 @@ class TriageWeb(object):
   
   wiper_output_re = re.compile(r'^WIPE: python3\.stderr:(.*)')
 
-  def __init__(self, app, rootdir, wcedir, cors, loop, live_triage):
+  def __init__(self, app, root_url, rootdir, wcedir, cors, loop, live_triage):
     """
     HTTP request handler for triage
     """
+
+    self.root_url = root_url
     self.live_triage = live_triage
     self.wcedir = wcedir
     self.asset_path = os.path.join(wcedir, "triage", "assets")
+
     app.router.add_routes(routes)
+
+    app.router.add_static("/wce-disk-images", os.path.join(wcedir, "wce-disk-images"))
     app.router.add_static("/", rootdir)
+
     for resource in app.router._resources:
       if resource.raw_match("/socket.io/"):
         continue
@@ -539,7 +545,7 @@ class TriageWeb(object):
       resp = aiohttp.web.FileResponse(disk_images)
       resp.content_type="application/json"
       return resp
-    return aiohttp.web.json_response({ "sources": get_disk_images() })
+    return aiohttp.web.json_response({ "sources": get_disk_images(root_url=me.root_url) })
 
 
   @routes.get("/remote-disk-images.json")
@@ -548,16 +554,8 @@ class TriageWeb(object):
        This is probably not going to be used for serving installation payload.
        It should be done by the http server like lighttpd
     """
-    peeraddr, myaddr = get_ip_addresses()
-    myport = arguments.port
-
-    sources = []
-    url_template = 'http://{myaddr}:{myport}/wce-disk-images/{restoretype}/{filename}'
-    for source in get_disk_images():
-      source['fullpath'] = url_template.format(myaddr=myaddr, myport=myport, restoretype=source.restoretype, filename=source.name)
-      sources.append(source)
-      pass
-    return aiohttp.web.json_response({ "sources": sources })
+    global me
+    return aiohttp.web.json_response({ "sources": get_disk_images(root_url=me.root_url) })
 
 
   # Restore types
@@ -1011,7 +1009,8 @@ class TriageWeb(object):
     return aiohttp.web.json_response({})
   
   pass
-  
+
+
 @wock.event
 async def connect(wockid, environ):
   global me
@@ -1073,10 +1072,9 @@ if __name__ == '__main__':
   tlog.setLevel(logging.DEBUG)
   
   # Create and configure the HTTP server instance
-  the_root_url = u"{0}://{1}:{2}{3}".format("HTTP",
-                                            arguments.host,
-                                            arguments.port,
-                                            "/index.html")
+  the_root_url = u"{0}://{1}:{2}".format("HTTP",
+                                         arguments.host,
+                                         arguments.port)
   loop = asyncio.get_event_loop()
   # loop.set_debug(True)
 
@@ -1091,10 +1089,10 @@ if __name__ == '__main__':
   if rootdir is None:
     rootdir = os.path.join(wcedir, "wce-triage-ui")
     pass
-  me = TriageWeb(app, rootdir, wcedir, cors, loop, arguments.live_triage)
+  me = TriageWeb(app, the_root_url, rootdir, wcedir, cors, loop, arguments.live_triage)
 
   tlog.info("Starting server, use <Ctrl-C> to stop...")
-  tlog.info(u"Open {0} in a web browser.".format(the_root_url))
+  tlog.info(u"Open {0}{1} in a web browser.".format(the_root_url, "/index.html"))
   Emitter.register(loop)
 
   aiohttp.web.run_app(app, host="0.0.0.0", port=arguments.port, access_log=get_triage_logger())

@@ -9,17 +9,19 @@ IMAGE_META_JSON_FILE = ".disk_image_type.json"
 def get_maybe_disk_image_directories():
   dirs = []
 
-  for part in psutil.disk_partitions():
-    for subdir in [ ".", "image", "var/lib/www", "usr/local/share/wce" ]:
-      path = os.path.join(part.mountpoint, subdir, 'wce-disk-images')
-      if os.path.exists(path) and os.path.isdir(path):
-        dirs.append(path)
+  # No longer look for other directories.
+  # It would make things rather complicated.
+  if False:
+    for part in psutil.disk_partitions():
+      for subdir in [ ".", "image", "var/lib/www", "usr/local/share/wce" ]:
+        path = os.path.join(part.mountpoint, subdir, 'wce-disk-images')
+        if os.path.exists(path) and os.path.isdir(path):
+          dirs.append(path)
+          pass
         pass
       pass
     pass
 
-  # On network boot, there is no physical disks. I could go after
-  # moutns but there is only one location possible for netboot+NFS.
   wce_images = "/usr/local/share/wce/wce-disk-images"
   if os.path.exists(wce_images) and os.path.isdir(wce_images) and wce_images not in dirs:
     dirs.append(wce_images)
@@ -30,7 +32,7 @@ def get_maybe_disk_image_directories():
 #
 # 
 #
-def get_disk_images():
+def get_disk_images(root_url=None):
   '''scans the known drectories for disk image and returns the list of disk images
 
     :arg none
@@ -82,6 +84,12 @@ def get_disk_images():
     fname, subdir, fullpath = image
     filestat = os.stat(fullpath)
     mtime = datetime.datetime.fromtimestamp(filestat.st_mtime)
+
+    # If root_url is provided, reconstruct the fullpath. HTTP server needs to respond to the route.
+    if root_url:
+      fullpath = '{root_url}/wce-disk-images/{restoretype}/{filename}'.format(root_url=root_url, restoretype=subdir, filename=filename)
+      pass
+
     fattr = { "mtime": mtime.strftime('%Y-%m-%d %H:%M'),
               "restoreType" : subdir,
               "name": filename,
@@ -193,6 +201,13 @@ def get_file_system_from_source(source):
   return None
 
 
+def translate_disk_image_name_to_url(root_url, disk_image_name):
+  for source in get_disk_images(root_url):
+    if source["name"] == disk_image_name:
+      return source
+    pass
+  return disk_image
+
 #
 if __name__ == "__main__":
   logging.basicConfig(level=logging.DEBUG,
@@ -205,4 +220,8 @@ if __name__ == "__main__":
   print(get_file_system_from_source("a.ext4.partclone"))
   print(get_file_system_from_source("a.partclone.gz"))
   print(read_disk_image_type("/usr/local/share/wce/wce-disk-images/triage"))
+
+  for disk_image in get_disk_images():
+    print(translate_disk_image_name_to_url("http://localhost:8312", disk_image["name"]))
+    pass
   pass
