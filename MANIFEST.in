@@ -17,6 +17,7 @@ include wce_triage/setup/patches/server/usr/local/bin/machine-is-up
 include wce_triage/setup/patches/server/usr/local/bin/update-netclient
 include wce_triage/setup/patches/server/usr/local/bin/wce-disk-imaging
 include wce_triage/setup/patches/server/usr/local/bin/wce-triage.sh
+include wce_triage/setup/patches/server/var/lib/netboot/pxelinux.cfg/default
 include wce_triage/setup/patches/triage/etc/default/grub
 include wce_triage/setup/patches/triage/etc/grub.d/10_linux.diff
 include wce_triage/setup/patches/triage/etc/grub.d/40_custom
