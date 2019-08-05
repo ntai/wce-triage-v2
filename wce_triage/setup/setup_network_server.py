@@ -18,6 +18,9 @@ env['PATCHES'] = 'server'
 if __name__ == "__main__":
   
   steps = ['install_packages',
+           #
+           'configure_lighttpd'
+
            # Create triage account
            'config_triage_user',
            # Install triage software and services

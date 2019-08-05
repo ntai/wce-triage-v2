@@ -1,4 +1,3 @@
-
 import os, psutil, datetime, json, traceback
 from wce_triage.lib.util import *
 tlog = get_triage_logger()
@@ -32,7 +31,7 @@ def get_maybe_disk_image_directories():
 #
 # 
 #
-def get_disk_images(root_url=None):
+def get_disk_images(wce_share_url=None):
   '''scans the known drectories for disk image and returns the list of disk images
 
     :arg none
@@ -85,9 +84,9 @@ def get_disk_images(root_url=None):
     filestat = os.stat(fullpath)
     mtime = datetime.datetime.fromtimestamp(filestat.st_mtime)
 
-    # If root_url is provided, reconstruct the fullpath. HTTP server needs to respond to the route.
-    if root_url:
-      fullpath = '{root_url}/wce-disk-images/{restoretype}/{filename}'.format(root_url=root_url, restoretype=subdir, filename=filename)
+    # If wce_share_url is provided, reconstruct the fullpath. HTTP server needs to respond to the route.
+    if wce_share_url:
+      fullpath = '{wce_share_url}/wce-disk-images/{restoretype}/{filename}'.format(wce_share_url=wce_share_url, restoretype=subdir, filename=filename)
       pass
 
     fattr = { "mtime": mtime.strftime('%Y-%m-%d %H:%M'),
@@ -201,8 +200,8 @@ def get_file_system_from_source(source):
   return None
 
 
-def translate_disk_image_name_to_url(root_url, disk_image_name):
-  for source in get_disk_images(root_url):
+def translate_disk_image_name_to_url(wce_share_url, disk_image_name):
+  for source in get_disk_images(wce_share_url):
     if source["name"] == disk_image_name:
       return source
     pass
@@ -222,6 +221,6 @@ if __name__ == "__main__":
   print(read_disk_image_type("/usr/local/share/wce/wce-disk-images/triage"))
 
   for disk_image in get_disk_images():
-    print(translate_disk_image_name_to_url("http://localhost:8312", disk_image["name"]))
+    print(translate_disk_image_name_to_url("http://10.3.2.1:8080/wce", disk_image["name"]))
     pass
   pass

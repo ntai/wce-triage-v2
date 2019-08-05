@@ -10,6 +10,7 @@ import os, sys, subprocess
 
 triage_packages = [
   'python3-pip',              # bootstrapping pip3 ???
+  'alsa-utils',               # Audio
   'gnupg',                    # for Google key installation
   'dmidecode',                # decoding bios, detects memory
   'efibootmgr',               # for EFI boot (not yet implemented, sadly)
@@ -21,13 +22,13 @@ triage_packages = [
   'pigz',                     # parallel gzip
   'partclone',                # partclone
   'parted',                   # parted
-  'alsa-utils',               # Audio
   'pulseaudio',               # Ubuntu audio server
   'pulseaudio-utils',         # Ubuntu PA utils
   'python3-aiohttp',          # for python http server
   'python3-aiohttp-cors',     # for python http server
   'python3-psutil',           # Socket IO to work with aiohttp
-  'rfkill'                    # rfkill reports the wifi hardware/software switches
+  'rfkill',                   # rfkill reports the wifi hardware/software switches
+  'wpasupplicant'
 ]
 
 # aufs-tools - for making usb stick to boot and mount memory file system as read/write over read-only usb storage
@@ -68,7 +69,8 @@ server_packages = [
   'openssh-server',
   'pxelinux',
   'syslinux',
-  'python3-distutils'
+  'python3-distutils',
+  'wpasupplicant'
 ]
 
 if __name__ == "__main__":
