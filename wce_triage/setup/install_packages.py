@@ -44,8 +44,8 @@ kiosk_packages = [
   'xorg',
   'openbox',
   'aufs-tools',
-  'xserver-xorg-video-all',
-  'xserver-xorg-video-vmware',
+  'xserver-xorg-video-all-hwe-18.04',
+  'xserver-xorg-video-vmware-hwe-18.04',
   'vbetool',
   'gfxboot',
   'lighttpd'
@@ -64,11 +64,13 @@ server_packages = [
   'atftpd',
   'lighttpd',
   'dnsmasq',
+  'openbsd-inetd',
   'nfs-common',
   'nfs-kernel-server',
   'openssh-server',
   'pxelinux',
   'syslinux',
+  'syslinux-common',
   'python3-distutils',
   'wpasupplicant'
 ]

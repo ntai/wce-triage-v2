@@ -1492,7 +1492,7 @@ new partitions and partition device file not read for the follwing mkks."""
           self._update_progress()
           pass
         else:
-          tlog.debug("{dev}{part}".fomat(dev=self.disk.device_name, part=self.n_partitions) + " Disks: " + ",".join([ node for node in os.listdir('/dev') if node[:2] == 'sd']))
+          tlog.debug("{dev}{part}".format(dev=self.disk.device_name, part=self.n_partitions) + " Disks: " + ",".join([ node for node in os.listdir('/dev') if node[:2] == 'sd']))
           self.set_progress(99, self.kwargs.get('progress_synching', "Syncing with OS" ) )
           pass
         pass

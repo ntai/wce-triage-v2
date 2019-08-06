@@ -35,7 +35,11 @@ class Printer:
 def create_netplan_cfg(filename, devices):
   ethernets = []
   wifis = []
+  bonds = []
+
   
+  WCE_SERVER = os.environ.get('WCE_SERVER', 'false')
+
   SSID = os.environ.get('TRIAGE_SSID', 'wcetriage')
   WIFIPASSWORD = os.environ.get('TRIAGE_PASSWORD', 'thepasswordiswcetriage')
 
@@ -60,8 +64,40 @@ def create_netplan_cfg(filename, devices):
 
   ifdecl = [ {'version': '2' },
              {'renderer': 'networkd' } ]
+
+  if WCE_SERVER == "true":
+    if len(ethernets) >= 2:
+      for eth in ethernets:
+        devname = list(eth.keys())[0]
+        eth[devname][0]['dhcp4'] = 'no'
+        pass
+
+      bond0 = { "bond0":
+                [
+                  {
+                    "interfaces": " [ " + ",".join([list(eth.keys())[0] for eth in ethernets]) + " ]",
+                    "addresses": "[10.3.2.1/24]"
+                    # "nameservers": [ { "addresses": "[127.0.0.53]" } ]
+                    }
+                ]
+      }
+      bonds.append(bond0)
+      pass
+    else:
+      for eth in ethernets:
+        devname = list(eth.keys())[0]
+        eth[devname][0]['dhcp4'] = 'no'
+        eth[devname][0]['addresses'] = "[10.3.2.1/24] "
+        # eth[devname][0]['nameservers'] = [ { "addresses": "[127.0.0.53]" } ]
+        pass
+      pass
+    pass
+
   if ethernets:
     ifdecl.append( {'ethernets': ethernets } )
+    pass
+  if bonds:
+    ifdecl.append( {'bonds': bonds })
     pass
   if wifis:
     ifdecl.append( {'wifis': wifis} )
@@ -83,7 +119,16 @@ def create_netplan_cfg(filename, devices):
 
 
 if __name__ == "__main__":
-  eth0 = NetworkDevice("eth0", device_type=NetworkDevice.Ethernet)
-  eth1 = NetworkDevice("eth1", device_type=NetworkDevice.Ethernet)
+  os.environ['WCE_SERVER'] = 'false'
+  eth0 = NetworkDevice("eth0", device_type=NetworkDeviceType.Ethernet)
+  eth1 = NetworkDevice("eth1", device_type=NetworkDeviceType.Ethernet)
   create_netplan_cfg(None, [eth0, eth1])
+
+  os.environ['WCE_SERVER'] = 'true'
+  eth0 = NetworkDevice("eth0", device_type=NetworkDeviceType.Ethernet)
+  eth1 = NetworkDevice("eth1", device_type=NetworkDeviceType.Ethernet)
+  create_netplan_cfg(None, [eth0, eth1])
+
+  create_netplan_cfg(None, [eth0])
+
   pass

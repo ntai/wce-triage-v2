@@ -1111,26 +1111,30 @@ if __name__ == '__main__':
     pass
 
   autoload = False
-  for disk_image in get_disk_images(wce_share_url):
-    if disk_image['name'] == wce_payload:
-      autoload = True
-      break
-    pass
-
-  if wce_payload and not autoload:
-    tlog.info("Payload {0} is requested but not autoloading as matching disk image does not exist.".format(wce_payload))
-    wce_payload = None
-    pass
+  load_disk_options = None
   
-  if autoload:
-    load_disk_options = disk_image
-    # translate the load option lingo here and web side
-    # this could be unnecessary if I change the UI to match the both world
-    load_disk_options['source'] = disk_image['fullpath']
-    load_disk_options['restoretype'] = disk_image['restoreType']
-    # size from get_disk_images comes back int, and web returns string.
-    # going with string.
-    load_disk_options['size'] = str(disk_image['size'])
+  if wce_payload:
+    disk_image = None
+    for disk_image in get_disk_images(wce_share_url):
+      if disk_image['name'] == wce_payload:
+        autoload = True
+        break
+      pass
+
+    if autoload:
+      load_disk_options = disk_image
+      # translate the load option lingo here and web side
+      # this could be unnecessary if I change the UI to match the both world
+      load_disk_options['source'] = disk_image['fullpath']
+      load_disk_options['restoretype'] = disk_image['restoreType']
+      # size from get_disk_images comes back int, and web returns string.
+      # going with string.
+      load_disk_options['size'] = str(disk_image['size'])
+      pass
+    else:
+      tlog.info("Payload {0} is requested but not autoloading as matching disk image does not exist.".format(wce_payload))
+      wce_payload = None
+      pass
     pass
 
   loop = asyncio.get_event_loop()
