@@ -35,7 +35,7 @@ class Printer:
 def generate_default_netplan_config(filename, devices):
   """create netplan config - used for creating default one."""
   generate_default_config(devices)
-  generate_netplan_config(filename, devices)
+  generate_netplan_file(filename, devices)
   pass
 
 #
@@ -44,7 +44,7 @@ def format_addresses(addrs):
     
 
 # generate netplan.yaml file from the devices
-def generate_netplan_config(filename, devices):
+def generate_netplan_file(filename, devices):
   """generate a netplan file from the devices' config."""
   ifdecl = [ {'version': '2' },
              {'renderer': 'networkd' } ]
@@ -121,6 +121,17 @@ def generate_netplan_config(filename, devices):
   pass
 
 
+def generate_ap_param():
+  """ generate access-point param."""
+  SSID = os.environ.get('TRIAGE_SSID', 'wcetriage')
+  WIFIPASSWORD = os.environ.get('TRIAGE_PASSWORD', 'thepasswordiswcetriage')
+
+  if len(SSID) > 0 and len(WIFIPASSWORD) > 0:
+    return { SSID: [ {"password": WIFIPASSWORD } ] }
+    pass
+  return {}
+
+
 def generate_default_config(devices):
   """generates the default config for network devices and set it to the
   device.config.
@@ -131,8 +142,6 @@ def generate_default_config(devices):
   wifis = []
   
   WCE_SERVER = os.environ.get('WCE_SERVER', 'false')
-  SSID = os.environ.get('TRIAGE_SSID', 'wcetriage')
-  WIFIPASSWORD = os.environ.get('TRIAGE_PASSWORD', 'thepasswordiswcetriage')
 
   # Uber-default interface setup
   for dev in devices:
@@ -144,15 +153,10 @@ def generate_default_config(devices):
     elif dev.device_type == NetworkDeviceType.Wifi:
       # netplan works with wpa-supplicant, generates a simple config file
       # in the same directory and hands off the auth.
-      if len(SSID) > 0 and len(WIFIPASSWORD) > 0:
-        ap_param = { SSID: [ {"password": WIFIPASSWORD } ] }
-      else:
-        ap_param = {}
-        pass
       dev.set_config({ "device_type": "wifi",
                        'dhcp4': 'yes',
                        'optional': 'yes',
-                       'access-points': [ap_param]})
+                       'access-points': [generate_ap_param()]})
       wifis.append(dev)
       pass
     pass
@@ -211,7 +215,7 @@ def save_network_config(config_dir, devices):
 
   config_filename = ".netplan_" + network_id
   with open(os.path.join(config_dir, config_filename), "w") as cfg:
-    json.dump({ "id": network_id, "configs": configs}, cfg)
+    json.dump({ "id": network_id, "configs": configs}, cfg, indent=2)
     pass
   pass
 
@@ -220,13 +224,16 @@ def load_network_config(config_dir, devices):
   network_id = generate_network_id(devices)
   config_filename = ".netplan_" + network_id
 
+  config_filepath = os.path.join(config_dir, config_filename)
+  if not os.path.exists(config_filepath):
+    return False
+
   device_map = {}
   for device in devices:
     device_map[device.device_name] = device
     pass
-  
-  config_filepath = os.path.join(config_dir, config_filename)
-  if os.path.exists(config_filepath):
+
+  try:
     with open(config_filepath, "r") as cfg:
       dev_configs = json.load(cfg)
       if network_id == dev_configs["id"]:
@@ -239,7 +246,24 @@ def load_network_config(config_dir, devices):
         pass
       pass
     pass
-  pass
+  except:
+    return False
+  
+  # Update the WIFI connection if provided.
+  ap_param = generate_ap_param()
+  if ap_param:
+    for device in devices:
+      if device.device_type == NetworkDeviceType.Wifi:
+        config = device.config
+        if config:
+          config['access-points'] = [ap_param]
+          device.set_config(config)
+          pass
+        pass
+      pass
+    pass
+  return True
+
 
 if __name__ == "__main__":
   os.environ["TRIAGE_SSID"] = "fakessid"
@@ -253,16 +277,16 @@ if __name__ == "__main__":
   os.environ['WCE_SERVER'] = 'false'
 
   generate_default_config(netdevs)
-  generate_netplan_config(None, netdevs)
+  generate_netplan_file(None, netdevs)
 
   os.environ['WCE_SERVER'] = 'true'
 
   generate_default_config(netdevs)
-  generate_netplan_config(None, netdevs)
+  generate_netplan_file(None, netdevs)
 
   netdevs = [eth0]
   generate_default_config(netdevs)
-  generate_netplan_config(None, netdevs)
+  generate_netplan_file(None, netdevs)
 
   netdevs = [eth0, eth1, eth2]
   eth0.set_config(None)
@@ -279,6 +303,6 @@ if __name__ == "__main__":
   eth1.set_config(None)
   eth2.set_config(None)
   load_network_config("/tmp", netdevs)
-  generate_netplan_config(None, netdevs)
+  generate_netplan_file(None, netdevs)
 
   pass
