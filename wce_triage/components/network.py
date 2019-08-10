@@ -2,8 +2,11 @@
 # Copyright (c) 2019 Naoyuki tai
 # MIT license - see LICENSE
 
+import os
+import sys
 import urllib.parse
-import os, sys
+import json
+import hashlib
 
 from wce_triage.components.pci import *
 from wce_triage.components.component import *
@@ -16,15 +19,15 @@ class NetworkDeviceType(Enum):
   Ethernet = 1
   Wifi = 2
   Bluetooth = 3
-  Other = 4
+  Bonded = 4
+  Other = 5
   pass
-
 
 
 class NetworkDevice(object):
   
   def __init__(self, device_name=None, device_type=None):
-    self.device_type = NetworkDeviceType.Unknown
+    self.device_type = NetworkDeviceType.Unknown if device_type is None else device_type
     self.device_name = device_name
     self.device_node = os.path.join('/sys/class/net', device_name)
     self.connected = None
@@ -37,8 +40,15 @@ class NetworkDevice(object):
         self.device_type = NetworkDeviceType.Ethernet
         pass
       pass
+
+    # from /etc/netplan/<.IF-ssh_host_rsa_key_pub.hashed.json>
+    self.config = {}
     pass
   
+  def set_config(self, config):
+    self.config = config
+    pass
+
   def is_network_connected(self):
     self.connected = False
     try:
@@ -63,7 +73,7 @@ class NetworkDevice(object):
 
 
   def get_device_type_name(self):
-    return [ "Unknown", "Ethernet", "WIFI", "Bluetooth", "Other"][self.device_type.value]
+    return [ "Unknown", "Ethernet", "WIFI", "Bluetooth", "Bond", "Other"][self.device_type.value]
 
   pass
 
