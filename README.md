@@ -21,9 +21,9 @@ This package is designed around running a minimal Ubuntu/Linux, and gather compu
 For the operation of WCE, there are 4 categories of computers involved. 
 
 1. **Desktop client** - this is the product we produce
-2. **Triaging computer** - this is a computer being triageed by Triage app. The computer will be a desktop client when it passes the test, repaired or salvaged.
-3. **Network Server** - this is a Ubuntu/Linux server that is capable of running Triage app on PXE booted client over network, and thus allows PXE booted Desktop clients to install the disk image over network.
-4. **Workstation** - this is a Ubuntu/Linux desktop that is used for authoring WCE contents and disk images. The workstation is also a Network Server as well. This allows us to check out the disk image created immediately by connecting a desktop client to the workstation.
+2. **Triaging computer** - this is a computer being triaged by the WCE voluteers using Triage app. The computer will be a desktop client when it passes the test, repaired or salvaged.
+3. **Network Server** - this is a Ubuntu/Linux server that is capable of running Triage app on PXE booted client over network, and thus allows PXE booted Desktop clients to install the disk image over network. Typically, this is a head-less server that is used during the game day.
+4. **Workstation** - this is a Ubuntu/Linux desktop that is used for authoring WCE contents and disk images. The workstation is also a Network Server as well. This allows us to check out the disk image created immediately by connecting a desktop client to the workstation. Typically, this is a Ubuntu desktop computer used for imaging disks and creating contents off-game day.
 
 Triage app contains a setup script for each category. For example, setup script for Workstation installs all necessary Ubuntu and Python packages, prepares the disk image directories, installs dnsmasq for PXE boot, inetd/tftp server for network boot, kernel NFS server for client's NFS booting, etc.
 

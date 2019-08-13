@@ -2,7 +2,7 @@
 PYPI_USER := $(shell echo $$PYPI_USERNAME)
 PYPI_PASSWORD := $(shell echo $$PYPI_PASSWORD)
 
-.PHONY: setup upload install manifest
+.PHONY: setup upload install manifest netclient
 
 default: setup
 
@@ -23,7 +23,10 @@ uninstall:
 
 manifest:
 	echo include requirements.txt> MANIFEST.in
-	find wce_triage/setup/patches -type f -print | sed -e 's/^/include /' >> MANIFEST.in
+	find wce_triage/setup/patches -type f -print |sort | sed -e 's/^/include /' >> MANIFEST.in
 
 bootstrap:
 	sudo python3 -m pip install --upgrade setuptools wheel twine
+
+netclient:
+	sudo rsync -av --delete /disk2/home/triage/wce-triage-v2/wce_triage/ /var/lib/netclient/wcetriage/usr/local/lib/python3.6/dist-packages/wce_triage/

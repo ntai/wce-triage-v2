@@ -151,12 +151,11 @@ class op_task(object, metaclass=abc.ABCMeta):
     pass
 
   def log(self, msg):
-    tlog.info(msg)
     self.runner.log(self, msg)
     pass
 
   def _estimate_progress_from_time_estimate(self, total_seconds):
-    progress = 100 * total_seconds / self.time_estimate
+    progress = 100 * total_seconds / max(1, self.time_estimate)
     if progress > 99:
       self.time_estimate = total_seconds+1
       return 99
@@ -613,10 +612,13 @@ def task_get_uuid_from_partition(op_task_process_simple):
 #
 class task_fsck(op_task_process):
   #
-  def __init__(self, description, disk=None, partition_id=None, **kwargs):
+  def __init__(self, description, disk=None, partition_id=None, payload_size=None, **kwargs):
     self.disk = disk
     self.partition_id = partition_id
-    super().__init__(description, argv=["/sbin/e2fsck", "-f", "-y", disk.device_name, partition_id], time_estimate=self.disk.get_byte_size()/5000000000+2, **kwargs)
+    self.payload_size = payload_size
+    speed = self.disk.estimate_speed("fsck")
+    estimate_size = self.disk.get_byte_size() if self.payload_size is None else self.payload_size
+    super().__init__(description, argv=["/sbin/e2fsck", "-f", "-y", disk.device_name, partition_id], time_estimate=estimate_size/speed+2, **kwargs)
     pass
 
   def setup(self):
@@ -643,9 +645,13 @@ class task_expand_partition(op_task_process):
   def __init__(self, description, disk=None, partition_id=None, **kwargs):
     self.disk = disk
     self.partition_id = partition_id
+
+    # obviously, expanding does small writes but amount is much smaller than the disk
+    expand_fs_write = self.disk.get_byte_size() / 100 / 1024
+    speed = self.disk.estimate_speed("expand")
     super().__init__(description,
                      argv = ["resize2fs", disk.device_name, str(partition_id)],
-                     time_estimate = self.disk.get_byte_size() / 500000000+2, **kwargs) # FIXME time_estimate is bogus
+                     time_estimate = expand_fs_write / speed + 2, **kwargs) # FIXME time_estimate is bogus
     pass
 
   def setup(self):
@@ -670,8 +676,14 @@ class task_shrink_partition(op_task_process):
   def __init__(self, description, disk=None, partition_id=None, **kwargs):
     self.disk = disk
     self.partition_id = partition_id
+
+    # time estiamte for shrinking partition is not possible.
+    # it might move some files and there is no way of knowing
+    shrink_fs_write = self.disk.get_byte_size() / 1024
+    speed = self.disk.estimate_speed("shrink")
+
     super().__init__(description,
-                     time_estimate=self.disk.get_byte_size() / 1000000000, # FIXME: bogus estimate
+                     time_estimate=shrink_fs_write / speed, # FIXME: still bogus estimate
                      argv=["resize2fs", "-M", disk.device_name, partition_id], **kwargs)
     pass
 
@@ -966,9 +978,13 @@ class task_install_grub(op_task_process):
     self.script = None
 
     # FIXME: Time estimate is very different between USB stick and hard disk.
-
+    # grub copies a bunch of files
+    grub_read_size = 4 * 2**20
+    grub_write_size = 4 * 2**20
+    grub_size = grub_read_size + grub_write_size
+    speed = self.disk.estimate_speed("grub")
     # argv is a placeholder
-    super().__init__(description, argv=['/usr/sbin/grub-install', disk.device_name], time_estimate=45, **kwargs)
+    super().__init__(description, argv=['/usr/sbin/grub-install', disk.device_name], time_estimate=grub_size/speed, **kwargs)
     pass
 
   #
@@ -1038,7 +1054,7 @@ class task_install_grub(op_task_process):
   # grub-install may take long time. time out only when
   # it takes 2x of time estmate.
   def _estimate_progress(self, total_seconds):
-    progress = int(100.0 * total_seconds / self.time_estimate)
+    progress = int(100.0 * total_seconds / max(1, self.time_estimate))
     if progress > 1000:
       return 999
     elif progress > 99:
@@ -1446,5 +1462,54 @@ class op_task_wipe_disk(op_task_process):
       self.log(line)
       pass
     pass
+  pass
+
+
+class task_sync_partitions(op_task_process_simple):
+  """After creating partitions, let kernel sync up and create device files.
+Pretty often, the following mkfs fails due to kernel not acknowledging the
+new partitions and partition device file not read for the follwing mkks."""
+
+  def __init__(self, description, disk=None, n_partitions=None, **kwargs):
+
+    argv = ['partprobe']
+    self.disk = disk
+    self.n_partitions = n_partitions
+    super().__init__(description,
+                     argv=argv,
+                     progress_finished="Partitions synced with kernel",
+                     **kwargs)
+    pass
+
+  def poll(self):
+    self._poll_process()
+    if self.process.returncode is None:
+      self._update_progress()
+      pass
+    else:
+      if self.process.returncode in self.good_returncode:
+        if self.confirm_partition_device_files():
+          self._update_progress()
+          pass
+        else:
+          tlog.debug("{dev}{part}".format(dev=self.disk.device_name, part=self.n_partitions) + " Disks: " + ",".join([ node for node in os.listdir('/dev') if node[:2] == 'sd']))
+          self.set_progress(99, self.kwargs.get('progress_synching', "Syncing with OS" ) )
+          pass
+        pass
+      else:
+        self._update_progress()
+        pass
+      pass
+    pass
+
+  def confirm_partition_device_files(self):
+    """see the partition device files appeared"""
+    for part_no in range(self.n_partitions):
+      part_device_name = "%s%d" % (self.disk.device_name, part_no+1)
+      if not os.path.exists(part_device_name):
+        return False
+      pass
+    return True
+
   pass
 

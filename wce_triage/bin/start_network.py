@@ -3,7 +3,8 @@
 # This script is intended to run by wce triage service.
 # In other word, this is executed as root.
 #
-# When the service starts, 
+# When the triage service starts, it runs this to generate default network
+# setup so that it can do triaging of network device.
 #
 import os, sys, subprocess
 import wce_triage.bin
@@ -17,7 +18,10 @@ if __name__ == "__main__":
   if 'NetworkManager.service could not be found' in netman.stderr.decode('iso-8859-1'):
     devices = detect_net_devices()
     subprocess.call('mkdir -p /run/netplan', shell=True)
-    create_netplan_cfg('/run/netplan/triage.yaml', devices)
+    if not load_network_config("/etc/netplan", devices):
+      generate_default_config(devices)
+      pass
+    generate_netplan_file('/run/netplan/triage.yaml', devices)
     subprocess.call('netplan generate', shell=True)
     subprocess.call('netplan apply', shell=True)
     pass

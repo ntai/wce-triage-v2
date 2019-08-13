@@ -15,8 +15,9 @@ xset s off
 xhost + localhost SI:localuser:$TRIAGEUSER
 sudo -H -u $TRIAGEUSER DISPLAY=$$DISPLAY openbox-session &
 sudo -H -u $TRIAGEUSER DISPLAY=$$DISPLAY start-pulseaudio-x11
+sudo -H -u triage rm -rf /home/triage/.{config,cache}/google-chrome/
 while true; do
-  sleep 2
+  sleep 1
   if lsof -Pi :8312 -sTCP:LISTEN -t >/dev/null ; then
       sudo -H -u triage DISPLAY=$DISPLAY pactl set-sink-mute 0 false
       sudo -H -u triage DISPLAY=$DISPLAY pactl set-sink-volume 0 90%

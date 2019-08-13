@@ -80,6 +80,42 @@ it's /tmp/mnt/<fs_uuid>.
 
   pass
 
+#
+# This is for partclone restore mostly.
+#
+class StorageProperty(object):
+  """generic property of disk/usb flash."""
+  def __init__(self, name, id=None, vendor="", model_name="", read_speed = None, write_speed=None, read_speed_4k=None, write_speed_4k=None, size=None):
+    # This ID is going to be UUID, just a random ID for database
+    self.name = name
+    self.id = id
+    self.size = size
+    self.vendor = vendor
+    self.model_name = model_name
+    # speed = bytes/second. this is very simplified but for triage app,
+    # This is for large block read/write
+    self.write_speed = write_speed
+    self.read_speed = read_speed
+
+    # This is for small block read/write
+    self.write_speed_4k = write_speed_4k
+    self.read_speed_4k = read_speed_4k
+    pass
+  pass
+
+# Just a mock for now.
+usb2_flash = StorageProperty("usb2-flash", read_speed= 10 * 2**20, write_speed=  3 * 2**20, read_speed_4k=  5 * 2**20, write_speed_4k=  0.2 * 2**20)
+usb2_disk  = StorageProperty("usb2-disk",  read_speed= 30 * 2**20, write_speed= 30 * 2**20, read_speed_4k=  2 * 2**20, write_speed_4k=  2 * 2**20)
+
+usb3_flash = StorageProperty("usb3-flash", read_speed= 40 * 2**20, write_speed=  3 * 2**20, read_speed_4k=  5 * 2**20, write_speed_4k=  1 * 2**20)
+# This is a darn good disk
+usb3_disk  = StorageProperty("usb3-disk",  read_speed= 60 * 2**20, write_speed= 60 * 2**20, read_speed_4k=  2 * 2**20, write_speed_4k=  2 * 2**20)
+
+#
+ata_disk = StorageProperty("ata-disk", read_speed= 60 * 2**20, write_speed= 60 * 2**20, read_speed_4k=  2 * 2**20, write_speed_4k=  2 * 2**20)
+
+# This is an average SSD
+ata_ssd  = StorageProperty("ata-ssd",  read_speed= 80 * 2**20, write_speed= 80 * 2**20, read_speed_4k= 60 * 2**20, write_speed_4k= 80 * 2**20)
 
 #
 # disk class represents a disk
@@ -104,7 +140,30 @@ class Disk:
     self.wce_release_file = os.path.join(self.mount_dir, "etc", wce_release_file_name)
     self.is_detected = False
     self.disappeared = False
+
+    # These two will be redesigned. Need a better way.
+    self.is_usb3 = False
+    self.usb_driver = None
+    self.storage_propery = None
     pass
+
+  def get_storage_property(self) -> StorageProperty:
+    """provides the property of storage device for estimation."""
+
+    if self.storage_propery == None:
+      if self.is_usb:
+        if self.usb_driver == "uas":
+          self.storage_propery = usb3_disk if self.is_usb3 else usb2_disk
+          pass
+        self.storage_propery = usb3_flash if self.is_usb3 else usb2_flash
+        pass
+      else:
+        self.storage_propery = ata_disk
+        pass
+
+      tlog.debug("device %s property %s" % (self.device_name, self.storage_propery.name))
+      pass
+    return self.storage_propery
 
 
   # find a partition in the partitions
@@ -220,7 +279,7 @@ class Disk:
   # FIXME: may make sense to move this to a task.
   def detect_disk_type(self):
     if self.is_detected:
-      return
+      return self.is_disk
     self.is_detected = True
     #
     # I'm going to be optimistic here since the user can pick a disk
@@ -268,6 +327,10 @@ class Disk:
           elif tag == "ID_SERIAL":
             self.serial_no = value
             pass
+          elif tag == "ID_USB_DRIVER":
+            self.usb_driver = value
+            self.is_usb = True
+            pass
           pass
         except:
           tlog.debug(traceback.format_exc())
@@ -282,10 +345,26 @@ class Disk:
       tlog.info(err)
       pass
 
+    if self.is_usb:
+      tlog.debug("detect_disk: %s uses '%s' usb driver" % (self.device_name, str(self.usb_driver)))
+      pass
     return self.is_disk
 
   def list_partitions(self):
     return [ str(part) for part in self.partitions ]
+
+  def estimate_speed(self, operation=None):
+    props = self.get_storage_property()
+    if operation == "restore":
+      return sum([props.write_speed*2, props.write_speed_4k])/3
+    elif operation == "mkfs":
+      return props.write_speed_4k
+    elif operation == "grub":
+      return props.write_speed_4k/2
+    elif operation == "expand":
+      return props.write_speed_4k
+
+    return sum([props.write_speed, props.write_speed_4k, props.write_speed_4k])/3
 
   pass # End of disk class
 

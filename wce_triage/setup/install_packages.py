@@ -10,22 +10,25 @@ import os, sys, subprocess
 
 triage_packages = [
   'python3-pip',              # bootstrapping pip3 ???
+  'alsa-utils',               # Audio
   'gnupg',                    # for Google key installation
   'dmidecode',                # decoding bios, detects memory
   'efibootmgr',               # for EFI boot (not yet implemented, sadly)
   'gdisk',                    # gdisk
   'grub2-common',             # boot manager
   'grub-pc',                  # boot manager
+  'iwconfig',                 # for seeing wifi device list
   'mg',                       # small emacs-like editor
   'pigz',                     # parallel gzip
   'partclone',                # partclone
   'parted',                   # parted
-  'alsa-utils',               # Audio
   'pulseaudio',               # Ubuntu audio server
   'pulseaudio-utils',         # Ubuntu PA utils
   'python3-aiohttp',          # for python http server
   'python3-aiohttp-cors',     # for python http server
-  'python3-psutil'            # Socket IO to work with aiohttp
+  'python3-psutil',           # Socket IO to work with aiohttp
+  'rfkill',                   # rfkill reports the wifi hardware/software switches
+  'wpasupplicant'
 ]
 
 # aufs-tools - for making usb stick to boot and mount memory file system as read/write over read-only usb storage
@@ -41,8 +44,8 @@ kiosk_packages = [
   'xorg',
   'openbox',
   'aufs-tools',
-  'xserver-xorg-video-all',
-  'xserver-xorg-video-vmware',
+  'xserver-xorg-video-all-hwe-18.04',
+  'xserver-xorg-video-vmware-hwe-18.04',
   'vbetool',
   'gfxboot',
   'lighttpd'
@@ -61,12 +64,15 @@ server_packages = [
   'atftpd',
   'lighttpd',
   'dnsmasq',
+  'openbsd-inetd',
   'nfs-common',
   'nfs-kernel-server',
   'openssh-server',
   'pxelinux',
   'syslinux',
-  'python3-distutils'
+  'syslinux-common',
+  'python3-distutils',
+  'wpasupplicant'
 ]
 
 if __name__ == "__main__":

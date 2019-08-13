@@ -197,15 +197,23 @@ class TriageWeb(object):
   
   wiper_output_re = re.compile(r'^WIPE: python3\.stderr:(.*)')
 
-  def __init__(self, app, rootdir, wcedir, cors, loop, live_triage):
+  def __init__(self, app, wce_share_url, rootdir, wcedir, cors, loop, live_triage, load_disk_options):
     """
     HTTP request handler for triage
     """
+
+    self.wce_share_url = wce_share_url
     self.live_triage = live_triage
     self.wcedir = wcedir
     self.asset_path = os.path.join(wcedir, "triage", "assets")
+    self.load_disk_options = load_disk_options
+    self.autoload = True if self.load_disk_options else False
+
     app.router.add_routes(routes)
+
+    app.router.add_static("/wce", os.path.join(wcedir))
     app.router.add_static("/", rootdir)
+
     for resource in app.router._resources:
       if resource.raw_match("/socket.io/"):
         continue
@@ -225,10 +233,10 @@ class TriageWeb(object):
 
     # wock (web socket) channels.
     self.channels = {}
-
     self.target_disks = []
 
     # FIXME: ? It might make sense to refactor these processes for reducing code.
+    # It also helps to do parallel exec.
     self.restore = None
     self.saver = None
     self.wiper = None
@@ -266,6 +274,28 @@ class TriageWeb(object):
             # join the key and value and send it
             update_value.update(update_key)
             Emitter._send('triageupdate', update_value)
+          pass
+        pass
+
+      # Kick off the content loading if all of criterias look good
+      if me.autoload:
+        me.autoload = False
+        me.target_disks = []
+
+        for disk in me.disk_portal.disks:
+          disk_gb = disk.get_byte_size() / 1000000000
+          if (not disk.mounted) and (disk_gb >= 80):
+            me.target_disks.append(disk.device_name)
+            pass
+          pass
+
+        # If the machine has only one disk and not mounted, autload can start
+        # otherwise, don't start.
+        if len(me.target_disks) == 1:
+          me.start_load_disks("AUTOLOAD:")
+          pass
+        else:
+          me.target_disks = []
           pass
         pass
       pass
@@ -539,26 +569,7 @@ class TriageWeb(object):
       resp = aiohttp.web.FileResponse(disk_images)
       resp.content_type="application/json"
       return resp
-    return aiohttp.web.json_response({ "sources": get_disk_images() })
-
-
-  @routes.get("/remote-disk-images.json")
-  async def route_disk_images(request):
-    """Returning the disk image for remote loading.
-       This is probably not going to be used for serving installation payload.
-       It should be done by the http server like lighttpd
-    """
-    peeraddr, myaddr = get_ip_addresses()
-    myport = arguments.port
-
-    sources = []
-    url_template = 'http://{myaddr}:{myport}/wce-disk-images/{restoretype}/{filename}'
-    for source in get_disk_images():
-      source['fullpath'] = url_template.format(myaddr=myaddr, myport=myport, restoretype=source.restoretype, filename=source.name)
-      sources.append(source)
-      pass
-    return aiohttp.web.json_response({ "sources": sources })
-
+    return aiohttp.web.json_response({ "sources": get_disk_images(wce_share_url=me.wce_share_url) })
 
   # Restore types
   #  content - content loading for disk
@@ -636,7 +647,6 @@ class TriageWeb(object):
     imagefile = self._get_load_option("source")
     imagefile_size = self._get_load_option("size") # This comes back in bytes from sending sources with size. value in query is always string.
     restore_type = self._get_load_option("restoretype")
-
 
     argv = argv + [devname, imagefile, imagefile_size, restore_type]
     tlog.debug(argv)
@@ -1012,7 +1022,8 @@ class TriageWeb(object):
     return aiohttp.web.json_response({})
   
   pass
-  
+
+
 @wock.event
 async def connect(wockid, environ):
   global me
@@ -1062,7 +1073,7 @@ cli.add_argument("-p", "--port", type=int, metavar="PORT", dest="port", default=
 cli.add_argument("--host", type=str, metavar="HOST", dest="host", default=socket.getfqdn())
 cli.add_argument("--rootdir", type=str, metavar="WCE_TRIAGE_UI_ROOTDIR", dest="rootdir", default=None)
 cli.add_argument("--wcedir", type=str, metavar="WCE_ROOT_DIR", dest="wcedir", default="/usr/local/share/wce")
-cli.add_argument("--live-triage", type=str, metavar="WCE_LIVE_TRIAGE", dest="live_triage", default=False)
+cli.add_argument("--live-triage", dest="live_triage", action='store_true')
 arguments = cli.parse_args()
 
 # If the module is invoked directly, initialize the application
@@ -1074,10 +1085,58 @@ if __name__ == '__main__':
   tlog.setLevel(logging.DEBUG)
   
   # Create and configure the HTTP server instance
-  the_root_url = u"{0}://{1}:{2}{3}".format("HTTP",
-                                            arguments.host,
-                                            arguments.port,
-                                            "/index.html")
+  the_root_url = u"{0}://{1}:{2}".format("HTTP", arguments.host, arguments.port)
+
+  # This is the default wce_share_url
+  wce_share_url = the_root_url + "/wce"
+
+  # Find a url share from boot cmdline. If this is nfs booted, it should be there.
+  # Find payload as well
+  wce_share_re = re.compile('wce_share=([\w\/\.+\-_\:\?\=@#\*&\\%]+)')
+  wce_payload = None
+  wce_payload_re = re.compile('wce_payload=([\w\.+\-_\:\?\=@#\*&\\%]+)')
+
+  with open("/proc/cmdline") as cmdlinefd:
+    cmdline = cmdlinefd.read()
+    match = wce_share_re.search(cmdline)
+    if match:
+      wce_share_url = match.group(1)
+      pass
+    if not arguments.live_triage:
+      match = wce_payload_re.search(cmdline)
+      if match:
+        wce_payload = match.group(1)
+        pass
+      pass
+    pass
+
+  autoload = False
+  load_disk_options = None
+  
+  if wce_payload:
+    disk_image = None
+    for disk_image in get_disk_images(wce_share_url):
+      if disk_image['name'] == wce_payload:
+        autoload = True
+        break
+      pass
+
+    if autoload:
+      load_disk_options = disk_image
+      # translate the load option lingo here and web side
+      # this could be unnecessary if I change the UI to match the both world
+      load_disk_options['source'] = disk_image['fullpath']
+      load_disk_options['restoretype'] = disk_image['restoreType']
+      # size from get_disk_images comes back int, and web returns string.
+      # going with string.
+      load_disk_options['size'] = str(disk_image['size'])
+      pass
+    else:
+      tlog.info("Payload {0} is requested but not autoloading as matching disk image does not exist.".format(wce_payload))
+      wce_payload = None
+      pass
+    pass
+
   loop = asyncio.get_event_loop()
   # loop.set_debug(True)
 
@@ -1092,10 +1151,9 @@ if __name__ == '__main__':
   if rootdir is None:
     rootdir = os.path.join(wcedir, "wce-triage-ui")
     pass
-  me = TriageWeb(app, rootdir, wcedir, cors, loop, arguments.live_triage)
+  me = TriageWeb(app, wce_share_url, rootdir, wcedir, cors, loop, arguments.live_triage, load_disk_options)
 
-  tlog.info("Starting server, use <Ctrl-C> to stop...")
-  tlog.info(u"Open {0} in a web browser.".format(the_root_url))
+  tlog.info(u"Open {0}{1} in a web browser. WCE share is {2}".format(the_root_url, "/index.html", wce_share_url))
   Emitter.register(loop)
 
   aiohttp.web.run_app(app, host="0.0.0.0", port=arguments.port, access_log=get_triage_logger())

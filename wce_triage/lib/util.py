@@ -203,6 +203,8 @@ def get_lighttpd_server_port():
 
 #
 if __name__ == "__main__":
+  print(get_ip_addresses())
+
   sleep = subprocess.Popen("sleep 5", shell=True, stdout=subprocess.PIPE)
   
   for i in range(1, 10):
