@@ -1,5 +1,10 @@
-import os, psutil, datetime, json, traceback
-from wce_triage.lib.util import *
+# Copyright (c) 2019 Naoyuki tai
+# MIT license - see LICENSE
+"""disk_image scans the disk image candidate directories and returns availabe disk images for loading.
+"""
+import os, datetime, json, traceback
+from ..lib.util import *
+
 tlog = get_triage_logger()
 
 IMAGE_META_JSON_FILE = ".disk_image_type.json"
@@ -10,16 +15,6 @@ def get_maybe_disk_image_directories():
 
   # No longer look for other directories.
   # It would make things rather complicated.
-  if False:
-    for part in psutil.disk_partitions():
-      for subdir in [ ".", "image", "var/lib/www", "usr/local/share/wce" ]:
-        path = os.path.join(part.mountpoint, subdir, 'wce-disk-images')
-        if os.path.exists(path) and os.path.isdir(path):
-          dirs.append(path)
-          pass
-        pass
-      pass
-    pass
 
   wce_images = "/usr/local/share/wce/wce-disk-images"
   if os.path.exists(wce_images) and os.path.isdir(wce_images) and wce_images not in dirs:

@@ -8,11 +8,11 @@
 #
 
 import datetime, re, subprocess, abc, os, select, time, uuid, json, traceback, shutil
-import wce_triage.components.pci as _pci
-from wce_triage.components.disk import Disk, Partition, PartitionLister
-from wce_triage.lib.util import drain_pipe, drain_pipe_completely, get_triage_logger
-from wce_triage.lib.timeutil import *
-from wce_triage.ops.pplan import *
+from ..components.pci import find_pci_device_node
+from ..components.disk import Disk, Partition, PartitionLister
+from ..lib.util import drain_pipe, drain_pipe_completely, get_triage_logger
+from ..lib.timeutil import *
+from .pplan import *
 import uuid
 
 tlog = get_triage_logger()
@@ -1393,7 +1393,7 @@ class task_uninstall_bcmwl(task_uninstall_package):
     pass
   
   def setup(self):
-    if _pci.find_pci_device_node([0x14e4], [0x4312]):
+    if find_pci_device_node([0x14e4], [0x4312]):
       self.packages = ['bcmwl-kernel-source']
       super().setup()
       pass

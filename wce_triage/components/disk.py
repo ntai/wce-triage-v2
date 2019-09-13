@@ -5,8 +5,8 @@
 import re, sys, os, subprocess, traceback, time
 import logging
 
-from wce_triage.lib.util import *
-from wce_triage.components.component import *
+from ..lib.util import *
+from .component import *
 
 tlog = get_triage_logger()
 

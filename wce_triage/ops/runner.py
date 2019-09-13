@@ -10,9 +10,9 @@
 #
 
 import datetime, re, subprocess, traceback
-from wce_triage.ops.run_state import *
-from wce_triage.lib.timeutil import *
-from wce_triage.ops.tasks import op_task
+from .run_state import *
+from ..lib.timeutil import *
+from .tasks import op_task
 import functools
 
 #

@@ -6,11 +6,11 @@
 
 import datetime, re, subprocess, sys, os
 
-import wce_triage.ops.tasks as tasks
-import wce_triage.ops.runner as runner
-import wce_triage.ops.ops_ui as ops_ui
+import .tasks as tasks
+import .runner as runner
+import .ops_ui as ops_ui
 
-from wce_triage.components.disk import Disk, Partition
+from ..components.disk import Disk, Partition
 
 #
 class BlessDiskRunner(runner.Runner):

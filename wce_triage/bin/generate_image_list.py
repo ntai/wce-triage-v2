@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import os, json, re
-from wce_triage.lib.util import  *
+from ..lib.util import  *
 
 
 if __name__ == "__main__":

@@ -7,9 +7,8 @@
 # setup so that it can do triaging of network device.
 #
 import os, sys, subprocess
-import wce_triage.bin
-from wce_triage.components.network import * 
-from wce_triage.lib.netplan import *
+from ..components.network import * 
+from ..lib.netplan import *
 
 if __name__ == "__main__":
   netman = subprocess.run('systemctl status -n 0 NetworkManager.service', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

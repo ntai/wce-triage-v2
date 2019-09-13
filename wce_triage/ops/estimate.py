@@ -2,7 +2,7 @@
 #
 #
 import os, sys
-from wce_triage.lib.util import *
+from ..lib.util import *
 tlog = get_triage_logger()
 
 MiB = 2**20

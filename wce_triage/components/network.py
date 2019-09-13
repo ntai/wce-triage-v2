@@ -8,9 +8,9 @@ import urllib.parse
 import json
 import hashlib
 
-from wce_triage.components.pci import *
-from wce_triage.components.component import *
-from wce_triage.lib.util import *
+from .pci import *
+from .component import *
+from ..lib.util import *
 
 from enum import Enum
 

@@ -4,15 +4,15 @@
 
 import datetime, re, subprocess, sys, os, uuid, traceback, logging, argparse
 
-from wce_triage.ops.tasks import *
-from wce_triage.ops.ops_ui import *
-from wce_triage.ops.runner import *
-from wce_triage.ops.partition_runner import *
-import wce_triage.components.video
-from wce_triage.ops.partclone_tasks import *
-from wce_triage.lib.util import is_block_device
-from wce_triage.ops.json_ui import *
-from wce_triage.lib.disk_images import *
+from .tasks import *
+from .ops_ui import *
+from .runner import *
+from .partition_runner import *
+from ..components.video import detect_video_cards
+from .partclone_tasks import *
+from ..lib.util import is_block_device
+from .json_ui import *
+from ..lib.disk_images import *
 
 
 # "Waiting", "Prepare", "Preflight", "Running", "Success", "Failed"]
@@ -64,7 +64,7 @@ class RestoreDiskRunner(PartitionDiskRunner):
 
     # This is not true for content loading or cloning
     # FIXME: but what can I do?
-    detected_videos = wce_triage.components.video.detect_video_cards()
+    detected_videos = detect_video_cards()
 
     # sugar
     disk = self.disk

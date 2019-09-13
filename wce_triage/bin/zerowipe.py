@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 
 import os, sys, subprocess, urllib, datetime, json, traceback, signal
-from wce_triage.lib.util import *
-from wce_triage.lib.timeutil import *
-from wce_triage.ops.run_state import *
+from ..lib.util import *
+from ..lib.timeutil import *
+from ..ops.run_state import *
 
 start_time = datetime.datetime.now()
 

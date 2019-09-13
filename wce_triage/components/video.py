@@ -6,9 +6,9 @@
 # Video detection
 #
 
-from wce_triage.components.pci import *
-from wce_triage.components.component import *
-import wce_triage.components.pci as _pci
+from .pci import *
+from .component import *
+from . import pci as _pci
 
 from collections import namedtuple
 Videos = namedtuple('Videos', 'nvidia, ati, vga')

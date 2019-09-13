@@ -2,10 +2,10 @@
 # 
 #
 import sys, os
-from wce_triage.ops.ops_ui import *
+from .ops_ui import *
 import json
-from wce_triage.ops.run_state import *
-from wce_triage.lib.util import *
+from .run_state import *
+from ..lib.util import *
 
 tlog = get_triage_logger()
 

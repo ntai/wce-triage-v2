@@ -1,4 +1,3 @@
-psutil
 websockets
 aiohttp
 aiohttp_cors

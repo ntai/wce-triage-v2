@@ -3,8 +3,8 @@
 # Getting the file list and size using curl
 #
 import os, sys, subprocess, urllib, datetime
-from wce_triage.lib.util import *
-from wce_triage.lib.timeutil import *
+from ..lib.util import *
+from ..lib.timeutil import *
 import urllib.parse
 
 def get_directory(source):

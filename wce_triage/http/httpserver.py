@@ -7,7 +7,7 @@ and webscoket server
 
 """
 
-from wce_triage.version import *
+from ..version import *
 import aiohttp
 import aiohttp.web
 from aiohttp.web_exceptions import *
@@ -20,16 +20,15 @@ import os, sys, re, subprocess, datetime, asyncio, pathlib, traceback, queue, ti
 import logging, logging.handlers
 import functools
 
-from wce_triage.components.computer import Computer
-from wce_triage.components.disk import Disk, Partition, DiskPortal, PartitionLister
-from wce_triage.lib.util import *
-from wce_triage.lib.timeutil import *
-from wce_triage.ops.ops_ui import ops_ui
-from wce_triage.lib.pipereader import *
-from wce_triage.components import optical_drive as _optical_drive
-from wce_triage.components import sound as _sound
-from wce_triage.lib.disk_images import *
-import wce_triage.version
+from ..components.computer import Computer
+from ..components.disk import Disk, Partition, DiskPortal, PartitionLister
+from ..lib.util import *
+from ..lib.timeutil import *
+from ..ops.ops_ui import ops_ui
+from ..lib.pipereader import *
+from ..components import optical_drive as _optical_drive
+from ..components import sound as _sound
+from ..lib.disk_images import *
 
 
 tlog = get_triage_logger()
@@ -53,7 +52,7 @@ async def route_version(request):
     tlog.info('Reading /usr/local/share/wce/wce-triage-ui/manifest.json failed with exception. ' + traceback.format_exc())
     pass
 
-  jsonified = { "version": {"backend": wce_triage.version.TRIAGE_VERSION, "frontend": fversion }}
+  jsonified = { "version": {"backend": TRIAGE_VERSION, "frontend": fversion }}
   return aiohttp.web.json_response(jsonified)
 
 #

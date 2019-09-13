@@ -1,10 +1,13 @@
 #!/usr/bin/python3
 # Copyright (c) 2019 Naoyuki tai
 # MIT license - see LICENSE
+"""
+CPU detection and triaging.
+"""
 
 import os
 
-from wce_triage.components.component import *
+from .component import *
 
 from collections import namedtuple
 CPUInfo = namedtuple('CPUInfo', 'cpu_class, cores, processors, vendor, model, bogomips, speed')

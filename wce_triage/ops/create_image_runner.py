@@ -5,12 +5,12 @@
 
 import datetime, re, subprocess, sys, os
 
-from wce_triage.ops.partclone_tasks import *
-from wce_triage.ops.ops_ui import *
-from wce_triage.components.disk import Disk, Partition
-from wce_triage.ops.runner import *
-from wce_triage.lib.disk_images import *
-from wce_triage.ops.json_ui import *
+from .partclone_tasks import *
+from .ops_ui import *
+from ..components.disk import Disk, Partition
+from .runner import *
+from ..lib.disk_images import *
+from .json_ui import *
 
 # "Waiting", "Prepare", "Preflight", "Running", "Success", "Failed"]
 my_messages = { "Waiting":   "Saving disk is waiting.",

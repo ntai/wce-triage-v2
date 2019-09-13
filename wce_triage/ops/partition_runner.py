@@ -12,12 +12,12 @@
 
 import datetime, re, subprocess, sys, os
 
-from wce_triage.ops.tasks import *
-from wce_triage.ops.ops_ui import *
-from wce_triage.ops.pplan import *
-from wce_triage.components.disk import Disk, Partition
-from wce_triage.ops.runner import *
-from wce_triage.lib.util import *
+from .tasks import *
+from .ops_ui import *
+from .pplan import *
+from ..components.disk import Disk, Partition
+from .runner import *
+from ..lib.util import *
 #
 # create a new gpt partition from partition plan
 #

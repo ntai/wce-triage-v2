@@ -9,9 +9,9 @@ import os, sys, subprocess, urllib, datetime, traceback
 import urllib.parse
 from collections import deque
 
-from wce_triage.lib.util import *
-from wce_triage.lib.timeutil import *
-from wce_triage.bin.process_driver import *
+from ..lib.util import *
+from ..lib.timeutil import *
+from .process_driver import *
 
 tlog = get_triage_logger()
 

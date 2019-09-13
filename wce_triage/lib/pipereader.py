@@ -1,7 +1,9 @@
-
+"""
+pipe reader utility. reads stream from pipe and buffer data.
+"""
 from collections import deque
 import subprocess, sys, asyncio
-from wce_triage.lib.util import *
+from ..lib.util import *
 import functools
 
 

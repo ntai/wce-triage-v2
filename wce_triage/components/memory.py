@@ -1,10 +1,11 @@
 #!/usr/bin/python3
 # Copyright (c) 2019 Naoyuki tai
 # MIT license - see LICENSE
+"""Memory module detection."""
 
 import re, subprocess, string, os
-from wce_triage.lib.util import *
-from wce_triage.components.component import *
+from .component import *
+from ..lib.util import *
 
 from collections import namedtuple
 MemoryInfo = namedtuple('MemoryInfo', 'rams, ramtype, total, slots')
@@ -180,14 +181,46 @@ class dmi_type_handler_17(dmi_type_handler):
 
   pass
 
+
+def _maybe_run_dmidecode():
+  """Implementing run dmidecode (maybe)"""
+  WCETRIAGE_DMIDECODE_OUTPUT = os.environ.get("WCETRIAGE_DMIDECODE_OUTPUT")
+  if WCETRIAGE_DMIDECODE_OUTPUT:
+    with open(WCETRIAGE_DMIDECODE_OUTPUT) as test_input:
+      return test_input.read()
+    pass
+  else:
+    out = ""
+    err = ""
+
+    if os.getuid() != 0:
+      cmd = ['sudo', '-H', '-S']
+      password = get_test_password()
+    else:
+      cmd = []
+      password = ""
+      pass
+
+    cmd = cmd + ['dmidecode', '-t', 'memory']
+    dmidecode = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    try:
+      (out, err) = dmidecode.communicate(password)
+    except Exception as exc:
+      pass
+    pass
+  return out
+
+
 #
 # Get RAM info using dmidecode
 #
 def get_ram_info():
-  
-  dmidecode = subprocess.Popen(['sudo', '-H', '-S', 'dmidecode', '-t', 'memory'], stderr=subprocess.PIPE, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-  password = get_test_password()
-  (out, err) = dmidecode.communicate(password)
+  """runs 'dmidecode -t memory' command and parses the output to pick off the memory info.
+
+Environ:
+WCETRIAGE_DMIDECODE_OUTPUT: If set, reads a text file as dmidecode output for testing.
+"""
+  out =  _maybe_run_dmidecode()
 
   rams = []
   parse_state = 0

@@ -3,7 +3,7 @@
 # MIT license - see LICENSE
 
 import os, subprocess
-from wce_triage.components.component import *
+from .component import *
 
 def detect_sound_device():
   detected = False

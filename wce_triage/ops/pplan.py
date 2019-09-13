@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-from wce_triage.components.disk import Disk, Partition
+from ..components.disk import Disk, Partition
 
 EFI_NAME = 'EFI_System_Partition'
 EFI_PART_OPT ='boot,esp'

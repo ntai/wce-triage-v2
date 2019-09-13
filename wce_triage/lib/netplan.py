@@ -1,5 +1,10 @@
+""" netplan.py generates netplan file for triage.
 
-from wce_triage.components.network import *
+There are two cases, one for during triage where a machine generates a default netplan yaml file,
+and other is for server.
+
+"""
+from ..components.network import *
 import sys, os
 
 indentspace = '  '
@@ -192,10 +197,30 @@ def generate_network_id(devices):
     return _network_id
   
   machine_id = None
-  with open("/etc/ssh/ssh_host_rsa_key.pub") as ssh_key:
-    machine_id = ssh_key.read().encode("iso-8859-1")
+  try:
+    with open("/etc/ssh/ssh_host_rsa_key.pub") as ssh_key:
+      machine_id = ssh_key.read().encode("iso-8859-1")
+      pass
+  except FileNotFoundError:
+    # This means ssh server is not installed.
+    netdir = "/sys/class/net"
+    for netdev in os.listdir(netdir):
+      if netdev == "lo":
+        continue
+      netaddrpath = os.path.join(netdir, netdev, "address")
+      try:
+        with open(netaddrpath) as macaddrfile:
+          macaddr = macaddrfile.read().encode("iso-8859-1").strip()
+          if macaddr == "00:00:00:00:00:00":
+            continue
+          machine_id = macaddr
+          break
+        pass
+      except FileNotFoundError:
+        pass
+      pass
     pass
-  
+    
   device_names = []
   for device in devices:
     device_names.append(device.device_name)

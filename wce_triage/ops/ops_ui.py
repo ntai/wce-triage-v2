@@ -9,8 +9,8 @@
 #
 import abc
 import datetime
-from wce_triage.lib.timeutil import *
-from wce_triage.ops.run_state import RunState
+from ..lib.timeutil import *
+from .run_state import RunState
 
 class ops_ui(object):
   def __init__(self):

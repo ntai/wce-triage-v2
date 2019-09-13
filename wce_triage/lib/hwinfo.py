@@ -1,6 +1,15 @@
+# Copyright (c) 2019 Naoyuki tai
+# MIT license - see LICENSE
+"""hwinfo runs hwinfo and caches.
+The use of hwinfo is currently suspended as it is too slow.
+Also it attempts to use lshw.
+
+Most likely
+"""
+
 import os, subprocess, json
 
-from wce_triage.lib.util import *
+from util import *
 tlog = get_triage_logger()
 
 # lshw is far better!

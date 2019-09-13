@@ -5,13 +5,15 @@
 #
 
 import datetime, re, subprocess, abc, os, select, time, uuid
-from wce_triage.components.disk import Disk, Partition
-from wce_triage.ops.tasks import *
-from wce_triage.lib.timeutil import *
+
+from ..components.disk import Disk, Partition
+from .tasks import *
+from ..lib.timeutil import *
 import functools
 from .estimate import *
-from wce_triage.lib.util import *
-from wce_triage.lib.disk_images import *
+from ..lib.util import *
+from ..lib.disk_images import *
+
 tlog = get_triage_logger()
 
 #

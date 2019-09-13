@@ -2,15 +2,15 @@
 # Copyright (c) 2019 Naoyuki tai
 # MIT license - see LICENSE
 
-from wce_triage.components.component import *
-from wce_triage.components import pci as _pci
-from wce_triage.components import cpu as _cpu
-from wce_triage.components import memory as _memory
-from wce_triage.components import network as _network
-from wce_triage.components import disk as _disk
-from wce_triage.components import video as _video
-from wce_triage.components import sound as _sound
-from wce_triage.components import optical_drive as _optical_drive
+from .component import *
+from . import pci as _pci
+from . import cpu as _cpu
+from . import memory as _memory
+from . import network as _network
+from . import disk as _disk
+from . import video as _video
+from . import sound as _sound
+from . import optical_drive as _optical_drive
 
 import re, subprocess, os, sys, json
 
@@ -18,9 +18,7 @@ re_socket_designation = re.compile(r'\s*Socket Designation: ([\w\d]+)')
 re_enabled_size = re.compile(r'\s*Enabled Size: (\d+) MB')
 re_error_status = re.compile(r'\sError Status: (\w+)')
 
-
-from wce_triage.lib.util import *
-from wce_triage.components.disk import Disk, Partition
+from ..lib.util import *
 
 tlog = get_triage_logger()
 

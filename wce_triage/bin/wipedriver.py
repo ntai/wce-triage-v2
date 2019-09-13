@@ -7,8 +7,8 @@
 # control over the output.
 
 import os, sys, subprocess
-from wce_triage.bin.process_driver import *
-from wce_triage.lib.util import *
+from .process_driver import *
+from ..lib.util import *
 
 if __name__ == "__main__":
   logging.basicConfig(level=logging.DEBUG,

@@ -13,8 +13,10 @@ the `deb-pkg-tools` package.
 """
 name = "wce_triage"
 
+from .version import *
+
 # Semi-standard module versioning.
-__version__ = '0.1.19'
+__version__ = TRIAGE_VERSION
 
 debian_package_dependencies = (
     'partclone',     # partclone is a part of Clonezilla

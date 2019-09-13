@@ -3,10 +3,10 @@
 #
 import os, sys, subprocess, urllib, datetime
 
-from wce_triage.lib.util import *
-from wce_triage.lib.timeutil import *
+from ..lib.util import *
+from ..lib.timeutil import *
 from collections import deque
-from wce_triage.bin.process_driver import *
+from .process_driver import *
 
 def load_disk(source, dest_dev, filesystem=None):
   if not is_block_device(dest_dev):

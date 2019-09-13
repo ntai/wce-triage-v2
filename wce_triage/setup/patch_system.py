@@ -3,7 +3,8 @@
 import os, sys, subprocess
 
 patch_dir = os.path.dirname(__file__)
-PATCH_SRC = os.path.join(patch_dir, 'patches', os.environ['PATCHES'])
+COMMON_PATCH_SRC = os.path.join(patch_dir, 'patches', "common")
+VARIANT_PATCH_SRC = os.path.join(patch_dir, 'patches', os.environ['PATCHES'])
 SYSTEM_ROOT = '/'
 
 class patch_plan:
@@ -31,8 +32,13 @@ class patch_plan:
       # when you copy, make sure to copy the filemode
       self.plans.append("copy: %s/%s --> %s" % (self.dir, self.file, target))
       self.plans.append(['cp', '-p', source, target])
-      dirstat = os.stat(os.path.dirname(target))
-      self.plans.append(['chown', "%d:%d" % (dirstat.st_uid,dirstat.st_gid), target])
+      try:
+        dirstat = os.stat(os.path.dirname(target))
+        self.plans.append(['chown', "%d:%d" % (dirstat.st_uid,dirstat.st_gid), target])
+      except FileNotFoundError:
+        # 
+        pass
+
       pass
     pass
   
@@ -99,7 +105,8 @@ class plan_builder:
 
 if __name__ == "__main__":
   builder = plan_builder()
-  builder.traverse_dir(PATCH_SRC)
+  builder.traverse_dir(COMMON_PATCH_SRC)
+  builder.traverse_dir(VARIANT_PATCH_SRC)
   builder.explain()
   if os.getuid() == 0:
     builder.execute()

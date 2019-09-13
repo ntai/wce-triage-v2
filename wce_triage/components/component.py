@@ -1,3 +1,24 @@
+# Copyright (c) 2019 Naoyuki tai
+# MIT license - see LICENSE
+"""# Component base class for computer components.
+
+## Subclass must implement following member functions.
+
+get_component_type(self) -> str
+  The component type name, and must be reasonable string to be displayed for user.
+  Something like "CPU", "Memory". 
+
+decision(self) -> list
+  Returns a list of triage result which is a dcit. Component may one or more triage result.
+  For example, "Disk" component may return the result for each disk as well as overall triage result.
+
+
+## Subclass may override following
+
+detect_changes(self) -> list
+  
+
+"""
 
 import abc
 

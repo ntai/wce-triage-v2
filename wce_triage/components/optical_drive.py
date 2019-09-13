@@ -3,8 +3,8 @@
 # MIT license - see LICENSE
 
 import os, subprocess, string
-from wce_triage.lib.util import *
-from wce_triage.components.component import *
+from ..lib.util import *
+from .component import *
 
 tlog = get_triage_logger()
 

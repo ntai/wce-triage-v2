@@ -8,9 +8,9 @@ if __name__ == "__main__":
   sys.path.append(os.path.split(os.getcwd())[0])
   pass
 
-from wce_triage.lib.util import *
-from wce_triage.lib.timeutil import *
-from wce_triage.lib.pipereader import *
+from ..lib.util import *
+from ..lib.timeutil import *
+from ..lib.pipereader import *
 from collections import deque
 import urllib.parse
 import os, signal
