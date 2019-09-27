@@ -18,6 +18,7 @@ base_packages = [
   'grub2-common',             # boot manager
   'grub-pc',                  # boot manager
   'iwconfig',                 # for seeing wifi device list
+  'make',                     # make makes 
   'mg',                       # small emacs-like editor
   'pigz',                     # parallel gzip
   'patch',                    # patch - needed to patch config files
@@ -32,6 +33,18 @@ base_packages = [
 ]
 
 #
+# xserver packages - this is in the base package but it's easier to see
+#
+xorg_packages = [
+  'xorg',
+  'xserver-xorg-video-all',
+  'xserver-xorg-video-vmware',
+  'xserver-xorg-video-geode',
+  'xserver-xorg-video-r120',
+  'xserver-xorg-video-mach64',
+  ]
+
+#
 # Triage system packages
 #
 triage_packages = [
@@ -41,23 +54,19 @@ triage_packages = [
 
 # aufs-tools - for making usb stick to boot and mount memory file system as read/write over read-only usb storage
 #
-# xserver-xorg-legacy - Ubuntu 18.04LTS needs to run X11 server as root. Setting video mode requires the root priv.
-#   This may change in future. Also, this pops up a dialog. If you see it, choose "everyone".
 #
 # vbetool - video buffer tool
 # gfxboot - pretty boot screen
 # lighttpd - serving payload. much better than using python.
 
 kiosk_packages = [
-  'xorg',
   'openbox',
   'aufs-tools',
-  'xserver-xorg-video-all-hwe-18.04',
-  'xserver-xorg-video-vmware-hwe-18.04',
   'vbetool',
   'gfxboot',
   'lighttpd'
 ]
+
 
 # python-socketio - websocket.
 # I would have used the ubuntu package if provided.
@@ -84,7 +93,7 @@ server_packages = [
 ]
 
 if __name__ == "__main__":
-  packages = base_packages
+  packages = base_packages + xorg_packages
 
   if os.environ.get('WCE_TRIAGE_DISK') == "true":
     subprocess.run('sudo -H apt remove -y apparmor', shell=True)
@@ -104,7 +113,6 @@ if __name__ == "__main__":
       installed_packages[pkg_line.split('/')[0]] = pkg_line
       pass
     pass
-
   
   for package in packages:
     if installed_packages.get(package):
