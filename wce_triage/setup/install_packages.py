@@ -8,7 +8,7 @@ import os, sys, subprocess
 # yes, you can cross-domain
 # probably, not used for live triage.
 
-triage_packages = [
+base_packages = [
   'python3-pip',              # bootstrapping pip3 ???
   'alsa-utils',               # Audio
   'gnupg',                    # for Google key installation
@@ -20,16 +20,24 @@ triage_packages = [
   'iwconfig',                 # for seeing wifi device list
   'mg',                       # small emacs-like editor
   'pigz',                     # parallel gzip
+  'patch',                    # patch - needed to patch config files
   'partclone',                # partclone
   'parted',                   # parted
   'pulseaudio',               # Ubuntu audio server
   'pulseaudio-utils',         # Ubuntu PA utils
   'python3-aiohttp',          # for python http server
   'python3-aiohttp-cors',     # for python http server
-  'python3-psutil',           # Socket IO to work with aiohttp
   'rfkill',                   # rfkill reports the wifi hardware/software switches
   'wpasupplicant'
 ]
+
+#
+# Triage system packages
+#
+triage_packages = [
+  'network-manager'          # Install full network manager
+]
+
 
 # aufs-tools - for making usb stick to boot and mount memory file system as read/write over read-only usb storage
 #
@@ -64,6 +72,7 @@ server_packages = [
   'atftpd',
   'lighttpd',
   'dnsmasq',
+  'emacs',
   'openbsd-inetd',
   'nfs-common',
   'nfs-kernel-server',
@@ -71,16 +80,15 @@ server_packages = [
   'pxelinux',
   'syslinux',
   'syslinux-common',
-  'python3-distutils',
-  'wpasupplicant'
+  'python3-distutils'
 ]
 
 if __name__ == "__main__":
-  packages = triage_packages
+  packages = base_packages
 
   if os.environ.get('WCE_TRIAGE_DISK') == "true":
     subprocess.run('sudo -H apt remove -y apparmor', shell=True)
-    packages = packages + kiosk_packages
+    packages = packages + kiosk_packages + triage_packages
     pass
 
   if os.environ.get('WCE_SERVER') == "true":
