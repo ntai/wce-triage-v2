@@ -9,8 +9,8 @@ GRUB_TIMEOUT=10
 GRUB_DISTRIBUTOR=Ubuntu
 GRUB_CMDLINE_LINUX_DEFAULT="aufs=tmpfs"
 GRUB_CMDLINE_LINUX=""
-GRUB_BACKGROUND="/usr/local/share/wce/triage/assets/wceboot2.png
-GRUB_PRIMARY_MENU_TITLE="WCE Triage/Ubuntu
+GRUB_BACKGROUND="/usr/local/share/wce/triage/assets/wceboot2.png"
+GRUB_PRIMARY_MENU_TITLE="WCE Triage/Ubuntu"
 #
 # For update mode
 #
