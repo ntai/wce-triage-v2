@@ -11,7 +11,7 @@ if __name__ == "__main__":
   subprocess.call('sudo -H mkdir -p /usr/local/share/wce/triage/bin', shell=True)
   subprocess.call('sudo -H mkdir -p /usr/local/share/wce/triage/assets', shell=True)
   subprocess.call('sudo -H mkdir -p /usr/local/share/wce/ubuntu-packages', shell=True)
-  subprocess.call('sudo -H chown $TRIAGEUSER:$TRIAGEUSER /usr/local/share/wce/ubuntu-packages', shell=True)
+  subprocess.call('sudo -H chown {user}:{user} /usr/local/share/wce/ubuntu-packages'.format(user=TRIAGEUSER), shell=True)
 
   os.chdir('/usr/local/share/wce/ubuntu-packages')
 
@@ -26,6 +26,11 @@ if __name__ == "__main__":
   print ("nVidia driver " + driver_name)
   subprocess.call('apt download ' + driver_name, shell=True)
 
+  # Download the ulsw/triage
+  os.chdir('/usr/local/share/wce')
+  subprocess.call('wget -q -O - http://release.cleanwinner.com/wce/ulsw/triage.tgz | tar xzf - ', shell=True)
+  subprocess.call('sudo chown -R {user}:{user} /usr/local/share/wce/triage'.format(user=TRIAGEUSER), shell=True)
+  
   # Create default update script.
   # If download succeeds, the updated update-wce-triage would run.
   # At minimum, the UI and wce_triage package needs to be updated.
@@ -83,7 +88,9 @@ rm -fr $tempdir
 
   subprocess.call('sudo -H install -m 0755 /tmp/update-wce-triage /usr/local/share/wce/triage/bin', shell=True)
 
+  subprocess.call('wget -q -O - http://release.cleanwinner.com/wce/ulsw/triage.tgz | tar xzf - ', shell=True)
   subprocess.call('wget -q -O - http://release.cleanwinner.com/wce/update-wce-triage && chmod +x update-wce-triage', shell=True)
   #
   subprocess.call('sh ./update-wce-triage', shell=True)
   pass
+

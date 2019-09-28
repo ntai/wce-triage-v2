@@ -52,7 +52,7 @@ async def route_version(request):
     tlog.info('Reading /usr/local/share/wce/wce-triage-ui/manifest.json failed with exception. ' + traceback.format_exc())
     pass
 
-  jsonified = { "version": {"backend": TRIAGE_VERSION, "frontend": fversion }}
+  jsonified = { "version": {"backend": TRIAGE_VERSION + "-" + TRIAGE_TIMESTAMP, "frontend": fversion }}
   return aiohttp.web.json_response(jsonified)
 
 #
@@ -359,7 +359,7 @@ class TriageWeb(object):
     jsonified = { "components":  decisions }
 
     if hello:
-      Emitter.note("Hello from Triage service Version " + TRIAGE_VERSION)
+      Emitter.note("Hello from Triage service Version " + TRIAGE_VERSION + "/" + TRIAGE_TIMESTAMP)
       pass
 
     return aiohttp.web.json_response(jsonified)
@@ -768,6 +768,7 @@ class TriageWeb(object):
     devname = request.query.get("deviceName")
     saveType = request.query.get("type")
     destdir = request.query.get("destination")
+    partid = request.query.get("partition", default="Linux")
 
     if saveType is None:
       tlog.info("saveimage - image type is not given.")
@@ -789,7 +790,12 @@ class TriageWeb(object):
     disk = me.disk_portal.find_disk_by_device_name(devname)
     lister = PartitionLister(disk)
     lister.execute()
-    part = disk.find_partition_by_file_system('ext4')
+
+    part = disk.find_partition(partid)
+    if part is None:
+      part = disk.find_partition_by_file_system('ext4')
+      pass
+    
     if part is None:
       for partition in disk.partitions:
         tlog.debug(str(partition))
@@ -819,7 +825,9 @@ class TriageWeb(object):
       return
     
     # save image runs its own course, and output will be monitored by a call back
-    me.saver = subprocess.Popen( ['python3', '-m', 'wce_triage.ops.create_image_runner', devname, str(partition_id), destdir], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    args = ['python3', '-m', 'wce_triage.ops.create_image_runner', devname, str(partition_id), destdir]
+    tlog.info("saveimage - " + " ".join(args))
+    me.saver = subprocess.Popen( args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     PipeReader.add_to_event_loop(me.saver.stdout, me.saver_progress_report, "saveimage")
     PipeReader.add_to_event_loop(me.saver.stderr, me.saver_progress_report, "message")

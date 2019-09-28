@@ -19,7 +19,7 @@ def extract_menuentry(infile):
       if line.startswith(menuentry_start):
         in_menuentry = True
         match = re.search(r"menuentry '[^']+' (.*)", line)
-        print("menuentry '%s' %s" % (os.environ.get('GRUB_ALT_MENU_TITLE', 'Ubuntu Alternate'), match.group(1)))
+        print("menuentry '%s' %s" % (os.environ.get('GRUB_MENU_TITLE_ALT', 'WCE Update'), match.group(1)))
         pass
       pass
     pass

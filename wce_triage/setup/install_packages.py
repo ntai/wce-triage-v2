@@ -8,7 +8,7 @@ import os, sys, subprocess
 # yes, you can cross-domain
 # probably, not used for live triage.
 
-triage_packages = [
+base_packages = [
   'python3-pip',              # bootstrapping pip3 ???
   'alsa-utils',               # Audio
   'gnupg',                    # for Google key installation
@@ -18,38 +18,58 @@ triage_packages = [
   'grub2-common',             # boot manager
   'grub-pc',                  # boot manager
   'iwconfig',                 # for seeing wifi device list
+  'make',                     # make makes 
   'mg',                       # small emacs-like editor
   'pigz',                     # parallel gzip
+  'patch',                    # patch - needed to patch config files
   'partclone',                # partclone
   'parted',                   # parted
   'pulseaudio',               # Ubuntu audio server
   'pulseaudio-utils',         # Ubuntu PA utils
   'python3-aiohttp',          # for python http server
   'python3-aiohttp-cors',     # for python http server
-  'python3-psutil',           # Socket IO to work with aiohttp
   'rfkill',                   # rfkill reports the wifi hardware/software switches
   'wpasupplicant'
 ]
 
+#
+# xserver packages - this is in the base package but it's easier to see
+#
+xorg_packages = [
+  'xorg',
+  'xserver-xorg-video-all',
+  'xserver-xorg-video-fbdev',
+  'xserver-xorg-video-intel',
+  'xserver-xorg-video-vmware',
+  'xserver-xorg-video-geode',
+  'xserver-xorg-video-mach64',
+  'xserver-xorg-video-openchrome',
+  'xserver-xorg-video-r128',
+  'xserver-xorg-video-savege',
+  'xserver-xorg-video-trident',
+  'xserver-xorg-video-vesa',
+  'xbacklight'
+  ]
+
+#
+# Triage system packages
+#
 # aufs-tools - for making usb stick to boot and mount memory file system as read/write over read-only usb storage
 #
-# xserver-xorg-legacy - Ubuntu 18.04LTS needs to run X11 server as root. Setting video mode requires the root priv.
-#   This may change in future. Also, this pops up a dialog. If you see it, choose "everyone".
 #
 # vbetool - video buffer tool
 # gfxboot - pretty boot screen
 # lighttpd - serving payload. much better than using python.
 
-kiosk_packages = [
-  'xorg',
+triage_kiosk_packages = [
+  'network-manager',          # Install full network manager
   'openbox',
   'aufs-tools',
-  'xserver-xorg-video-all-hwe-18.04',
-  'xserver-xorg-video-vmware-hwe-18.04',
   'vbetool',
   'gfxboot',
   'lighttpd'
 ]
+
 
 # python-socketio - websocket.
 # I would have used the ubuntu package if provided.
@@ -64,6 +84,7 @@ server_packages = [
   'atftpd',
   'lighttpd',
   'dnsmasq',
+  'emacs',
   'openbsd-inetd',
   'nfs-common',
   'nfs-kernel-server',
@@ -71,16 +92,15 @@ server_packages = [
   'pxelinux',
   'syslinux',
   'syslinux-common',
-  'python3-distutils',
-  'wpasupplicant'
+  'python3-distutils'
 ]
 
 if __name__ == "__main__":
-  packages = triage_packages
+  packages = base_packages + xorg_packages
 
   if os.environ.get('WCE_TRIAGE_DISK') == "true":
     subprocess.run('sudo -H apt remove -y apparmor', shell=True)
-    packages = packages + kiosk_packages
+    packages = packages + triage_kiosk_packages
     pass
 
   if os.environ.get('WCE_SERVER') == "true":
@@ -96,7 +116,6 @@ if __name__ == "__main__":
       installed_packages[pkg_line.split('/')[0]] = pkg_line
       pass
     pass
-
   
   for package in packages:
     if installed_packages.get(package):
