@@ -3,6 +3,10 @@
 #
 # The heavy lifting is done by the image_volume and restore_volume in wce_triage.bin.
 #
+"""tasks that deals with partclone command.
+Actual running of process is done by wce_triage/bin's process driver and this one is like a shim between the process driver and the runner.
+Important part is about parsing the partclone output and send out the progress.
+"""
 
 import datetime, re, subprocess, abc, os, select, time, uuid
 
@@ -228,7 +232,8 @@ class task_restore_disk_image(task_partclone):
             pass
           current_block = m.group(1)
           total_blocks = m.group(2)
-          self.set_progress(percent, "{current} of {total} blocks completed.".format(current=current_block, total=total_blocks))
+          block_percent = round(float(current_block) / float(total_blocks) * 100.0, 1)
+          self.set_progress(percent, "{progress}% done - {current} of {total} blocks completed.".format(progress=block_percent, current=current_block, total=total_blocks))
           pass
 
         m = self.progress0_re.search(line)

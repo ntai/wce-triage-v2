@@ -147,6 +147,11 @@ class Disk:
     self.storage_propery = None
     pass
 
+  def _set_byte_size(self, size):
+    """This is for testing pplan. Do not use this for anything else"""
+    self.byte_size = size
+    pass
+    
   def get_storage_property(self) -> StorageProperty:
     """provides the property of storage device for estimation."""
 

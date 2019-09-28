@@ -138,7 +138,7 @@ def get_source_size(src):
 
 
 #
-# Running restore from 
+# Running restore - loading disk image to a disk
 #
 def run_load_image(ui, devname, imagefile, imagefile_size, efisrc, newhostname, restore_type, wipe, do_it=True):
   '''Loading image to desk.
