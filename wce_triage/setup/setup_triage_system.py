@@ -37,5 +37,20 @@ if __name__ == "__main__":
     package_name = 'wce_triage.setup.' + step
     subprocess.run(['sudo', '-E', '-H', 'python3', '-m', package_name], env=env)
     pass
+
+  # Don't run periodical updates for triage.
+  # It is really bad if the updates run during triaging process.
+  
+  dailies = [
+    'apt-daily.timer',
+    'apt-daily.service',
+    'apt-daily-upgrade.timer',
+    'apt-daily-upgrade.service' ]
+
+  for daily in dailies:
+    args = ['systemctl', 'disable', daily]
+    subprocess.run(args)
+    pass
+
   pass
 

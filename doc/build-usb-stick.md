@@ -11,9 +11,7 @@ Follow the installation instructions. Do not enable automatic update. Install Op
 Hostname: wcetriage
 For username/password - triage/triage
 
-Then, install network manager
-
-apt install network-manager
+Do not install Network Manager.
 
 ## Step 2: Install all the things
 There are two options - one is to install Google Chrome, and other is to install Chromium. I followed the instruction of installing minimum Chrome but seems pointless at this point. Just install chromium-browser and be done with it. So that would be "apt install --no-install-recommends chromium-browser". 

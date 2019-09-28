@@ -189,7 +189,7 @@ def run_load_image(ui, devname, imagefile, imagefile_size, efisrc, newhostname, 
       # For ms-dos partition, you cannot have name so look for the ext4 partition and use
       # the partition number.
       for part in pplan:
-        if part.filesys == Partition.EXT4:
+        if part.filesys == 'ext4':
           partition_id = part.no
           break
         pass
@@ -202,6 +202,10 @@ def run_load_image(ui, devname, imagefile, imagefile_size, efisrc, newhostname, 
     pass
 
   if partition_id is None:
+    tlog.info("Partition ID is missing.")
+    for part in pplan:
+      tlog.info("Partition %d: name %s, type %s" % (part.no, str(part.name), str(part.parttype)))
+      pass
     raise Exception("Partion ID is not known for resotring disk.")
   
   # If new host name is not given, and if restore type asks for new host name,
