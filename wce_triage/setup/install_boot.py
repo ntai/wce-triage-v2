@@ -10,4 +10,8 @@ if os.getuid() != 0:
 subprocess.run(['update-grub'])
 #
 subprocess.run(['update-initramfs', '-u'])
-               
+
+#
+subprocess.run(['mkdir', '/ro'])
+subprocess.run(['mkdir', '/rw'])
+

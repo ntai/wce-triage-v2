@@ -38,20 +38,22 @@ base_packages = [
 xorg_packages = [
   'xorg',
   'xserver-xorg-video-all',
+  'xserver-xorg-video-fbdev',
+  'xserver-xorg-video-intel',
   'xserver-xorg-video-vmware',
   'xserver-xorg-video-geode',
-  'xserver-xorg-video-r120',
   'xserver-xorg-video-mach64',
+  'xserver-xorg-video-openchrome',
+  'xserver-xorg-video-r128',
+  'xserver-xorg-video-savege',
+  'xserver-xorg-video-trident',
+  'xserver-xorg-video-vesa',
+  'xbacklight'
   ]
 
 #
 # Triage system packages
 #
-triage_packages = [
-  'network-manager'          # Install full network manager
-]
-
-
 # aufs-tools - for making usb stick to boot and mount memory file system as read/write over read-only usb storage
 #
 #
@@ -59,7 +61,8 @@ triage_packages = [
 # gfxboot - pretty boot screen
 # lighttpd - serving payload. much better than using python.
 
-kiosk_packages = [
+triage_kiosk_packages = [
+  'network-manager',          # Install full network manager
   'openbox',
   'aufs-tools',
   'vbetool',
@@ -97,7 +100,7 @@ if __name__ == "__main__":
 
   if os.environ.get('WCE_TRIAGE_DISK') == "true":
     subprocess.run('sudo -H apt remove -y apparmor', shell=True)
-    packages = packages + kiosk_packages + triage_packages
+    packages = packages + triage_kiosk_packages
     pass
 
   if os.environ.get('WCE_SERVER') == "true":
