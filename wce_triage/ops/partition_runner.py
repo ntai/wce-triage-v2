@@ -22,13 +22,14 @@ from ..lib.util import *
 # create a new gpt partition from partition plan
 #
 class PartitionDiskRunner(Runner):
-  def __init__(self, ui, runner_id, disk, partition_plan, partition_map='gpt', efi_boot=False, wipe=None):
+  def __init__(self, ui, runner_id, disk, partition_plan, partition_map='gpt', efi_boot=False, wipe=None, media=None):
     super().__init__(ui, runner_id)
     self.partition_map = partition_map # label is the parted's partition map type
     self.disk = disk
     self.pplan = partition_plan
     self.efi_boot = efi_boot
     self.wipe = wipe
+    self.media = media
     pass
 
   def prepare(self):
@@ -92,7 +93,8 @@ class PartitionDiskRunner(Runner):
                          partition=partition,
                          progress_finished="mkfs %s on %s completed." % (part.filesys, partition.device_name),
                          time_estimate=3 + estimate_size/self.disk.estimate_speed("mkfs"),
-                         mkfs_opts=part.mkfs_opts)
+                         mkfs_opts=part.mkfs_opts,
+                         media=self.media)
         self.tasks.append(mkfs)
         mkfs=None
         pass

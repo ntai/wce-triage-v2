@@ -35,7 +35,8 @@ class RestoreDiskRunner(PartitionDiskRunner):
                pplan=None,
                newhostname=None,
                restore_type=None,
-               wipe=None):
+               wipe=None,
+               media=None):
     #
     # FIXME: Well, not having restore type is probably a show stopper.
     #
@@ -49,7 +50,7 @@ class RestoreDiskRunner(PartitionDiskRunner):
 
     self.restore_type = restore_type
     efi_boot = self.restore_type.get('efi_image') is not None
-    super().__init__(ui, runner_id, disk, wipe=wipe, partition_plan=pplan, partition_map=partition_map, efi_boot=efi_boot)
+    super().__init__(ui, runner_id, disk, wipe=wipe, partition_plan=pplan, partition_map=partition_map, efi_boot=efi_boot, media=media)
 
     self.disk = disk
     self.source = src
@@ -160,6 +161,9 @@ def run_load_image(ui, devname, imagefile, imagefile_size, efisrc, newhostname, 
   efi_image = restore_type.get("efi_image")
   efi_boot=efi_image is not None
 
+  # Get loading media
+  media = restore_type.get("media")
+
   # Interestingly, partition map has no impact on partition plan
   # Partition map in the restore type file is always ignored.
   # FIXME: I'll use it for sanity check
@@ -224,7 +228,8 @@ def run_load_image(ui, devname, imagefile, imagefile_size, efisrc, newhostname, 
 
   runner = RestoreDiskRunner(ui, disk.device_name, disk, imagefile, imagefile_size, efisrc,
                              partition_id=partition_id, pplan=pplan, partition_map=partition_map,
-                             newhostname=newhostname, restore_type=restore_type, wipe=wipe)
+                             newhostname=newhostname, restore_type=restore_type, wipe=wipe,
+                             media=media)
   runner.prepare()
   runner.preflight()
   runner.explain()

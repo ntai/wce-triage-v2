@@ -404,13 +404,14 @@ class task_mkdir(op_task_python_simple):
 #
 #
 class task_mkfs(op_task_process_simple):
-  def __init__(self, description, partition=None, mkfs_opts=None, time_estimate=None, **kwargs):
+  def __init__(self, description, partition=None, mkfs_opts=None, time_estimate=None, media=None, **kwargs):
     super().__init__(description, encoding='iso-8859-1', time_estimate=time_estimate, **kwargs)
     self.success_returncodes = [0]
     self.success_msg = "Creating file system succeeded."
     self.failure_msg = "Creating file system failed."
     self.part = partition
     self.mkfs_opts = mkfs_opts
+    self.media = media
 
     if self.part.file_system in [ 'fat32', 'vfat' ]:
       #
@@ -431,7 +432,22 @@ class task_mkfs(op_task_process_simple):
       if partuuid is None:
         partuuid = uuid.uuid4()
         pass
+
       self.argv = ["mkfs.ext4", "-b", "4096", "-L", partname, "-U", str(partuuid)]
+
+      if self.media == "usb-flash":
+        # No stinkin journal - USB flash media is used for triage where
+        # the stick is used with read-only.
+        self.argv.append('-O')
+        self.argv.append('^has_journal')
+        # No need to save space for emergency
+        self.argv.append('-m')
+        self.argv.append('0')
+        # This should improve the write speed.
+        self.argv.append('-E')
+        self.argv.append('stripe_width=32')
+        pass
+      pass
     else:
       raise Exception("Unsuppoted partition type")
 

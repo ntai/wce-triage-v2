@@ -4,15 +4,26 @@
 # Unlike stable desktop, we want to see the boot process.
 # no splash or quiet here.
 #
+# wce_share is always local media as this is not running over network.
+#
+# IOW, if you copy the files for network server, you need to remove
+# wce_share=
+# If you forget, the payload cannot be found as it has to be using
+# http/lightthpd.
+#
 GRUB_DEFAULT=0
 GRUB_TIMEOUT=10
 GRUB_DISTRIBUTOR=Ubuntu
-GRUB_CMDLINE_LINUX_DEFAULT="aufs=tmpfs"
+#
+GRUB_CMDLINE_LINUX_DEFAULT="aufs=tmpfs wce_share=/usr/local/share/wce nvme_core.default_ps_max_latency_us=200"
 GRUB_CMDLINE_LINUX=""
 GRUB_BACKGROUND="/usr/local/share/wce/triage/assets/wceboot2.png"
-GRUB_PRIMARY_MENU_TITLE="WCE Triage/Ubuntu"
+#
+# Non-standard variables have to be exported.
+#
+export GRUB_PRIMARY_MENU_TITLE="WCE Triage/Ubuntu"
 #
 # For update mode
 #
-GRUB_CMDLINE_LINUX_DEFAULT_ALT=""
-GRUB_MENU_TITLE_ALT="WCE Triage - Update mode"
+export GRUB_CMDLINE_LINUX_DEFAULT_ALT="wce_share=/usr/local/share/wce nvme_core.default_ps_max_latency_us=200"
+export GRUB_MENU_TITLE_ALT="WCE Triage - Update mode"
