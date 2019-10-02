@@ -20,6 +20,7 @@ base_packages = [
   'iwconfig',                 # for seeing wifi device list
   'make',                     # make makes 
   'mg',                       # small emacs-like editor
+  'nfs-common',               # mounting nfs
   'pigz',                     # parallel gzip
   'patch',                    # patch - needed to patch config files
   'partclone',                # partclone
@@ -29,7 +30,17 @@ base_packages = [
   'python3-aiohttp',          # for python http server
   'python3-aiohttp-cors',     # for python http server
   'rfkill',                   # rfkill reports the wifi hardware/software switches
-  'wpasupplicant'
+  'wpasupplicant',
+  #
+  # Wifi Firmware
+  #
+  'linux-firmware',
+  'firmware-b43-installer',
+  'firmware-b43legacy-installer',
+  'firmware-ath9k-htc',
+
+  # audio device firmware
+  'alsa-firmware-loaders',
 ]
 
 #
@@ -60,16 +71,16 @@ xorg_packages = [
 # vbetool - video buffer tool
 # gfxboot - pretty boot screen
 # lighttpd - serving payload. much better than using python.
-
+#
+# Note that the browser is installed by install_chrome.py
+#
 triage_kiosk_packages = [
-  'network-manager',          # Install full network manager
   'openbox',
   'aufs-tools',
   'vbetool',
   'gfxboot',
   'lighttpd'
 ]
-
 
 # python-socketio - websocket.
 # I would have used the ubuntu package if provided.
