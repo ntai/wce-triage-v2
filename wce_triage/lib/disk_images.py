@@ -8,6 +8,8 @@ from ..lib.util import *
 tlog = get_triage_logger()
 
 IMAGE_META_JSON_FILE = ".disk_image_type.json"
+WCE_IMAGES = "/usr/local/share/wce/wce-disk-images"
+
 
 # gets the potential directories to look for disk images
 def get_maybe_disk_image_directories():
@@ -16,12 +18,32 @@ def get_maybe_disk_image_directories():
   # No longer look for other directories.
   # It would make things rather complicated.
 
-  wce_images = "/usr/local/share/wce/wce-disk-images"
-  if os.path.exists(wce_images) and os.path.isdir(wce_images) and wce_images not in dirs:
-    dirs.append(wce_images)
+  if os.path.exists(WCE_IMAGES) and os.path.isdir(WCE_IMAGES) and WCE_IMAGES not in dirs:
+    dirs.append(WCE_IMAGES)
     pass
 
   return dirs
+
+# gets the potential directories to look for disk images
+def get_disk_image_list_order():
+  list_order = {}
+
+  if os.path.exists(WCE_IMAGES) and os.path.isdir(WCE_IMAGES):
+    list_order_path = os.path.join(WCE_IMAGES, ".list-order")
+    if os.path.exists(list_order_path):
+      try:
+        with open(list_order_path) as list_order_fd:
+          dirs = list_order_fd.readlines()
+          for i in range(len(dirs)):
+            list_order[dirs[i].strip()] = i
+            pass
+          pass
+        pass
+      except:
+        pass
+      pass
+    pass
+  return list_order
 
 #
 # 
@@ -73,6 +95,8 @@ def get_disk_images(wce_share_url=None):
       pass
     pass
 
+  # Sort image listing order
+
   result = []
   for filename, image in images.items():
     fname, subdir, fullpath = image
@@ -88,10 +112,15 @@ def get_disk_images(wce_share_url=None):
               "restoreType" : subdir,
               "name": filename,
               "fullpath": fullpath,
-              "size": filestat.st_size }
+              "size": filestat.st_size,
+              "subdir": subdir,
+              "index": len(result) }
     result.append(fattr)
     pass
 
+  list_order = get_disk_image_list_order()
+  n = len(result)
+  result.sort(key=lambda x: list_order.get(x["subdir"], len(list_order)) * n + x["index"])
   return result
 
 
@@ -204,6 +233,7 @@ def translate_disk_image_name_to_url(wce_share_url, disk_image_name):
 
 #
 if __name__ == "__main__":
+  print("HELLO")
   logging.basicConfig(level=logging.DEBUG,
                       format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                       filename='/tmp/disk_images.log')
@@ -214,6 +244,8 @@ if __name__ == "__main__":
   print(get_file_system_from_source("a.ext4.partclone"))
   print(get_file_system_from_source("a.partclone.gz"))
   print(read_disk_image_type("/usr/local/share/wce/wce-disk-images/triage"))
+
+  print("HELLO HELLO")
 
   for disk_image in get_disk_images():
     print(translate_disk_image_name_to_url("http://10.3.2.1:8080/wce", disk_image["name"]))

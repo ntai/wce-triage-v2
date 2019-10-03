@@ -20,6 +20,7 @@ base_packages = [
   'iwconfig',                 # for seeing wifi device list
   'make',                     # make makes 
   'mg',                       # small emacs-like editor
+  'net-tools',                # netstat
   'nfs-common',               # mounting nfs
   'pigz',                     # parallel gzip
   'patch',                    # patch - needed to patch config files
@@ -32,12 +33,13 @@ base_packages = [
   'rfkill',                   # rfkill reports the wifi hardware/software switches
   'wpasupplicant',
   #
-  # Wifi Firmware
+  # Network device Firmware
   #
   'linux-firmware',
   'firmware-b43-installer',
   'firmware-b43legacy-installer',
   'firmware-ath9k-htc',
+  'linux-wlan-ng-firmware',   # wlan fw
 
   # audio device firmware
   'alsa-firmware-loaders',
