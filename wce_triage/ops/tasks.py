@@ -12,8 +12,10 @@ from ..components.pci import find_pci_device_node
 from ..components.disk import Disk, Partition, PartitionLister
 from ..lib.util import drain_pipe, drain_pipe_completely, get_triage_logger
 from ..lib.timeutil import *
+from ..lib.grub import *
 from .pplan import *
 import uuid
+
 
 tlog = get_triage_logger()
 
@@ -1158,7 +1160,7 @@ class task_finalize_disk(op_task_python_simple):
 fstab is always adjusted to the new partition UUID.
 new hostname set up is only done if the new hostname is provided. If it's None, it's untouched.
 """
-  def __init__(self, description, disk=None, newhostname=None, partition_id='Linux', efi_id = None, **kwargs):
+  def __init__(self, description, disk=None, newhostname=None, partition_id='Linux', efi_id = None, wce_share_url=None, **kwargs):
     super().__init__(description, time_estimate=1, **kwargs)
     self.newhostname = newhostname
     self.disk = disk
@@ -1167,6 +1169,7 @@ new hostname set up is only done if the new hostname is provided. If it's None, 
     self.efi_part = None
     self.swappart = None
     self.mount_dir = None
+    self.wce_share_url = wce_share_url
     pass
    
 
@@ -1227,6 +1230,17 @@ new hostname set up is only done if the new hostname is provided. If it's None, 
       hosts.close()
 
       self.log("Hostname in %s/etc is updated with %s." % (self.mount_dir, self.newhostname))
+      pass
+
+    # Set the wce_share_url to /etc/default/grub
+    if self.wce_share_url is not None:
+      grub_file = "%s/etc/default/grub" % self.mount_dir
+      updated, contents = grub_set_wce_share(grub_file, self.wce_share_url)
+      if updated:
+        grub = open(grub_file, "w")
+        grub.write(contents)
+        grub.close()
+        pass
       pass
 
     #

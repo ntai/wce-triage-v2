@@ -47,7 +47,10 @@ EXT4 - '8300': Linux ext4 file system. This can be any version of ext-fs but we 
                partition_uuid=None,
                fs_uuid=None,
                file_system=None,
-               mounted=False):
+               mounted=False,
+               start_sector=None,
+               end_sector=None,
+               sector_size=None):
     """ctor of partition.
 device_name: Partition device name - ex. /dev/sda1
 partition_name: Name of partition - only valid for GPT.
@@ -66,6 +69,11 @@ mounted: true if the partition is mounted as file system.
     self.fs_uuid = fs_uuid # This is the file system UUID.
     self.ext4_version = None # Ext4 file system version. 1.42 is for Ubuntu 16. It added metadata_csum after >= 1.43
     self.mounted = mounted
+
+    # These are straight value from parted.
+    self.start_sector = start_sector
+    self.end_sector = end_sector
+    self.sector_size = sector_size
     pass
 
   def get_mount_point(self, root='/tmp/mnt'):
@@ -530,12 +538,12 @@ class DiskPortal(Component):
 
 
 class PartitionLister:
-  #                          1:    2:           3:           4:           5:fs  6:name  7:flags   
-  partline_re = re.compile('^(\d+):([\d\.]+)MiB:([\d\.]+)MiB:([\d\.]+)MiB:(\w*):([^:]*):(.*);')
+  #                          1:    2: start s 3: end s   4: size    5:fs  6:name  7:flags   
+  partline_re = re.compile('^(\d+):([\d\.]+)s:([\d\.]+)s:([\d\.]+)s:(\w*):([^:]*):(.*);')
 
   def __init__(self, disk):
     self.disk = disk
-    self.argv = ["parted", "-m", disk.device_name, 'unit', 'MiB', 'print']
+    self.argv = ["parted", "-m", disk.device_name, 'unit', 's', 'print']
     self.out = ""
     pass
   
@@ -558,7 +566,13 @@ class PartitionLister:
   def parse_parted_output(self):
     self.disk.partitions = []
     partclone_output = self.out.splitlines()
+    while len(partclone_output) > 0 and len(partclone_output[0].strip()) == 0:
+      partclone_output = partclone_output[1:]
+      pass
+    if len(partclone_output) == 0:
+      raise Exception('parted output is empty.')
     if partclone_output[0] != 'BYT;':
+      tlog.debug("partclone_output[0]: '%s'" % partclone_output[0])
       raise Exception('parted returned the first line other than BYT; This means the unit printed is not byte.')
     # partclone_output[1] is for whole disk, and unused.
     for line in partclone_output[2:]:
@@ -567,7 +581,10 @@ class PartitionLister:
         part = Partition(device_name = self.disk.device_name + m.group(1),
                          partition_name = m.group(6),
                          partition_number = int(m.group(1)),
-                         file_system = m.group(5))
+                         file_system = m.group(5),
+                         start_sector = int(m.group(2)),
+                         end_sector = int(m.group(3)),
+                         sector_size = int(m.group(4)))
         self.disk.partitions.append(part)
         pass
       pass

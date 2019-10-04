@@ -36,7 +36,8 @@ class RestoreDiskRunner(PartitionDiskRunner):
                newhostname=None,
                restore_type=None,
                wipe=None,
-               media=None):
+               media=None,
+               wce_share_url=None):
     #
     # FIXME: Well, not having restore type is probably a show stopper.
     #
@@ -57,6 +58,7 @@ class RestoreDiskRunner(PartitionDiskRunner):
     self.source_size = src_size
     self.newhostname = newhostname
     self.efi_source = efisrc # EFI partition is pretty small
+    self.wce_share_url = wce_share_url
     pass
 
   def prepare(self):
@@ -108,7 +110,11 @@ class RestoreDiskRunner(PartitionDiskRunner):
 
     # set up some system files. finalize disk sets the new host name and change the fstab
     if self.restore_type["id"] != 'clone':
-      self.tasks.append(task_finalize_disk("Finalize disk", disk=disk, partition_id=partition_id, newhostname=self.newhostname))
+      self.tasks.append(task_finalize_disk("Finalize disk",
+                                           disk=disk,
+                                           partition_id=partition_id,
+                                           newhostname=self.newhostname,
+                                           wce_share_url=self.wce_share_url))
       pass
 
     # Install GRUB
@@ -224,12 +230,15 @@ def run_load_image(ui, devname, imagefile, imagefile_size, efisrc, newhostname, 
       pass
     pass
 
+  # get wce_share_url from restore_type
+  wce_share_url = restore_type.get("wce_share_url")
+
   disk.detect_disk()
 
   runner = RestoreDiskRunner(ui, disk.device_name, disk, imagefile, imagefile_size, efisrc,
                              partition_id=partition_id, pplan=pplan, partition_map=partition_map,
                              newhostname=newhostname, restore_type=restore_type, wipe=wipe,
-                             media=media)
+                             media=media, wce_share_url=wce_share_url)
   runner.prepare()
   runner.preflight()
   runner.explain()
