@@ -15,7 +15,7 @@ import datetime, re, subprocess, sys, os
 from .tasks import *
 from .ops_ui import *
 from .pplan import *
-from ..components.disk import Disk, Partition
+from ..components.disk import Disk, Partition, Nvme, create_storage_instance
 from .runner import *
 from ..lib.util import *
 #
@@ -75,7 +75,7 @@ class PartitionDiskRunner(Runner):
                                            disk=self.disk, n_partitions=len(self.pplan)-1))
 
     for part in self.pplan:
-      partdevname = self.disk.device_name + str(part.no)
+      partdevname = self.disk.get_partition_device_file(str(part.no))
       partition = Partition(device_name=partdevname,
                             file_system=part.filesys,
                             partition_type=part.parttype,

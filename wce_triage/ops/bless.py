@@ -10,7 +10,7 @@ import .tasks as tasks
 import .runner as runner
 import .ops_ui as ops_ui
 
-from ..components.disk import Disk, Partition
+from ..components.disk import Disk, Partition, create_storage_instance
 
 #
 class BlessDiskRunner(runner.Runner):
@@ -45,7 +45,7 @@ if __name__ == "__main__":
   if len(sys.argv) > 2:
     partition_id = sys.argv[2]
     pass
-  disk = Disk(device_name=devname)
+  disk = create_storage_instance(device_name)
   ui = ops_ui.console_ui()
   runner = BlessDiskRunner(ui, disk.device_name, disk, partition_id=partition_id)
   runner.prepare()

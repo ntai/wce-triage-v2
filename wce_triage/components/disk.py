@@ -4,6 +4,7 @@
 
 import re, sys, os, subprocess, traceback, time
 import logging
+import json
 
 from ..lib.util import *
 from .component import *
@@ -237,10 +238,15 @@ class Disk:
       pass
     return None
   
+  #
+  # part is index starting from zero
+  #
+  def get_partition_device_file(self, part_no):
+    return "%s%s" % (self.device_name, part_no)
 
   def has_wce_release(self):
     # FIXME - this + "1" needs to go away
-    part1 = self.device_name + "1"
+    part1 = self.get_partition_device_file("1")
     installed = False
     for partition in self.partitions:
       if partition.partition_name == part1 and partition.partition_type == '83':
@@ -381,6 +387,66 @@ class Disk:
 
   pass # End of disk class
 
+#
+# nvme class represents nvme ssd
+#
+class Nvme(Disk):
+  def __init__(self, prop=None, device_name=None, mounted=False):
+    # So prop comes back from nvme list.
+    #
+    #  "DevicePath" : "/dev/nvme0n1",
+    #  "Firmware" : "6L7QCXY7",
+    #  "Index" : 0,
+    #  "ModelNumber" : "SAMSUNG MZVLW512HMJP-000L7",
+    #  "ProductName" : "Unknown Device",
+    #  "SerialNumber" : "S359NB0J504295",
+    #  "UsedBytes" : 13095006208,
+    #  "MaximiumLBA" : 1000215216,
+    #  "PhysicalSize" : 512110190592,
+    #  "SectorSize" : 512
+    #
+
+    self.prop = prop
+    if device_name is None and prop:
+      device_name = prop.get("DevicePath")
+      pass
+    super().__init__(device_name=device_name, mounted=mounted)
+
+    # Since it's coming back from nvme list command,
+    # it must be a nvme disk, and detected.
+    if prop:
+      self.is_disk = True
+      self.is_detected = True
+    else:
+      self.is_disk = False
+      self.is_detected = False
+      pass
+    pass
+
+  def detect_disk(self):
+    return self.is_detected
+
+  def detect_disk_type(self):
+    return self.is_disk
+
+  def estimate_speed(self, operation=None):
+    props = self.get_storage_property()
+    return props.write_speed_4k
+
+  # part_no: string but it is digit only
+  def get_partition_device_file(self, part_no):
+    return "%sp%s" % (self.device_name, part_no)
+
+  pass # End of nvme class
+
+#
+#
+# FIXME: Should fetch what it is from actual device
+#
+def create_storage_instance(device_name):
+  if device_name[0:4] == "nvme" or device_name[0:9] == "/dev/nvme":
+    return Nvme(device_name=device_name)
+  return Disk(device_name=device_name)
 # 
 #
 #
@@ -403,7 +469,7 @@ class DiskPortal(Component):
 
     # Known mounted disks. 
     # These cannot be the target
-    mount_re = re.compile(r"(/dev/[a-z]+)([0-9]*) ([a-z0-9/\.\-_\+\=,]+) ([a-z0-9]+) (.*)")
+    mount_re = re.compile(r"(/dev/[a-z]+|/dev/nvme[0-9]+n[0-9]+p)([0-9]*) ([a-z0-9/\.\-_\+\=,]+) ([a-z0-9]+) (.*)")
     with open('/proc/mounts') as mount_f:
       for one_mount in mount_f.readlines():
         m = mount_re.match(one_mount)
@@ -439,6 +505,7 @@ class DiskPortal(Component):
     added_disks = []
     updated_disks = []
     removed_disks = []
+    has_nvme = False
 
     # Find the disks from diskstats
     with open('/proc/diskstats') as diskstats:
@@ -448,6 +515,11 @@ class DiskPortal(Component):
           dev_type = matched.group(1)
           dev_node = matched.group(2)
           dev_name = matched.group(3)
+
+          if dev_type == '259':
+            # This is nvme
+            has_nvme = True
+            continue
 
           if dev_type != '8':
             # This is not a disk
@@ -480,6 +552,47 @@ class DiskPortal(Component):
               disk.mounted = is_mounted
               updated_disks.append(disk)
               pass
+            pass
+          pass
+        pass
+      pass
+
+    if has_nvme:
+      nvme = subprocess.run("nvme list -o json", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8', timeout=5)
+      out = nvme.stdout
+      err = nvme.stderr
+      nvme_output = json.loads(out)
+
+      for device in nvme_output["Devices"]:
+        # "DevicePath" : "/dev/nvme0n1",
+        # "Firmware" : "6L7QCXY7",
+        # "Index" : 0,
+        # "ModelNumber" : "SAMSUNG MZVLW512HMJP-000L7",
+        # "ProductName" : "Unknown Device",
+        # "SerialNumber" : "S359NB0J504295",
+        # "UsedBytes" : 13095006208,
+        # "MaximiumLBA" : 1000215216,
+        # "PhysicalSize" : 512110190592,
+        # "SectorSize" : 512
+
+        device_name = device['DevicePath']
+        is_mounted = device_name in self.mounted_devices
+        if is_mounted and (not live_system):
+          # Mounted nvme %s is not included in the candidate." % device_name
+          continue
+
+        nvmessd = existing_disks.get(device_name)
+        if nvmessd is None:
+          nvmessd = Nvme(device, mounted=is_mounted)
+          self.disks.append(nvmessd)
+          added_disks.append(nvmessd)
+          pass
+        else:
+          # Consume the disk entry
+          existing_disks[device_name] = None
+          if nvmessd.mounted != is_mounted:
+            nvmdssd.mounted = is_mounted
+            updated_disks.append(nvmessd)
             pass
           pass
         pass
@@ -578,7 +691,7 @@ class PartitionLister:
     for line in partclone_output[2:]:
       m = self.partline_re.match(line)
       if m:
-        part = Partition(device_name = self.disk.device_name + m.group(1),
+        part = Partition(device_name = self.disk.get_partition_device_file(m.group(1)),
                          partition_name = m.group(6),
                          partition_number = int(m.group(1)),
                          file_system = m.group(5),
