@@ -4,7 +4,7 @@ import os, sys, subprocess, urllib, datetime, json, traceback, signal, time
 from ..lib.util import *
 from ..lib.timeutil import *
 from ..components.computer import Computer
-from ..components.disk import Disk, Partition, DiskPortal, PartitionLister
+from ..components.disk import Partition, DiskPortal, PartitionLister
 import threading
 import io
 from collections import namedtuple

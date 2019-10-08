@@ -22,6 +22,7 @@ base_packages = [
   'mg',                       # small emacs-like editor
   'net-tools',                # netstat
   'nfs-common',               # mounting nfs
+  'nvme-cli',                 # nvme cli commands
   'pigz',                     # parallel gzip
   'patch',                    # patch - needed to patch config files
   'partclone',                # partclone
@@ -31,7 +32,7 @@ base_packages = [
   'python3-aiohttp',          # for python http server
   'python3-aiohttp-cors',     # for python http server
   'rfkill',                   # rfkill reports the wifi hardware/software switches
-  'wpasupplicant',
+  'wpasupplicant',            # wifi auth
   #
   # Network device Firmware
   #

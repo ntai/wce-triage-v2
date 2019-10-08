@@ -158,7 +158,8 @@ def run_load_image(ui, devname, imagefile, imagefile_size, efisrc, newhostname, 
      :wipe: 0: no wipe, 1: quick wipe, 2: full wipe
   '''
   # Should the restore type be json or the file?
-  disk = Disk(device_name = devname)
+  
+  disk = create_storage_instance(devname)
   
   id = restore_type.get("id")
   if id is None:
@@ -255,7 +256,7 @@ if __name__ == "__main__":
 
   parser = argparse.ArgumentParser(description="Restore Disk image using partclone disk image.")
 
-  parser.add_argument("devname", help="Device name. This is /dev/sdX, not the partition.")
+  parser.add_argument("devname", help="Device name. This is /dev/sdX or /dev/nvmeXnX, not the partition.")
   parser.add_argument("imagesource", help="Image source file. File path or URL.")
   parser.add_argument("imagesize", type=int, help="Size of image. If this the disk image file is on disk, size can be 0, and the loader gets the actual file size.")
   parser.add_argument("restore_type", help="Restore type. This can be a path to the disk image metadata file or a keyword.")

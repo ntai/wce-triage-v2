@@ -587,9 +587,9 @@ class task_assign_uuid_to_partition(op_task_process_simple):
       return
 
     if self.part.partition_type == "83":
-      self.argv = ["tune2fs", "%s1" % part.device_name, "-U", part.partition_uuid, "-L", "/"]
+      self.argv = ["tune2fs", "%s" % part.device_name, "-U", part.partition_uuid, "-L", "/"]
     elif part.partition_type == "C":
-      self.argv = ["mkswap", "-U", disk.uuid2, "%s5" % disk.device_name]
+      self.argv = ["mkswap", "-U", disk.uuid2, "%s" % part.device_name]
       pass
     else:
       raise Exception("unsupported partition type")
@@ -1144,7 +1144,7 @@ UUID=%s /               ext4    errors=remount-ro 0       1
 
 # UUID should be available after re-fetching partition info.
 # Original was 9ABD-4363
-efi_template = """# /boot/efi was on /dev/sda1 during installation
+efi_template = """# /boot/efi was on boot disk during installation
 UUID=%s  /boot/efi       vfat    umask=0077      0       1
 """
 
@@ -1522,7 +1522,7 @@ new partitions and partition device file not read for the follwing mkks."""
           self._update_progress()
           pass
         else:
-          tlog.debug("{dev}{part}".format(dev=self.disk.device_name, part=self.n_partitions) + " Disks: " + ",".join([ node for node in os.listdir('/dev') if node[:2] == 'sd']))
+          tlog.debug("{part}".format(part=self.disk.get_partition_device_file(str(self.n_partitions))) + " Disks: " + ",".join([ node for node in os.listdir('/dev') if node[:2] == 'sd' or node[:4] == 'nvme']))
           self.set_progress(99, self.kwargs.get('progress_synching', "Syncing with OS" ) )
           pass
         pass
@@ -1535,7 +1535,7 @@ new partitions and partition device file not read for the follwing mkks."""
   def confirm_partition_device_files(self):
     """see the partition device files appeared"""
     for part_no in range(self.n_partitions):
-      part_device_name = "%s%d" % (self.disk.device_name, part_no+1)
+      part_device_name = self.disk.get_partition_device_file(str(part_no+1))
       if not os.path.exists(part_device_name):
         return False
       pass

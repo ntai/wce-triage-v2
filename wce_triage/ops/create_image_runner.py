@@ -7,7 +7,7 @@ import datetime, re, subprocess, sys, os
 
 from .partclone_tasks import *
 from .ops_ui import *
-from ..components.disk import Disk, Partition
+from ..components.disk import create_storage_instance
 from .runner import *
 from ..lib.disk_images import *
 from .json_ui import *
@@ -83,7 +83,7 @@ if __name__ == "__main__":
 
   part = sys.argv[2] # This is a partition id
   destdir = sys.argv[3] # Destination directory
-  disk = Disk(device_name=devname)
+  disk = create_storage_instance(devname)
 
   # Preflight is for me to see the tasks. http server runs this with json_ui.
   do_it = True
