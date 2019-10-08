@@ -5,7 +5,7 @@ import sys
 #
 # GRUB_CMDLINE=""
 # GRUB_CMDLINE_LINUX_DEFAULT=""
-# export GRUB_CMDLINE_LINUX_DEFAULT_ALT="wce_share_url=abc"
+# export GRUB_CMDLINE_LINUX_DEFAULT_ALT="wce_share=FOO"
 #
 
 def grub_set_wce_share(grub_file, wce_share):
@@ -24,14 +24,14 @@ def grub_set_wce_share(grub_file, wce_share):
     for cmdline_re in cmdline_re_list:
       match = cmdline_re.search(line)
       if match:
-        new_opt = "wce_share_url=" + wce_share
+        new_opt = "wce_share=" + wce_share
         cmdline = match.group(3)
         options = cmdline.split(' ')
         for i_opt in range(len(options)):
           option = options[i_opt]
           tag_value = opt_re.match(option)
           if tag_value:
-            if tag_value.group(1) == "wce_share_url":
+            if tag_value.group(1) == "wce_share":
               changed = True
               options[i_opt] = new_opt
               pass
