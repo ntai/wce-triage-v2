@@ -11,7 +11,7 @@ Follow the installation instructions. Do not enable automatic update. Install Op
 Hostname: wcetriage
 For username/password - triage/triage
 
-Do not install Network Manager.
+Do not install Network Manager. Remove it if installed. Netplan file is generated based on the hardware during triaging.
 
 ## Step 2: Install all the things
 There are two options - one is to install Google Chrome, and other is to install Chromium. I followed the instruction of installing minimum Chrome but seems pointless at this point. Just install chromium-browser and be done with it. So that would be "apt install --no-install-recommends chromium-browser". 
@@ -46,10 +46,20 @@ This should take care of setting up the triage system. If not, following histori
     xset s off
     openbox-session &
     start-pulseaudio-x11
-
+    BROWSER=/usr/bin/chromium-browser
+    if [ ! -x $BROWSER ] ; then
+      BROWSER=/usr/bin/google-chrome
+    fi
     while true; do
-      rm -rf ~/.{config,cache}/google-chrome/
-      google-chrome --kiosk --no-first-run  'http://localhost'
+      sleep 1
+      if lsof -Pi :8312 -sTCP:LISTEN -t >/dev/null ; then
+          sudo -H -u triage DISPLAY=$DISPLAY xbacklight -set 90
+          sudo -H -u triage DISPLAY=$DISPLAY pactl set-sink-mute 0 false
+          sudo -H -u triage DISPLAY=$DISPLAY pactl set-sink-volume 0 90%
+          sudo -H -u triage rm -rf /home/{U}/.{config,cache}/{google-chrome,chromium}/
+          sudo -H -u triage $BROWSER --display=$DISPLAY --kiosk --no-first-run 'http://localhost:8312'
+      fi
+      sleep 1
     done
 Set the executable to the wce-kiosk.sh
     sudo chmod +x /usr/local/bin/wce-kiosk.sh
@@ -88,7 +98,7 @@ Apparently this is a bad thing to do from security point of view,
 
 ### Test
 Run 
-    sudo start wce-kiosk
+    sudo start wce-kiosks
 
 ### /etc/default/grub.cfg
 
@@ -106,3 +116,10 @@ Save and exit that and run
 
 ## Update
 While development, xorg x-server came out with 2 flavors. HWE (Hardware Enabled) and normal (non-HWE). I'm not quite sure of which is better. I assume HWE is faster but might be more machine dependant. OTOH, running X11 with framebuffer based driver should be avoided but probably more compatible. For the scheme of triage, this might be more preferable as it's simplest form of pushing pixel to screen. We have to keep an eye on updates of Xorg.
+
+
+## aufs
+So DOUBLE CHECK /etc/initramfs-tools/scripts/__rootaufs is executable.
+So DOUBLE CHECK /etc/initramfs-tools/scripts/__rootaufs is executable.
+If exec bit is not on, set exec bit and remake the initfs. "update-initramfs -u"
+

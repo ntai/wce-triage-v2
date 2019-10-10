@@ -21,6 +21,7 @@ PXE menu imtes need config.
 - A directory must be exported. default is /var/lib/netclient/wce_triage
 
 ### Client root
+- After copying kernel (cp /vmlinux /var/lib/netboot/wce_*/), make sure it's world readable. atftpd cannot read it otherwise.
 - Updating kernel? Making sure aufs working may be a good idea.
 - Updating wce_triage package for the client root
 - Updating UI for wce triage app
