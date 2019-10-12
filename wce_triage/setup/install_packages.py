@@ -3,6 +3,7 @@
 # Install Ubunto packages (some are python packages)
 #
 import os, sys, subprocess
+from ..const import *
 
 # python3-aiohttp python3-aiohttp-cors - triage backend.
 # yes, you can cross-domain
@@ -117,7 +118,7 @@ if __name__ == "__main__":
     packages = packages + triage_kiosk_packages
     pass
 
-  if os.environ.get('WCE_SERVER') == "true":
+  if os.environ.get(const.WCE_SERVER) == "true":
     packages = packages + server_packages
     pass
 

@@ -13,7 +13,7 @@ env['TRIAGEPASS'] = 'wce123'
 # Workstation gets all of packages
 env['WCE_DESKTOP'] = 'true'
 env['WCE_TRIAGE_DISK'] = 'true'
-env['WCE_SERVER'] = 'true'
+env[const.WCE_SERVER] = 'true'
 
 # 
 env['PATCHES'] = 'workstation'
