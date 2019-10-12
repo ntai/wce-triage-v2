@@ -4,6 +4,22 @@
 #
 import os, sys, subprocess
 
+def list_installed_packages()
+  """Lists and returns installed packages.
+  Returns dict, not list.
+  """
+  installed_packages = {}
+
+  apt_list = subprocess.run(['apt', 'list', '--installed'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  for pkg_line in apt_list.stdout.decode('iso-8859-1').splitlines():
+    pkg_line = pkg_line.strip()
+    if '/' in pkg_line:
+      installed_packages[pkg_line.split('/')[0]] = pkg_line
+      pass
+    pass
+  return installed_packages
+
+
 # python3-aiohttp python3-aiohttp-cors - triage backend.
 # yes, you can cross-domain
 # probably, not used for live triage.
@@ -92,7 +108,7 @@ triage_kiosk_packages = [
 python_packages = ['python-socketio']
 
 #
-#
+# Packages for the server
 #
 server_packages = [
   'atftpd',
@@ -109,6 +125,35 @@ server_packages = [
   'python3-distutils'
 ]
 
+#
+# Packages for desktop client
+#
+desktop_packages = [
+  'seahorse',
+  'ubuntu-edu-preschool',
+  'ubuntu-edu-primary',
+  'ubuntu-edu-secondary',
+  'ubuntu-edu-tertiary',
+  'eclipse',
+  'gpg',
+  'apt-transport-https'
+  ]
+
+
+def install_vs_code():
+  """Install Visual Studio Code"""
+  subprocess.run('curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg', shell=True)
+  subprocess.run('sudo -H install -o root -g root -m 644 packages.microsoft.gpg /usr/share/keyrings/', shell=True)
+
+  cat = subprocess.Popen2('sudo -H cat > /etc/apt/sources.list.d/vscode.list', shell=True, stdin=subprocess.PIPE)
+  cat.communicate("deb [arch=amd64 signed-by=/usr/share/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/vscode stable main")
+
+  subprocess.run('sudo -H apt-get update', shell=True)
+  subprocess.run('sudo -H apt-get install code', shell=True) # or code-insiders
+  pass
+
+
+
 if __name__ == "__main__":
   packages = base_packages + xorg_packages
 
@@ -121,15 +166,11 @@ if __name__ == "__main__":
     packages = packages + server_packages
     pass
 
-  installed_packages = {}
-
-  apt_list = subprocess.run(['apt', 'list', '--installed'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-  for pkg_line in apt_list.stdout.decode('iso-8859-1').splitlines():
-    pkg_line = pkg_line.strip()
-    if '/' in pkg_line:
-      installed_packages[pkg_line.split('/')[0]] = pkg_line
-      pass
+  if os.environ.get('WCE_DESKTOP') == "true":
+    packages = packages + server_packages
     pass
+
+  installed_packages = list_installed_packages()
   
   for package in packages:
     if installed_packages.get(package):
