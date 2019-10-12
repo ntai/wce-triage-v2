@@ -4,6 +4,7 @@ There are two cases, one for during triage where a machine generates a default n
 and other is for server.
 
 """
+from ..lib.const import *
 from ..components.network import *
 import sys, os
 
@@ -146,7 +147,7 @@ def generate_default_config(devices):
   ethernets = []
   wifis = []
   
-  WCE_SERVER = os.environ.get('WCE_SERVER', 'false')
+  WCE_SERVER = os.environ.get(const.WCE_SERVER, 'false')
 
   # Uber-default interface setup
   for dev in devices:
@@ -299,12 +300,12 @@ if __name__ == "__main__":
   eth2 = NetworkDevice(device_name="eth2", device_type=NetworkDeviceType.Wifi)
   netdevs = [eth0, eth1, eth2]
 
-  os.environ['WCE_SERVER'] = 'false'
+  os.environ[const.WCE_SERVER] = 'false'
 
   generate_default_config(netdevs)
   generate_netplan_file(None, netdevs)
 
-  os.environ['WCE_SERVER'] = 'true'
+  os.environ[const.WCE_SERVER] = 'true'
 
   generate_default_config(netdevs)
   generate_netplan_file(None, netdevs)
@@ -318,7 +319,7 @@ if __name__ == "__main__":
   eth1.set_config(None)
   eth2.set_config(None)
 
-  os.environ['WCE_SERVER'] = 'false'
+  os.environ[const.WCE_SERVER] = 'false'
   generate_default_config(netdevs)
 
   eth1.config["optional"] = "no"

@@ -10,7 +10,7 @@ env['TRIAGEUSER'] = 'triage'
 env['TRIAGEPASS'] = 'triage'
 
 # This affects the package installation
-env['WCE_SERVER'] = 'true'
+env[const.WCE_SERVER] = 'true'
 
 # This affects patch_system
 env['PATCHES'] = 'server'

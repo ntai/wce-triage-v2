@@ -1099,9 +1099,9 @@ if __name__ == '__main__':
 
   # Find a url share from boot cmdline. If this is nfs booted, it should be there.
   # Find payload as well
-  wce_share_re = re.compile('wce_share=([\w\/\.+\-_\:\?\=@#\*&\\%]+)')
+  wce_share_re = re.compile(const.wce_share + '=([\w\/\.+\-_\:\?\=@#\*&\\%]+)')
   wce_payload = None
-  wce_payload_re = re.compile('wce_payload=([\w\.+\-_\:\?\=@#\*&\\%]+)')
+  wce_payload_re = re.compile(const.wce_payload + '=([\w\.+\-_\:\?\=@#\*&\\%]+)')
 
   with open("/proc/cmdline") as cmdlinefd:
     cmdline = cmdlinefd.read()

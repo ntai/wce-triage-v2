@@ -4,20 +4,21 @@
 # WCE's disk prep.
 #
 import os, sys, subprocess
+from ..const import *
 
 env = os.environ.copy()
-env['GRUB_DISABLE_OS_PROBER'] = 'true'
-env['TRIAGEUSER'] = 'triage'
-env['TRIAGEPASS'] = 'triage'
+env[const.GRUB_DISABLE_OS_PROBER] = const.true
+env[const.TRIAGEUSER] = 'triage'
+env[const.TRIAGEPASS] = 'triage'
 
 # Workstation gets all of packages
-env['WCE_DESKTOP'] = 'true'
-env['WCE_TRIAGE_DISK'] = 'true'
-env['WCE_SERVER'] = 'true'
+env[const.WCE_DESKTOP] = const.true
+env[const.WCE_TRIAGE_DISK] = const.true
+env[const.WCE_SERVER] = const.true
 
 # 
-env['PATCHES'] = 'server'
-# env['PATCHES'] = 'workstation'
+env[const.PATCHES] = const.server
+# env[const.PATCHES] = const.workstation
 
 if __name__ == "__main__":
   steps = [#'install_packages',
