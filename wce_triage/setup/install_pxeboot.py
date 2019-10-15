@@ -7,6 +7,10 @@
 #
 # FYI: pxelinux is kicked off by /etc/dnsmasq.conf
 #
+# I realized that, this isn't enough. I need two pieces, one for the templates
+# and the UI to drive it. The pxeboot setting probably should come from a config
+# file, and natural choice is JSON.
+#
 import os, sys, subprocess, distutils.file_util, stat
 
 if os.getuid() != 0:
@@ -41,13 +45,21 @@ MENU MARGEIN 5
 
 MENU TITLE WCE PXE Triage
 
-LABEL WCE Triage
+LABEL WCE Triage 64bit
   MENU DEFAULT
   MENU LABEL WCE ^Triage
-  KERNEL wce/vmlinuz
-  APPEND initrd=wce/initrd.img hostname=bionic nosplash noswap boot=nfs netboot=nfs nfsroot=10.3.2.1:/var/lib/netclient/wcetriage acpi_enforce_resources=lax edd=on ip=dhcp aufs=tmpfs ---
+  KERNEL wce_amd64/vmlinuz
+  APPEND initrd=wce_amd64/initrd.img hostname=bionic nosplash noswap boot=nfs netboot=nfs nfsroot=10.3.2.1:/var/lib/netclient/wcetriage_amd64 acpi_enforce_resources=lax edd=on ip=dhcp aufs=tmpfs ---
   TEXT HELP
-  * WCE Traige V2 alpha 2 
+  WCE Triage 64bit (amd64)
+  ENDTEXT
+
+LABEL WCE Triage 632bit
+  MENU LABEL WCE ^32 bit Triage
+  KERNEL wce_x32/vmlinuz
+  APPEND initrd=wce_x32/initrd.img hostname=bionic nosplash noswap boot=nfs netboot=nfs nfsroot=10.3.2.1:/var/lib/netclient/wcetriage_x32 acpi_enforce_resources=lax edd=on ip=dhcp aufs=tmpfs ---
+  TEXT HELP
+  WCE Triage 32bit (x86_32)
   ENDTEXT
 
 Label Local

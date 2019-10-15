@@ -13,6 +13,7 @@ from .partclone_tasks import *
 from ..lib.util import is_block_device
 from .json_ui import *
 from ..lib.disk_images import *
+from ..const import *
 
 
 # "Waiting", "Prepare", "Preflight", "Running", "Success", "Failed"]
@@ -45,12 +46,19 @@ class RestoreDiskRunner(PartitionDiskRunner):
       raise Exception('Restore type is not provided.')
     #
     self.partition_id = partition_id
+    self.restore_type = restore_type
+
+    efi_boot = self.restore_type.get(const.efi_image) is not None
+    partition_plan = self.restore_type.get(const.partition_plan)
+
     if pplan is None:
-      pplan = make_efi_partition_plan(disk, partition_id=partition_id)
+      if partition_plan == const.traditional:
+        pplan = make_traditional_partition_plan(disk, partition_id=partition_id)
+      else:
+        pplan = make_efi_partition_plan(disk, partition_id=partition_id)
+        pass
       pass
 
-    self.restore_type = restore_type
-    efi_boot = self.restore_type.get('efi_image') is not None
     super().__init__(ui, runner_id, disk, wipe=wipe, partition_plan=pplan, partition_map=partition_map, efi_boot=efi_boot, media=media)
 
     self.disk = disk
@@ -81,6 +89,10 @@ class RestoreDiskRunner(PartitionDiskRunner):
     # hack - source size is hardcoded to 4MB...
     if self.efi_source:
       self.tasks.append(task_restore_disk_image("Load EFI System partition", disk=disk, partition_id=EFI_NAME, source=self.efi_source, source_size=2**22))
+      # Loading EFI parition changes the partition ID to the previous volume id. I want to have unique ID so
+      # set the ID I have to the EFI partition.
+      self.tasks.append(task_set_fat_volume_id("Set EFI partition UUID", disk=disk, partition_id=EFI_NAME))
+      # This should now match the previous volume ID so this isn't needed.
       self.tasks.append(task_refresh_partitions("Refresh partition information", disk))
       pass
 
@@ -91,9 +103,9 @@ class RestoreDiskRunner(PartitionDiskRunner):
     self.tasks.append(task_fsck("fsck partition", disk=disk, partition_id=partition_id, payload_size=self.source_size/4))
 
     # Loading disk image changes file system's UUID. 
-    if self.restore_type["id"] != 'clone':
+    if self.restore_type["id"] != const.clone:
       # set the fs's uuid to it
-      self.tasks.append(task_set_partition_uuid("Set partition UUID", disk=disk, partition_id=partition_id))
+      self.tasks.append(task_set_ext_partition_uuid("Set partition UUID", disk=disk, partition_id=partition_id))
     else:
       # Read the fs's uuid back
       self.tasks.append(task_fetch_partitions("Fetch disk information", disk))
@@ -104,24 +116,25 @@ class RestoreDiskRunner(PartitionDiskRunner):
     self.tasks.append(task_mount("Mount the target disk", disk=disk, partition_id=partition_id))
 
     # trim some files for new machine
-    if self.restore_type["id"] != 'clone':
+    if self.restore_type["id"] != const.clone:
       self.tasks.append(task_remove_persistent_rules("Remove persistent rules", disk=disk, partition_id=partition_id))
       pass
 
     # set up some system files. finalize disk sets the new host name and change the fstab
-    if self.restore_type["id"] != 'clone':
+    if self.restore_type["id"] != const.clone:
       self.tasks.append(task_finalize_disk("Finalize disk",
                                            disk=disk,
                                            partition_id=partition_id,
                                            newhostname=self.newhostname,
-                                           wce_share_url=self.wce_share_url))
+                                           wce_share_url=self.wce_share_url,
+                                           cmdline=self.restore_type.get(const.cmdline)))
       pass
 
     # Install GRUB
     self.tasks.append(task_install_grub('Install GRUB boot manager', disk=disk, detected_videos=detected_videos, partition_id=partition_id))
 
     # unmount so I can run fsck and expand partition
-    if self.restore_type["id"] != 'clone':
+    if self.restore_type["id"] != const.clone:
       self.tasks.append(task_unmount("Unmount target", disk=disk, partition_id=partition_id))
       pass
 
@@ -165,7 +178,7 @@ def run_load_image(ui, devname, imagefile, imagefile_size, efisrc, newhostname, 
   if id is None:
     return
   
-  efi_image = restore_type.get("efi_image")
+  efi_image = restore_type.get(const.efi_image)
   efi_boot=efi_image is not None
 
   # Get loading media
@@ -174,9 +187,9 @@ def run_load_image(ui, devname, imagefile, imagefile_size, efisrc, newhostname, 
   # Interestingly, partition map has no impact on partition plan
   # Partition map in the restore type file is always ignored.
   # FIXME: I'll use it for sanity check
-  partition_map = restore_type.get("partition_map", "gpt")
+  partition_map = restore_type.get(const.partition_map, "gpt")
 
-  ext4_version = restore_type.get("ext4_version")
+  ext4_version = restore_type.get(const.ext4_version)
 
   # Let's make "triage" id special. This is the only case using usb stick
   # partition plan makse sense.
@@ -188,8 +201,10 @@ def run_load_image(ui, devname, imagefile, imagefile_size, efisrc, newhostname, 
   # customizable through the metadata but that is going to make things error prone
   # and when something goes wrong, really hard to debug.
 
-  if id == "triage" or (restore_type.get("partition_plan") == "triage"):
-    partition_map = restore_type.get('partition_map', 'gpt' if efi_image is not None else 'msdos')
+  tlog.debug(restore_type)
+
+  if id == "triage" or (restore_type.get(const.partition_plan) == const.triage):
+    partition_map = restore_type.get(const.partition_map, 'gpt' if efi_image is not None else 'msdos')
     partition_id = None
     # You can have partition id for gpt, but not for dos partition map
     if partition_map == 'gpt':
@@ -206,6 +221,19 @@ def run_load_image(ui, devname, imagefile, imagefile_size, efisrc, newhostname, 
         pass
       pass
     pass
+  elif restore_type.get(const.partition_plan) == const.traditional:
+    partition_map = restore_type.get(const.partition_map, 'msdos')
+    partition_id = None
+    # You can have partition id for gpt, but not for dos partition map
+    pplan = make_traditional_partition_plan(disk, ext4_version=ext4_version)
+    # For ms-dos partition, you cannot have name so look for the ext4 partition and use
+    # the partition number.
+    for part in pplan:
+      if part.filesys == 'ext4':
+        partition_id = part.no
+        break
+      pass
+    pass
   else:
     partition_map='gpt'
     partition_id='Linux'
@@ -215,7 +243,7 @@ def run_load_image(ui, devname, imagefile, imagefile_size, efisrc, newhostname, 
   if partition_id is None:
     tlog.info("Partition ID is missing.")
     for part in pplan:
-      tlog.info("Partition %d: name %s, type %s" % (part.no, str(part.name), str(part.parttype)))
+      tlog.info("Partition %d: name %s, type %s" % (part.no, str(part.name), str(part.partcode)))
       pass
     raise Exception("Partion ID is not known for resotring disk.")
   

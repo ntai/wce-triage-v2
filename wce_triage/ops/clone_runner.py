@@ -1,28 +1,26 @@
 #!/usr/bin/env python3
-#
-# Disk operations
-#
-# Tasks: each task is a disk operation. Some tasks can take a long time.
-#
-# For example, a task is like mkfs. As the task runs, it should produce progress
-#
-# By calling into diskop, it creates the plan - which is the sequence of tasks.
-# exec runs through the tasks.
-#
+"""clone_runner.py
+
+Clone runner does cloning/binary copying of disk.
+This is because making USB stick is panifully slow, and binary copy is 
+10+x faster.
+
+
+"""
 
 import datetime, re, subprocess, sys, os
 
 from .tasks import *
 from .ops_ui import *
 from .pplan import *
-from ..components.disk import Disk, Partition, Nvme, create_storage_instance, canonicalize_file_system_name
+from ..components.disk import Disk, Partition
 from .runner import *
 from ..lib.util import *
 #
 # create a new gpt partition from partition plan
 #
-class PartitionDiskRunner(Runner):
-  def __init__(self, ui, runner_id, disk, partition_plan, partition_map='gpt', efi_boot=False, wipe=None, media=None):
+class CloneRunner(Runner):
+  def __init__(self, ui, runner_id, disk, wipe=None, media=None):
     super().__init__(ui, runner_id)
     self.partition_map = partition_map # label is the parted's partition map type
     self.disk = disk
@@ -75,7 +73,7 @@ class PartitionDiskRunner(Runner):
                                            disk=self.disk, n_partitions=len(self.pplan)-1))
 
     for part in self.pplan:
-      partdevname = self.disk.get_partition_device_file(str(part.no))
+      partdevname = self.disk.device_name + str(part.no)
       partition = Partition(device_name=partdevname,
                             file_system=part.filesys,
                             partcode=part.partcode,

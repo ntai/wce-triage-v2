@@ -20,6 +20,23 @@ part_re = re.compile(r"([^\s]+)\s+\*{0,1}\s+\d+\s+\d+\s+\d+\s+([\dA-Fa-f]+)\s+")
 wce_release_file_name = 'wce-release'
 
 #
+# File system name canonicalization
+#
+file_system_name_map = {
+  "ext4": "ext4",
+  "fat32": "vfat",
+  "vfat": "vfat",
+  "linux-swap(v1)": "swap",
+  "swap": "swap",
+  }
+
+def canonicalize_file_system_name(fsname):
+  if fsname is None:
+    return None
+  fsname = fsname.lower()
+  return file_system_name_map.get(fsname, fsname)
+
+#
 # disk class represents partition
 #
 
@@ -34,6 +51,8 @@ SWAP - '8200': Linux swap partition.
 EXT4 - '8300': Linux ext4 file system. This can be any version of ext-fs but we only care ext4.
 """
 
+  # Partition code
+
   MBR = 'EF01'
   BIOSBOOT = 'EF02'
   UEFI = 'EF00'
@@ -43,7 +62,7 @@ EXT4 - '8300': Linux ext4 file system. This can be any version of ext-fs but we 
   def __init__(self,
                device_name=None,
                partition_name=None,
-               partition_type=None, # partition code such as '83'
+               partcode=None, # partition code such as '83'
                partition_number=None,
                partition_uuid=None,
                fs_uuid=None,
@@ -55,18 +74,19 @@ EXT4 - '8300': Linux ext4 file system. This can be any version of ext-fs but we 
     """ctor of partition.
 device_name: Partition device name - ex. /dev/sda1
 partition_name: Name of partition - only valid for GPT.
-partition_type: partition code such as 82, 83.
+partcode: partition code such as 82, 83.
+file_system: partition file system - "ext4", "swap", "vfat"...
 partition_number: Parition number - ex 1 for /dev/sda1
 partition_uuid: UUID of partition
 fs_uuid: UUID of file system
 mounted: true if the partition is mounted as file system.
 """
-    self.device_name = device_name
+    self._device_name = device_name
     self.partition_name = partition_name # aka volume name
-    self.partition_type = partition_type
+    self.partcode = partcode
     self.partition_number = partition_number
     self.partition_uuid = partition_uuid # Partition UUID, different from fs_uuid
-    self.file_system = file_system # This is from parted
+    self.file_system = canonicalize_file_system_name(file_system) # This is from parted, or blkid, or me.
     self.fs_uuid = fs_uuid # This is the file system UUID.
     self.ext4_version = None # Ext4 file system version. 1.42 is for Ubuntu 16. It added metadata_csum after >= 1.43
     self.mounted = mounted
@@ -85,7 +105,14 @@ it's /tmp/mnt/<fs_uuid>.
     return os.path.join(root, self.fs_uuid)
   
   def __str__(self):
-    return f"Partition {self.partition_number} on {self.device_name}, name: {self.partition_name}, type: {self.partition_type}, puuid: {self.partition_uuid}, fs: {self.file_system}" 
+    return f"Partition {self.partition_number} on {self._device_name}, name: {self.partition_name}, code: {self.partcode}, puuid: {self.partition_uuid}, fs: {self.file_system}" 
+
+  @property
+  def device_name(self):
+    return self._device_name
+
+  def is_file_system(self, fsname):
+    return self.file_system == canonicalize_file_system_name(fsname)
 
   pass
 
@@ -218,22 +245,14 @@ class Disk:
       pass
     return None
 
-  # find a partition by partition type
-  def find_partition_by_type(self, part_type):
-    for part in self.partitions:
-      if part.partition_type == part_type:
-        return part
-      pass
-    return None
-  
-
-  # find a partition by file system
+  # find a partition by partition file system
   # This works only because usually there is only one particular file system.
   # If there are more than one, this would find the first one, and if there
   # are multple, you'd be probably in trouble.
-  def find_partition_by_file_system(self, file_system):
+  def find_partition_by_file_system(self, filesys):
+    filesys = canonicalize_file_system_name(filesys)
     for part in self.partitions:
-      if part.file_system == file_system:
+      if part.file_system == filesys:
         return part
       pass
     return None
@@ -249,7 +268,7 @@ class Disk:
     part1 = self.get_partition_device_file("1")
     installed = False
     for partition in self.partitions:
-      if partition.partition_name == part1 and partition.partition_type == '83':
+      if partition.partition_name == part1 and partition.partcode in ['83', '8300']:
         tlog.debug("%s Partition %s has the linux partition type" % (self.device_name, partition.partition_name))
         # The parition 
         try:
@@ -652,7 +671,7 @@ class DiskPortal(Component):
 
 class PartitionLister:
   #                          1:    2: start s 3: end s   4: size    5:fs  6:name  7:flags   
-  partline_re = re.compile('^(\d+):([\d\.]+)s:([\d\.]+)s:([\d\.]+)s:(\w*):([^:]*):(.*);')
+  partline_re = re.compile('^(\d+):([\d\.]+)s:([\d\.]+)s:([\d\.]+)s:([^:]*):([^:]*):[^;]*;')
 
   def __init__(self, disk):
     self.disk = disk

@@ -3,6 +3,7 @@
 # This is for setting up network server
 #
 import os, sys, subprocess
+from ..const import *
 
 # For the setup user 
 env = os.environ.copy()
@@ -13,7 +14,7 @@ env['TRIAGEPASS'] = 'triage'
 env[const.WCE_SERVER] = 'true'
 
 # This affects patch_system
-env['PATCHES'] = 'server'
+env[const.PATCHES] = const.server
 
 if __name__ == "__main__":
   

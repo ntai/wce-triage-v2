@@ -34,6 +34,7 @@ base_packages = [
   'gdisk',                    # gdisk
   'grub2-common',             # boot manager
   'grub-pc',                  # boot manager
+  'hardinfo',                 # hardinfo - hardware profiling app
   'iwconfig',                 # for seeing wifi device list
   'make',                     # make makes 
   'mg',                       # small emacs-like editor

@@ -8,8 +8,9 @@
 #
 
 import datetime, re, subprocess, abc, os, select, time, uuid, json, traceback, shutil
+import struct
 from ..components.pci import find_pci_device_node
-from ..components.disk import Disk, Partition, PartitionLister
+from ..components.disk import Disk, Partition, PartitionLister, canonicalize_file_system_name
 from ..lib.util import drain_pipe, drain_pipe_completely, get_triage_logger
 from ..lib.timeutil import *
 from ..lib.grub import *
@@ -199,7 +200,9 @@ class op_task_python_simple(op_task_python):
 
   def poll(self):
     self.run_python()
-    self.set_progress(100, "finished.")
+    if self.progress < 100:
+      self.set_progress(100, "finished.")
+      pass
     pass
 
   def _estimate_progress(self, total_seconds):
@@ -419,7 +422,7 @@ class task_mkfs(op_task_process_simple):
       #
       partname = self.part.partition_name
       if partname is None:
-        partname = "EFI" if self.part.partition_type == Partition.UEFI else "DOS"
+        partname = "EFI" if self.part.partcode == Partition.UEFI else "DOS"
         pass
 
       self.argv = ["mkfs.vfat", "-n", partname]
@@ -563,37 +566,6 @@ class task_mount(op_task_process_simple):
   def teardown(self):
     self.part.mounted = self.progress == 100
     super().teardown()
-    pass
-
-  pass
-
-
-#
-# not implemented
-#
-class task_assign_uuid_to_partition(op_task_process_simple):
-
-  def __init__(self, description, disk=None, partition_id=None, **kwargs):
-    super().__init__(description, time_estimate=1, **kwargs)
-    self.disk = disk
-    self.partition_id = partition_id
-    pass
-  
-
-  def setup(self):
-    self.part = self.disk.find_partition(self.partition_id)
-    if self.part is None:
-      self.set_progress(999, "Partition %s on disk %d is not found." % (self.partition_id, self.disk.device_name))
-      return
-
-    if self.part.partition_type == "83":
-      self.argv = ["tune2fs", "%s" % part.device_name, "-U", part.partition_uuid, "-L", "/"]
-    elif part.partition_type == "C":
-      self.argv = ["mkswap", "-U", disk.uuid2, "%s" % part.device_name]
-      pass
-    else:
-      raise Exception("unsupported partition type")
-    super().setup()
     pass
 
   pass
@@ -863,12 +835,18 @@ class task_fetch_partitions(op_task_process_simple):
   pass
     
 
+#
+def set_partition_type(part, tag, value):
+  part.file_system = canonicalize_file_system_name(value)
+  pass
+
+
 class task_refresh_partitions(op_task_command):
   """refreshes (reads) partitions from disk."""
   
   props = {'PARTUUID':  'partition_uuid',
            # 
-           'TYPE':      'partition_type',
+           'TYPE':      set_partition_type,
            'PARTLABEL': 'partition_name',
            'UUID':      'fs_uuid'
            }
@@ -886,9 +864,13 @@ class task_refresh_partitions(op_task_command):
 
     if self.step >= len(self.disk.partitions):
       self.set_progress(100, "%s finished." % self.description)
+      debug_msg = ["Refresh partition"]
+
       for part in self.disk.partitions:
-        self.verdict.append("Partition %d %s (%s) - UUID %s." % (part.partition_number, part.partition_type, part.partition_name, part.fs_uuid))
+        self.verdict.append("Partition %d %s (%s) - UUID %s." % (part.partition_number, part.file_system, part.partition_name, part.fs_uuid))
+        debug_msg.append("Partition %d %s (%s) - UUID %s." % (part.partition_number, part.file_system, part.partition_name, part.fs_uuid))
         pass
+      tlog.info("\n".join(debug_msg))
       return
 
     part = self.disk.partitions[self.step]
@@ -917,17 +899,20 @@ class task_refresh_partitions(op_task_command):
         tag = token
         continue
 
-      attrname = self.props.get(tag)
-      if attrname is not None:
-        part.__setattr__(attrname, token)
+      setter = self.props.get(tag)
+      if setter is not None:
+        if isinstance(setter, str):
+          part.__setattr__(setter, token)
+        else:
+          setter(part, tag, token)
+          pass
         pass
       tag = None
       pass
 
-    #
-    self.log("Partition %d %s (%s) - UUID %s." % (part.partition_number, part.partition_type, part.partition_name, part.fs_uuid))
+    tlog.info("Partition %d %s (%s) - UUID %s." % (part.partition_number, part.file_system, part.partition_name, part.fs_uuid))
 
-    if part.partition_type == 'ext4':
+    if part.is_file_system('ext4'):
       self.ext4_count += 1
       # If this is the first linux ext4 partition, and has no name, name it 'Linux'
       if not part.partition_name and self.ext4_count == 1:
@@ -944,7 +929,7 @@ class task_refresh_partitions(op_task_command):
 #
 #
 #
-class task_set_partition_uuid(op_task_process_simple):
+class task_set_ext_partition_uuid(op_task_process_simple):
   def __init__(self, description, disk=None, partition_id=None, time_estimate=6, **kwargs):
     self.disk = disk
     self.partition_id = partition_id
@@ -960,6 +945,91 @@ class task_set_partition_uuid(op_task_process_simple):
       return
     self.argv = ["tune2fs", "-f", "-U", part1.fs_uuid, part1.device_name]
     super().setup()
+    return
+
+  pass
+
+
+#
+class task_set_fat_label(op_task_process_simple):
+  def __init__(self, description, disk=None, partition_id=None, time_estimate=6, **kwargs):
+    self.disk = disk
+    self.partition_id = partition_id
+    # argv is a placeholder
+    super().__init__(description, encoding='iso-8859-1', time_estimate=3, argv=["fatlabel", disk.device_name, partition_id], **kwargs)
+    pass
+  
+  def setup(self):
+    #
+    part1 = self.disk.find_partition(self.partition_id)
+    if part1 is None:
+      self.set_progress(999, "Partition %s does not exist on %s" % (self.partition_id, self.disk.device_name))
+      return
+    self.argv = ["fatlabel", part1.device_name, part1.partition_id]
+    super().setup()
+    return
+
+  pass
+
+
+#
+class task_set_fat_volume_id(op_task_python_simple):
+  """sets the FAT32's volume ID.
+  There is no utility to do this so the python goes after the partition device file and writes out the ID.
+  see: https://superuser.com/questions/1247972/change-uuid-of-vfat-partition
+  """
+  def __init__(self, description, disk=None, partition_id=None, **kwargs):
+    self.disk = disk
+    self.partition_id = partition_id
+    super().__init__(description, time_estimate=2, **kwargs)
+    pass
+  
+  def setup(self):
+    #
+    part1 = self.disk.find_partition(self.partition_id)
+    if part1 is None:
+      self.set_progress(999, "Partition %s does not exist on %s" % (self.partition_id, self.disk.device_name))
+      return
+    super().setup()
+    return
+
+  def run_python(self):
+    #
+    part1 = self.disk.find_partition(self.partition_id)
+    if part1 is None:
+      self.set_progress(999, "Partition %s does not exist on %s" % (self.partition_id, self.disk.device_name))
+      return
+
+    device_name = self.disk.get_partition_device_file(part1.partition_number)
+
+    if part1.file_system not in [ "fat32", "vfat" ]:
+      self.set_progress(999, "Partition %s is not fat32. (%s)" % (device_name, part1.file_system))
+      return
+
+    sanity_check = re.match('[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}', part1.fs_uuid)
+    if not sanity_check:
+      self.set_progress(999, "Partition %s - ID %s is not for fat32" % (device_name, part1.fs_uuid))
+      return
+      
+    hex_str = part1.fs_uuid[:4] + part1.fs_uuid[5:]
+    id = struct.pack("<I", int(hex_str, 16))
+
+    device_file = open(device_name, "rb")
+    # https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2003/cc776720(v=ws.10)?redirectedfrom=MSDN#w2k3tr_fat_how_gkxz
+    # Extended BPB Fields for FAT32 Volumes
+    device_file.seek(0x43)
+    device_file.read(4)
+    device_file.close()
+
+
+    device_file = open(device_name, "wb")
+    # https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2003/cc776720(v=ws.10)?redirectedfrom=MSDN#w2k3tr_fat_how_gkxz
+    # Extended BPB Fields for FAT32 Volumes
+    device_file.seek(0x43)
+    device_file.write(id)
+    device_file.close()
+
+    tlog.debug("FAT volume id - wrote %08x to %s" % (struct.unpack("<I", id)[0], device_name))
     return
 
   pass
@@ -1160,7 +1230,7 @@ class task_finalize_disk(op_task_python_simple):
 fstab is always adjusted to the new partition UUID.
 new hostname set up is only done if the new hostname is provided. If it's None, it's untouched.
 """
-  def __init__(self, description, disk=None, newhostname=None, partition_id='Linux', efi_id = None, wce_share_url=None, **kwargs):
+  def __init__(self, description, disk=None, newhostname=None, partition_id='Linux', efi_id = None, wce_share_url=None, cmdline=None, **kwargs):
     super().__init__(description, time_estimate=1, **kwargs)
     self.newhostname = newhostname
     self.disk = disk
@@ -1170,6 +1240,7 @@ new hostname set up is only done if the new hostname is provided. If it's None, 
     self.swappart = None
     self.mount_dir = None
     self.wce_share_url = wce_share_url
+    self.cmdline = cmdline
     pass
    
 
@@ -1187,16 +1258,18 @@ new hostname set up is only done if the new hostname is provided. If it's None, 
       raise Exception(msg)
 
     self.efi_part = self.disk.find_partition(EFI_NAME)
-    self.swappart = self.disk.find_partition_by_type(Partition.SWAP)
+    self.swappart = self.disk.find_partition_by_file_system("swap")
     self.mount_dir = self.linuxpart.get_mount_point()
 
     # patch up the restore
     fstab = open("%s/etc/fstab" % self.mount_dir, "w")
     fstab.write(fstab_template % (self.linuxpart.fs_uuid))
     if self.efi_part:
+      tlog.info("fstab: EFI %s" % self.efi_part.fs_uuid)
       fstab.write(efi_template % self.efi_part.fs_uuid)
       pass
     if self.swappart:
+      tlog.info("fstab: Swap %s" % self.swappart.fs_uuid)
       fstab.write(swap_template % (self.swappart.fs_uuid))
       pass
     fstab.close()
@@ -1233,13 +1306,25 @@ new hostname set up is only done if the new hostname is provided. If it's None, 
       pass
 
     # Set the wce_share_url to /etc/default/grub
+    grub_filename = "%s/etc/default/grub" % self.mount_dir
+    grub_file = grub_config(grub_filename)
+    grub_file.open()
+
     if self.wce_share_url is not None:
-      grub_file = "%s/etc/default/grub" % self.mount_dir
-      updated, contents = grub_set_wce_share(grub_file, self.wce_share_url)
-      if updated:
-        grub = open(grub_file, "w")
-        grub.write(contents)
-        grub.close()
+      grub_file.set_cmdline_option(const.wce_share, self.wce_share_url)
+      pass
+
+    # cmdline
+    if self.cmdline:
+      for tag, value in self.cmdline.items():
+        grub_file.set_cmdline_option(tag, value)
+        pass
+      pass
+
+    updated, new_grub = grub_file.generate()
+    if updated:
+      with open(grub_filename, "w") as grub_fd:
+        grub_fd.write(new_grub)
         pass
       pass
 

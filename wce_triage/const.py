@@ -1,4 +1,6 @@
-"""String constants"""
+"""String constants. 
+Once defined, it becomes immutable.
+"""
 
 class _const:
   class ConstError(TypeError):
@@ -11,6 +13,7 @@ class _const:
     if name in self.__dict__:
       raise self.ConstError
     raise NameError
+  pass
  
 const = _const()
 
@@ -40,3 +43,20 @@ const.workstation = 'workstation'
 
 #
 const.true = 'true'
+
+const.efi_image = 'efi_image'
+const.partition_plan = 'partition_plan'
+const.partition_map = 'partition_map'
+const.clone = 'clone'
+const.traditional = 'traditional'
+const.triage = 'triage'
+const.ext4_version = 'ext4_version'
+
+const.ext4_version_1_42 = "1.42"
+const.ext4_version_no_metadata_csum = const.ext4_version_1_42
+
+#const.forcepae = 'forcepae'
+const.cmdline = 'cmdline'
+
+# cmdline special value for removing vlaue
+const._REMOVE_ = '_REMOVE_'

@@ -8,6 +8,7 @@ and webscoket server
 """
 
 from ..version import *
+from ..const import *
 import aiohttp
 import aiohttp.web
 from aiohttp.web_exceptions import *
@@ -1077,6 +1078,7 @@ def get_target_devices_from_request(request):
 import socket
 cli = ArgumentParser(description='Example Python Application')
 cli.add_argument("-p", "--port", type=int, metavar="PORT", dest="port", default=8312)
+cli.add_argument("--paylod-port", type=int, metavar="PAYLOADPORT", dest="payloadport", default=8080)
 cli.add_argument("--host", type=str, metavar="HOST", dest="host", default=socket.getfqdn())
 cli.add_argument("--rootdir", type=str, metavar="WCE_TRIAGE_UI_ROOTDIR", dest="rootdir", default=None)
 cli.add_argument("--wcedir", type=str, metavar="WCE_ROOT_DIR", dest="wcedir", default="/usr/local/share/wce")
@@ -1092,10 +1094,10 @@ if __name__ == '__main__':
   tlog.setLevel(logging.DEBUG)
   
   # Create and configure the HTTP server instance
-  the_root_url = u"{0}://{1}:{2}".format("HTTP", arguments.host, arguments.port)
+  the_root_url = u"{0}://{1}:{2}".format("http", arguments.host, arguments.port)
 
   # This is the default wce_share_url
-  wce_share_url = the_root_url + "/wce"
+  wce_share_url = u"{0}://{1}:{2}".format("http", arguments.host, arguments.payloadport)
 
   # Find a url share from boot cmdline. If this is nfs booted, it should be there.
   # Find payload as well

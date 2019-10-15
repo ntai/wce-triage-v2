@@ -4,7 +4,7 @@ There are two cases, one for during triage where a machine generates a default n
 and other is for server.
 
 """
-from ..lib.const import *
+from ..const import *
 from ..components.network import *
 import sys, os
 
