@@ -1,0 +1,12 @@
+{
+  "id": "test",
+  "filestem": "test",
+  "name": "Test WCE",
+  "timestamp": true,
+  "hostname": "wce",
+  "randomize_hostname": true,
+  "partition_plan": "traditional",
+  "partition_map": "msdos",
+  "cmdline": { "forcepae": null,
+               "acpi_enforce_resources": "lax" }
+}

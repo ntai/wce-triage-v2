@@ -1,0 +1,8 @@
+{
+    "id": "lubuntu-18",
+    "filestem": "lubuntu-1804",
+    "name": "Lubuntu 18.04LTS",
+    "timestamp": true,
+    "efi_image": ".efi-512M.fat32.partclone.gz",
+    "partition_map": "gpt"
+}

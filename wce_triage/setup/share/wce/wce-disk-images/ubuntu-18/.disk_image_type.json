@@ -1,0 +1,12 @@
+{
+  "id": "ubuntu-18",
+  "filestem": "mate1804",
+  "name": "Ubuntu 18.04LTS with no payload",
+  "timestamp": true,
+  "efi_image": ".efi-512M.fat32.partclone.gz",
+  "partition_map": "gpt",
+  "cmdline": {
+    "acpi_enforce_resources": "lax" ,
+    "nvme_core.default_ps_max_latency_us": "5500"
+  }
+}

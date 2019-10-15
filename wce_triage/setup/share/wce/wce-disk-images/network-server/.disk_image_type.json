@@ -1,0 +1,14 @@
+{
+  "id": "network-server",
+  "filestem": "network-server",
+  "name": "WCE Network Server",
+  "timestamp": true,
+  "efi_image": ".efi-512M.fat32.partclone.gz", 
+  "hostname": "wcebos1", "randomize_hostname": false,
+  "partition_map": "gpt",
+  "cmdline": {
+    "nvme_core.default_ps_max_latency_us": "5500",
+    "splash": "_REMOVE_",
+    "quiet": "_REMOVE_"
+  }
+}

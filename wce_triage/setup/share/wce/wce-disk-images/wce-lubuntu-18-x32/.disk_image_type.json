@@ -1,0 +1,12 @@
+{
+  "id": "wce-lubuntu-18-x32",
+  "filestem": "wce-lubuntu-18-x32",
+  "name": "WCE Lubuntu 18.04LTS 32bit",
+  "timestamp": true,
+  "hostname": "wce",
+  "randomize_hostname": true,
+  "partition_plan": "traditional",
+  "partition_map": "msdos",
+  "cmdline": { "forcepae": null,
+               "acpi_enforce_resources": "lax" }
+}

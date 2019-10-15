@@ -1,0 +1,15 @@
+{
+  "id": "triage-x32",
+  "filestem": "triage-x32",
+  "name": "Triage x86 32bit USB flash drive",
+  "timestamp": true,
+  "partition_plan": "triage",
+  "partition_map": "msdos",
+  "media": "usb-flash",
+  "wce_share_url": "/usr/local/share/wce",
+  "cmdline": { "forcepae": null,
+               "acpi_enforce_resources": "lax",
+               "quiet":  "_REMOVE_",
+               "splash": "_REMOVE_"
+             }
+}

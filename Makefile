@@ -24,6 +24,7 @@ uninstall:
 manifest:
 	echo include requirements.txt> MANIFEST.in
 	find wce_triage/setup/patches -type f -print |sort | sed -e 's/^/include /' >> MANIFEST.in
+	find wce_triage/setup/share -type f -print |sort | sed -e 's/^/include /' >> MANIFEST.in
 
 bootstrap:
 	sudo apt install python3-pip

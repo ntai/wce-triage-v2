@@ -1,0 +1,15 @@
+{
+  "id": "wce-16",
+  "filestem": "wce-mate16",
+  "name": "WCE Ubuntu 16.04LTS",
+  "timestamp": true,
+  "ext4_version": "1.42",
+  "partition_map": "gpt",
+  "partition_plan": "traditional",
+  "hostname": "wce",
+  "randomize_hostname": true,
+  "cmdline": {
+    "acpi_enforce_resources": "lax",
+    "forcepae": null
+  }
+}
