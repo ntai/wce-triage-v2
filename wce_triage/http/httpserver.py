@@ -1097,7 +1097,7 @@ if __name__ == '__main__':
   the_root_url = u"{0}://{1}:{2}".format("http", arguments.host, arguments.port)
 
   # This is the default wce_share_url
-  wce_share_url = u"{0}://{1}:{2}".format("http", arguments.host, arguments.payloadport)
+  wce_share_url = u"{0}://{1}:{2}/wce".format("http", arguments.host, arguments.payloadport)
 
   # Find a url share from boot cmdline. If this is nfs booted, it should be there.
   # Find payload as well
