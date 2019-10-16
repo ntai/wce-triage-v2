@@ -99,7 +99,7 @@ class RestoreDiskRunner(PartitionDiskRunner):
     # load disk image
     self.tasks.append(task_restore_disk_image("Load disk image", disk=disk, partition_id=partition_id, source=self.source, source_size=self.source_size))
 
-    # Make sure it went right.
+    # Make sure it went right. If this is a bad disk, this should catch it.
     self.tasks.append(task_fsck("fsck partition", disk=disk, partition_id=partition_id, payload_size=self.source_size/4))
 
     # Loading disk image changes file system's UUID. 
@@ -139,7 +139,7 @@ class RestoreDiskRunner(PartitionDiskRunner):
       pass
 
     # fsck/expand partition
-    self.tasks.append(task_fsck("fsck partition", disk=disk, partition_id=partition_id, payload_size=self.source_size/10))
+    self.tasks.append(task_fsck("fsck partition", disk=disk, partition_id=partition_id, payload_size=self.source_size/10, fix_filesytem=True))
     self.tasks.append(task_expand_partition("Expand the partion back", disk=disk, partition_id=partition_id))
 
     if self.efi_source:

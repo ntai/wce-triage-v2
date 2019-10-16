@@ -306,14 +306,24 @@ class op_task_process(op_task):
     else:
       if self.process.returncode in self.good_returncode:
         self.set_progress(100, self.kwargs.get('progress_finished', "Finished" ) )
+        if self.out:
+          tlog.info("Process stdout: " + self.out)
+          pass
+        if self.err:
+          tlog.info("Process stderr: " + self.err)
+          pass
+        pass
       else:
         self.set_progress(999, "Failed with return code %d\n%s" % (self.process.returncode, self.err))
-        pass
-      if self.out:
-        tlog.debug("Process stdout: " + self.out)
-        pass
-      if self.err:
-        tlog.debug("Process stderr: " + self.err)
+        log_msg = "%s failed with return code %d" % (self.description, self.process.returncode)
+        if self.out:
+          log_msg = log_msg + "\nstdout\n" + self.out
+          pass
+        if self.err:
+          log_msg = log_msg + "\nstderr\n" + self.err
+          pass
+        self.log(log_msg)
+        tlog.info(log_msg)
         pass
       pass
     pass
@@ -602,13 +612,17 @@ def task_get_uuid_from_partition(op_task_process_simple):
 #
 class task_fsck(op_task_process):
   #
-  def __init__(self, description, disk=None, partition_id=None, payload_size=None, **kwargs):
+  def __init__(self, description, disk=None, partition_id=None, payload_size=None, fix_filesytem=False, **kwargs):
     self.disk = disk
     self.partition_id = partition_id
     self.payload_size = payload_size
+    self.fix_filesytem = fix_filesytem
     speed = self.disk.estimate_speed("fsck")
     estimate_size = self.disk.get_byte_size() if self.payload_size is None else self.payload_size
-    super().__init__(description, argv=["/sbin/e2fsck", "-f", "-y", disk.device_name, partition_id], time_estimate=estimate_size/speed+2, **kwargs)
+    # The command is just a placeholder. Actuall command is assembled in "setup"
+    self.fsck_mode = "-y" if fix_filesytem else "-p"
+
+    super().__init__(description, argv=["/sbin/e2fsck", "-f", self.fsck_mode, disk.device_name, partition_id], time_estimate=estimate_size/speed+2, encoding='iso-8859-1', **kwargs)
     pass
 
   def setup(self):
@@ -620,7 +634,7 @@ class task_fsck(op_task_process):
       self._setup_failed(error_message)
       return
 
-    self.argv = ["/sbin/e2fsck", "-f", "-y", part1.device_name]
+    self.argv = ["/sbin/e2fsck", "-f", self.fsck_mode, part1.device_name]
     super().setup()
     pass
    
