@@ -6,7 +6,7 @@ update:
 	sudo -H pip3 install --upgrade --no-cache-dir -i https://test.pypi.org/simple/ --no-deps wce_triage
 	sudo rm -fr /usr/local/share/wce/wce-triage-ui/*
 	cd /usr/local/share/wce/wce-triage-ui && wget -q -O - http://release.cleanwinner.com/wce/wce-triage-ui.tgz | tar xzf -
-
+	python3 -m wce_triage.setup.update_share
 
 clean:
 	sudo apt clean
@@ -26,9 +26,4 @@ clean:
 	sudo rm -f /var/lib/apt/lists/* > /dev/null 2>&1
 
 client:
-	sudo rsync -av --delete /usr/local/lib/python3.6/dist-packages/ /var/lib/netclient/wcetriage_amd64/usr/local/lib/python3.6/dist-packages/
-	sudo rsync -av --delete /usr/local/share/wce/triage/ /var/lib/netclient/wcetriage_amd64/usr/local/share/wce/triage/
-	sudo rsync -av --delete /usr/local/share/wce/wce-triage-ui/ /var/lib/netclient/wcetriage_amd64/usr/local/share/wce/wce-triage-ui/
-	sudo rsync -av --delete /usr/local/lib/python3.6/dist-packages/ /var/lib/netclient/wcetriage_x32/usr/local/lib/python3.6/dist-packages/
-	sudo rsync -av --delete /usr/local/share/wce/triage/ /var/lib/netclient/wcetriage_x32/usr/local/share/wce/triage/
-	sudo rsync -av --delete /usr/local/share/wce/wce-triage-ui/ /var/lib/netclient/wcetriage_x32/usr/local/share/wce/wce-triage-ui/
+	python3 -m wce_triage.setup.update_client
