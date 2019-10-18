@@ -16,7 +16,7 @@ import urllib.parse
 import os, signal
 
 
-tlog = get_triage_logger()
+tlog = init_triage_logger()
 
 from collections import namedtuple
 PipeInfo = namedtuple('PipeInfo', 'app, process, pipetag, pipe')

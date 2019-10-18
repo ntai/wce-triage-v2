@@ -33,6 +33,11 @@ setuptools.setup(
             'wce_triage.setup',
             'test'],
   include_package_data=True,
+  install_requires=[
+    'python-socketio',
+    'aiohttp',
+    'aiohttp_cors'
+  ],
   classifiers=[
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",

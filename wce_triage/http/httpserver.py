@@ -1087,11 +1087,7 @@ arguments = cli.parse_args()
 
 # If the module is invoked directly, initialize the application
 if __name__ == '__main__':
-  logging.basicConfig(level=logging.INFO,
-                      format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                      filename='/tmp/triage.log')
-  tlog = get_triage_logger()
-  tlog.setLevel(logging.DEBUG)
+  tlog = init_triage_logger(log_level=logging.DEBUG)
   
   # Create and configure the HTTP server instance
   the_root_url = u"{0}://{1}:{2}".format("http", arguments.host, arguments.port)

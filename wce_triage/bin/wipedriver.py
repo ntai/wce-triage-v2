@@ -11,9 +11,7 @@ from .process_driver import *
 from ..lib.util import *
 
 if __name__ == "__main__":
-  logging.basicConfig(level=logging.DEBUG,
-                      format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                      filename='/tmp/triage.log')
+  tlog = init_triage_logger()
 
   if len(sys.argv) != 2:
     sys.stderr.write('wipe_disk.py <wiped>\n')
@@ -25,8 +23,6 @@ if __name__ == "__main__":
     sys.stderr.write("%s is not a block device.\n" % device)
     sys.exit(1)
     pass
-
-  tlog = get_triage_logger()
 
   bin_name = "WIPE"
   processes = []

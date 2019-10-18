@@ -234,9 +234,7 @@ def translate_disk_image_name_to_url(wce_share_url, disk_image_name):
 #
 if __name__ == "__main__":
   print("HELLO")
-  logging.basicConfig(level=logging.DEBUG,
-                      format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                      filename='/tmp/disk_images.log')
+  tlog = init_triage_logger(filename='/tmp/disk_images.log')
   
   print(read_disk_image_types(verbose=True))
   print(get_disk_images())

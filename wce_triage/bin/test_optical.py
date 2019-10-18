@@ -13,7 +13,7 @@ from ..lib.util import *
 from ..lib.timeutil import *
 from .process_driver import *
 
-tlog = get_triage_logger()
+tlog = init_triage_logger()
 
 import json
 

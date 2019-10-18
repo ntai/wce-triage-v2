@@ -155,11 +155,23 @@ def is_block_device(path):
   return stat.S_ISBLK(path_stat.st_mode)
 
 import logging
-logfileout = None
+
+#
+#
+#
+def init_triage_logger(log_level=None, filename='/tmp/triage.log'):
+  if log_level is None:
+    log_level = logging.INFO
+    pass
+  tlog_handler = logging.handlers.RotatingFileHandler(filename, maxBytes=2**24, backupCount=3)
+  tlog_formatter = logging.Formatter('%(asctime)s %(processName)-10s %(name)s %(levelname)-8s %(message)s')
+  tlog_handler.setFormatter(tlog_formatter)
+  logging.basicConfig(level=log_level, handlers=[tlog_handler])
+  tlog = get_triage_logger()
+  return tlog
+
 
 def get_triage_logger():
-  global logfileout
-
   tlog = logging.getLogger('triage')
   return tlog
 

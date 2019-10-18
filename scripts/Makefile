@@ -21,6 +21,9 @@ clean:
 	sudo rm -f /var/log/apt/*
 	sudo rm -fr /var/log/installer/*
 	sudo rm -fr /root/Desktop
+	sudo rm -fr /hoem/triage/.config/google-chrome
+	sudo rm -f /var/cache/apt/pkgcache.bin /var/cache/apt/srcpkgcache.bin 
+	sudo rm -f /var/lib/apt/lists/* > /dev/null 2>&1
 
 client:
 	sudo rsync -av --delete /usr/local/lib/python3.6/dist-packages/ /var/lib/netclient/wcetriage_amd64/usr/local/lib/python3.6/dist-packages/

@@ -278,9 +278,7 @@ def run_load_image(ui, devname, imagefile, imagefile_size, efisrc, newhostname, 
 
 
 if __name__ == "__main__":
-  logging.basicConfig(level=logging.DEBUG,
-                      format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                      filename='/tmp/triage.log')
+  tlog = init_triage_logger()
 
   parser = argparse.ArgumentParser(description="Restore Disk image using partclone disk image.")
 

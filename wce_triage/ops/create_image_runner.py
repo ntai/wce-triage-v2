@@ -65,9 +65,7 @@ For now, this is only dealing with the EXT4 linux partition.
 
 
 if __name__ == "__main__":
-  logging.basicConfig(level=logging.DEBUG,
-                      format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                      filename='/tmp/triage.log')
+  tlog = init_triage_logger()
 
   if len(sys.argv) == 1:
     print( 'Unloader: devicename part destdir')
