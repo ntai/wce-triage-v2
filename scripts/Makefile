@@ -3,7 +3,7 @@
 
 update:
 	#-sudo -H pip3 uninstall wce_triage
-	sudo -H pip3 install --upgrade --no-cache-dir -i https://test.pypi.org/simple/ --no-deps wce_triage
+	sudo -H pip3 install --upgrade --no-cache-dir -i https://test.pypi.org/simple/ wce_triage
 	sudo rm -fr /usr/local/share/wce/wce-triage-ui/*
 	cd /usr/local/share/wce/wce-triage-ui && wget -q -O - http://release.cleanwinner.com/wce/wce-triage-ui.tgz | tar xzf -
 	python3 -m wce_triage.setup.update_share

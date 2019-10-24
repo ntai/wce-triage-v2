@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #
 import os, sys, subprocess
+import json
 
 patch_dir = os.path.dirname(__file__)
 COMMON_PATCH_SRC = os.path.join(patch_dir, 'patches', "common")
@@ -31,9 +32,21 @@ class patch_plan:
     else:
       # when you copy, make sure to copy the filemode
       self.plans.append("copy: %s/%s --> %s" % (self.dir, self.file, target))
+      target_dir = os.path.dirname(target)
+
+      self.plans.append(['mkdir', '-p', target_dir])
+
+      metadata_file = os.path.join(self.dir, ".metadata.json")
+      metadata = {}
+      if os.path.exists(metadata_file):
+        with open(metadata_file) as metadata_fd:
+          metadata = json.load(metadata_fd)
+          pass
+        pass
+
       self.plans.append(['cp', '-p', source, target])
       try:
-        dirstat = os.stat(os.path.dirname(target))
+        dirstat = os.stat(os.path.dirname(target_dir))
         self.plans.append(['chown', "%d:%d" % (dirstat.st_uid,dirstat.st_gid), target])
       except FileNotFoundError:
         # 
@@ -72,7 +85,6 @@ class plan_builder:
     self.rootdepth=len(dir.split('/'))
     self._traverse_dir(dir)
     pass
-    
 
   def _traverse_dir(self, dir):
     dirs = []
@@ -81,6 +93,8 @@ class plan_builder:
       if os.path.isdir(longpath):
         dirs.append(longpath)
       elif os.path.isfile(longpath):
+        if entity.endswith('.metadata.json'):
+          continue
         self.plans.append(patch_plan(self.rootdepth, dir, entity))
         pass
       pass

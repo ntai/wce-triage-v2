@@ -17,7 +17,9 @@ if __name__ == "__main__":
            # Install triage software and services
            'install_assets',
            # patch up system and boot loader installation
-           'patch_system'
+           'patch_system',
+           # 
+           'install_kiwix_server'
   ]
   
   for step in steps:

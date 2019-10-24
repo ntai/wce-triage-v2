@@ -1,0 +1,6 @@
+#!/bin/sh
+while [ ! -r /usr/local/share/wce/contents/wikipedia/*.zim ] ; do
+  sleep 30
+done
+exec /usr/local/bin/kiwix-serve --port $1 /usr/local/share/wce/contents/wikipedia/*.zim
+

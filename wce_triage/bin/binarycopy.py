@@ -1,4 +1,9 @@
 #!/usr/bin/python3
+"""Tool to clone USB sticks.
+
+This reads the partition map using parted and figures out the size of copy.
+If there is no partition, then this is no go.
+"""
 
 import os, sys, subprocess, urllib, datetime, json, traceback, signal, time
 from ..lib.util import *
@@ -161,7 +166,6 @@ dest_dev: Device file eg. /dev/sdc
     size_written = get_min_written_size(size_done, writers)
     progress_reporter.maybe_report(size_written)
     pass
-
 
   for writer in writers:
     writer.queue.join()

@@ -1,6 +1,21 @@
 # TODO
 
-Here is the things need to be solved.
+## Current tasks
+
+ - Improve the UI.
+It could be more like wizard style? Especially choosing disk may need to provide more info.
+
+ - CPU rating
+Use hardinfo and provide the cpu speed in the triage screen
+
+ - Content on google drive and version control
+ 
+ - "patch system" needs to set the owner and group ID
+ 
+ - Making this to debian package
+
+ - Talking to Chicago chapter
+Sending a network server may be a good idea
 
 ## Backend
 
@@ -38,8 +53,8 @@ Here is the things need to be solved.
    This is kind of working.
    - serving static file - done
    - serving restore disk - done
-   - serving create disk image - working
-   - wiping seems working
+   - serving create disk image - done
+   - wiping seems working - done
    
  - Disk image directories
    - disk image metadata NEEDS DOC!
@@ -49,10 +64,9 @@ Here is the things need to be solved.
    
    
 ## Frontend
- need to learn a bit more about React.js
- 
  - Triage UI - in-progress
-   Using react.js is probably super overkill
+   Using react.js. First iteration is okay.
+   Apparently, it's not intuitive to use this. UX needs to improve.
 
  - Loading disk image
    - Make the progress rows using individual state in table so the
@@ -66,7 +80,10 @@ Here is the things need to be solved.
  
 ## Triage app distriubtion
 
+
 ## Content versioning
+ - 
+
 
 ## Some other ideas
  - Make the WCE content as separate partition. Since the content is already super compressed, and it's kind of useless to gzip/unzip for save/load. We may able to load the content as single binary blob into partition, and don't bother using partclone or gzip. This has an advantage of mounting the partition as read-only as well. 
