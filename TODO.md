@@ -3,7 +3,8 @@
 ## Current tasks
 
  - Improve the UI.
-It could be more like wizard style? Especially choosing disk may need to provide more info.
+It could be more like wizard style?
+Especially choosing disk may need to provide more info.
 
  - CPU rating
 Use hardinfo and provide the cpu speed in the triage screen
@@ -16,6 +17,11 @@ Use hardinfo and provide the cpu speed in the triage screen
 
  - Talking to Chicago chapter
 Sending a network server may be a good idea
+
+ - Update network server and usb stick instruction
+
+ - Delete /swapfile? I think it's the right thing to do.
+
 
 ## Backend
 
