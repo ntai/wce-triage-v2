@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+"""Yes, this is was a shell script."""
 #
 import os, sys, subprocess
 
@@ -6,6 +7,9 @@ TRIAGEUSER=os.environ.get("TRIAGEUSER", "triage")
 
 if __name__ == "__main__":
   subprocess.call('sudo -H mkdir -p /usr/local/share/wce', shell=True)
+  subprocess.call('sudo -H mkdir -p /usr/local/share/wce/lib', shell=True)
+  subprocess.call('sudo -H mkdir -p /usr/local/share/wce/lib/systemd/system', shell=True)
+  subprocess.call('sudo -H mkdir -p /usr/local/share/wce/bin', shell=True)
   subprocess.call('sudo -H mkdir -p /usr/local/share/wce/wce-triage-ui', shell=True)
   subprocess.call('sudo -H chown {user}:{user} /usr/local/share/wce/wce-triage-ui'.format(user=TRIAGEUSER), shell=True)
   subprocess.call('sudo -H mkdir -p /usr/local/share/wce/triage/bin', shell=True)

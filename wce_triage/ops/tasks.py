@@ -1353,7 +1353,20 @@ new hostname set up is only done if the new hostname is provided. If it's None, 
         # No big deal if the file isn't there or failed to remove.
         pass
       pass
+
+
+    #
+    # Remove /swapfile
+    # 
+    for removing in ["%s/swapfile"]:
+      try:
+        os.unlink( removing % self.mount_dir)
+      except:
+        # No big deal if the file isn't there or failed to remove.
+        pass
+      pass
     pass
+
   pass
 
 

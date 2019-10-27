@@ -1,0 +1,4 @@
+#!/bin/sh
+curl -q -s http://localhost:7777/Wikipedia >/dev/null 2>/dev/null
+sleep 1
+exec x-www-browser http://localhost:7777/$1

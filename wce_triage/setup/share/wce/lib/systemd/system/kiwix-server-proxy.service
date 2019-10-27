@@ -1,0 +1,14 @@
+[Unit]
+Requires=kiwix-server.service
+After=kiwix-server.service
+Requires=kiwix-server-proxy.socket
+After=kiwix-server-proxy.socket
+JoinsNamespaceOf=kiwis-server.service
+PartOf=kiwix-server.service
+
+[Service]
+ExecStart=/lib/systemd/systemd-socket-proxyd 0.0.0.0:17777
+User=www-data
+
+[Install]
+WantedBy=kiwix-server-proxy.socket

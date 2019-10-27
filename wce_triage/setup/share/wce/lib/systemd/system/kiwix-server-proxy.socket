@@ -1,0 +1,10 @@
+[Unit]
+Description=Kiwix Server Proxy
+DefaultDependencies=no
+PartOf=kiwix-server.service
+
+[Socket]
+ListenStream=7777
+
+[Install]
+WantedBy=sockets.target

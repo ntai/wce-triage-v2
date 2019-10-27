@@ -1,0 +1,13 @@
+[Unit]
+Description=Kiwix server
+After=network.target kiwix-server.socket
+Requires=kiwix-server.socket
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/wce-kiwix-server 17777
+User=www-data
+TimeoutStopSec=5
+
+[Install]
+WantedBy=default.target

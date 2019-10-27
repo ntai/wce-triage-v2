@@ -1,0 +1,7 @@
+#!/bin/sh
+while [ ! -r /usr/local/share/wce/contents/wikipedia/Wikipedia.zim ] ; do
+  sleep 30
+done
+systemctl start kiwix-server-proxy.service > /dev/null 2>&1
+systemctl start kiwix-server.service > /dev/null 2>&1
+exec /usr/local/bin/kiwix-serve --port=$1 /usr/local/share/wce/contents/wikipedia/*.zim

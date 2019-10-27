@@ -149,6 +149,10 @@ def read_disk_image_types(verbose=False):
         pass
       pass
     pass
+
+  list_order = get_disk_image_list_order()
+  n = len(image_metas)
+  image_metas.sort(key=lambda x: list_order.get(x["subdir"], len(list_order)) * n + x["index"])
   return image_metas
 
 

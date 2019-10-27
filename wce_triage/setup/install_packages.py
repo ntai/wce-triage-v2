@@ -100,7 +100,8 @@ triage_kiosk_packages = [
   'aufs-tools',
   'vbetool',
   'gfxboot',
-  'lighttpd'
+  'lighttpd',
+  'hardinfo'
 ]
 
 # python-socketio - websocket.
@@ -138,7 +139,14 @@ desktop_packages = [
   'ubuntu-edu-tertiary',
   'eclipse',
   'gpg',
-  'apt-transport-https'
+  'apt-transport-https',
+  'zlib1g',
+  'libicu60',
+  'libpugixml1v5',
+  'liblzma5',
+  'libxapian30',
+  'libcurl4',
+  'libmicrohttpd12'
   ]
 
 
