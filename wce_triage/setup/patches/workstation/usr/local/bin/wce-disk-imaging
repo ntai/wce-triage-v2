@@ -3,7 +3,7 @@
 # run the triage http server if it does not exist.
 netstat -an | fgrep -e 0.0.0.0:8312 > /dev/null 2>&1
 if [ $? = 1 ] ; then
-  pkexec env DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY PYTHONPATH=$PYTHONPATH python3 -m wce_triage.http.httpserver --wcedir /usr/local/share/wce  &
+  pkexec env DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY PYTHONPATH=$PYTHONPATH python3 -m wce_triage.http.httpserver --wce_share=/usr/local/share/wce &
 fi
 
 # wait for it.
