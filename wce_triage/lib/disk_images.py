@@ -7,12 +7,21 @@ from ..lib.util import *
 
 tlog = get_triage_logger()
 
-IMAGE_META_JSON_FILE = ".disk_image_type.json"
+global WCE_IMAGES
 WCE_IMAGES = "/usr/local/share/wce/wce-disk-images"
 
+IMAGE_META_JSON_FILE = ".disk_image_type.json"
+
+def set_wce_disk_image_dir(dir):
+  global WCE_IMAGES
+  WCE_IMAGES = dir
+  pass
+  
 
 # gets the potential directories to look for disk images
 def get_maybe_disk_image_directories():
+  global WCE_IMAGES
+
   dirs = []
 
   # No longer look for other directories.
@@ -21,11 +30,12 @@ def get_maybe_disk_image_directories():
   if os.path.exists(WCE_IMAGES) and os.path.isdir(WCE_IMAGES) and WCE_IMAGES not in dirs:
     dirs.append(WCE_IMAGES)
     pass
-
   return dirs
 
 # gets the potential directories to look for disk images
 def get_disk_image_list_order():
+  global WCE_IMAGES
+
   list_order = {}
 
   if os.path.exists(WCE_IMAGES) and os.path.isdir(WCE_IMAGES):
@@ -137,6 +147,7 @@ def read_disk_image_types(verbose=False):
     if verbose:
       print("Checking subdir " + subdir)
       pass
+    index = 0
     for direntry in os.listdir(subdir):
       catalog_dir = os.path.join(subdir, direntry)
       image_meta = read_disk_image_type(catalog_dir)
@@ -145,16 +156,20 @@ def read_disk_image_types(verbose=False):
         print(image_meta)
         pass
       if image_meta:
+        image_meta['index'] = index
         image_metas.append(image_meta)
+        index += 1
         pass
       pass
     pass
 
   list_order = get_disk_image_list_order()
   n = len(image_metas)
-  image_metas.sort(key=lambda x: list_order.get(x["subdir"], len(list_order)) * n + x["index"])
-  return image_metas
 
+  if list_order:
+    image_metas.sort(key=lambda x: list_order.get(x["id"], len(list_order)) * n + x['index'])
+    pass
+  return image_metas
 
 def read_disk_image_type(catalog_dir):
   '''reads the disk image type file from the directory

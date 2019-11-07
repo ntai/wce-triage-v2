@@ -10,9 +10,9 @@ setup: manifest
 	python3 setup.py sdist bdist_wheel
 
 bootstrap:
-	sudo apt install python3-pip
-	virtualenv -e python3 py3
-	./py3/bin/activate && python3 -m pip install --upgrade setuptools wheel twine
+	sudo apt install python3-pip virtualenv
+	virtualenv -p python3 py3
+	. ./py3/bin/activate && python3 -m pip install --upgrade setuptools wheel twine
 	touch bootstrap
 
 upload: 
@@ -29,6 +29,7 @@ uninstall:
 
 manifest:
 	echo include requirements.txt> MANIFEST.in
+	echo include Makefile >> MANIFEST.in
 	find wce_triage/setup/patches -type f -print |sort | sed -e 's/^/include /' >> MANIFEST.in
 	find wce_triage/setup/share -type f -print |sort | sed -e 's/^/include /' >> MANIFEST.in
 

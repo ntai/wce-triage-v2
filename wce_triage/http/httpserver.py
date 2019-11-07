@@ -1077,11 +1077,26 @@ def get_target_devices_from_request(request):
 # Define and parse the command line arguments
 import socket
 cli = ArgumentParser(description='Example Python Application')
+# Port for this HTTP server
 cli.add_argument("-p", "--port", type=int, metavar="PORT", dest="port", default=8312)
-cli.add_argument("--paylod-port", type=int, metavar="PAYLOADPORT", dest="payloadport", default=8080)
+
+# And it's hostname. It's usually the local host FQDN but, as the client's DNS may not work reliably,
+# you need to be able to set this sometimes.
 cli.add_argument("--host", type=str, metavar="HOST", dest="host", default=socket.getfqdn())
+
+# Location of UI assets.
 cli.add_argument("--rootdir", type=str, metavar="WCE_TRIAGE_UI_ROOTDIR", dest="rootdir", default=None)
+
+# This is where disk images live
 cli.add_argument("--wcedir", type=str, metavar="WCE_ROOT_DIR", dest="wcedir", default="/usr/local/share/wce")
+
+# If you want to use other server (any other http server) you need to override this.
+# This is necessary if you want to offload the payload download to web server light apache.
+# For this case, you need to be able to use any URL.
+# Note that, the boot arg (aka cmdline) is used for picking up the default value of wce_share_url
+# as well, and this overrides this.
+cli.add_argument("--wce_share", type=str, metavar="WCE_SHARE_URL", dest="wce_share", default=None)
+
 cli.add_argument("--live-triage", dest="live_triage", action='store_true')
 arguments = cli.parse_args()
 
@@ -1092,8 +1107,8 @@ if __name__ == '__main__':
   # Create and configure the HTTP server instance
   the_root_url = u"{0}://{1}:{2}".format("http", arguments.host, arguments.port)
 
-  # This is the default wce_share_url
-  wce_share_url = u"{0}://{1}:{2}/wce".format("http", arguments.host, arguments.payloadport)
+  # This is the default wce_share_url. 
+  wce_share_url = u"{0}://{1}:{2}/wce".format("http", arguments.host, arguments.port)
 
   # Find a url share from boot cmdline. If this is nfs booted, it should be there.
   # Find payload as well
@@ -1113,6 +1128,11 @@ if __name__ == '__main__':
         wce_payload = match.group(1)
         pass
       pass
+    pass
+
+  # If wce_share is on the command line, override them all.
+  if arguments.wce_share:
+    wce_share_url = arguments.wce_share
     pass
 
   autoload = False

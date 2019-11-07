@@ -5,7 +5,7 @@
 import os, sys, subprocess
 from ..const import *
 
-def list_installed_packages()
+def list_installed_packages():
   """Lists and returns installed packages.
   Returns dict, not list.
   """
@@ -28,6 +28,7 @@ def list_installed_packages()
 base_packages = [
   'python3-pip',              # bootstrapping pip3 ???
   'alsa-utils',               # Audio
+  'curl',                     # cURL
   'gnupg',                    # for Google key installation
   'dmidecode',                # decoding bios, detects memory
   'efibootmgr',               # for EFI boot (not yet implemented, sadly)
