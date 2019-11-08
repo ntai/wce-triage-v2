@@ -102,7 +102,8 @@ triage_kiosk_packages = [
   'vbetool',
   'gfxboot',
   'lighttpd',
-  'hardinfo'
+  'hardinfo',
+  'smartmontools'
 ]
 
 # python-socketio - websocket.
@@ -183,7 +184,7 @@ if __name__ == "__main__":
 
   installed_packages = list_installed_packages()
   
-  for package in packages:
+  for _package in packages:
     if installed_packages.get(package):
       continue
     subprocess.run(['sudo', '-H', 'apt', 'install', '-y', '--no-install-recommends', package])

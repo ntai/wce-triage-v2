@@ -176,6 +176,8 @@ class Disk:
     self.wce_release_file = os.path.join(self.mount_dir, "etc", wce_release_file_name)
     self.is_detected = False
     self.disappeared = False
+    self.smart = False
+    self.smart_enabled = False
 
     # These two will be redesigned. Need a better way.
     self.is_usb3 = False
@@ -368,6 +370,12 @@ class Disk:
           elif tag == "ID_USB_DRIVER":
             self.usb_driver = value
             self.is_usb = True
+            pass
+          elif tag == "ID_ATA_FEATURE_SET_SMART":
+            self.smart = (value is '1')
+            pass
+          elif tag == "ID_ATA_FEATURE_SET_SMART_ENABLED":
+            self.smart_enabled = (value is '1')
             pass
           pass
         except:

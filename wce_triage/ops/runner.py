@@ -131,8 +131,8 @@ class Runner:
           tb = traceback.format_exc()
           fail_msg = "Task: " + task.description + "\n" + tb
           self.ui.log(self.runner_id, fail_msg)
-          task.set_progress(999, 'Task failed due to internal error. See logging.')
           task.verdict.append(tb)
+          task.set_progress(999, 'Task failed due to internal error. See details/logging.')
           pass
         pass
       else:
@@ -183,6 +183,9 @@ class Runner:
         # something went wrong.
         self.state = RunState.Failed
         ui.report_task_failure(self.runner_id, self.current_time, run_time, task)
+        if task.verdict:
+          self.ui.log(self.runner_id, "%s failed.\n%s" % (task.description, "\n".join(task.verdict)))
+          pass
         break
 
       if task.progress == 100:

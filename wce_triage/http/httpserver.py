@@ -65,9 +65,14 @@ def jsoned_disk(disk):
           "runTime": 0,
           "runEstimate": 0,
           "mounted": disk.mounted,
-          "size": round(disk.get_byte_size() / 1000000),
+          "size": round(disk.get_byte_size() / 1000000), # in MB (not MiB)
           "bus": "usb" if disk.is_usb else "ata",
-          "model": disk.vendor + " " + disk.model_name }
+          "model": disk.model_name,
+          "vendor": disk.vendor,
+          "serial_no": disk.serial_no,
+          "smart": disk.smart,
+          "smart_enabled": disk.smart_enabled,
+  }
 
 def jsoned_optical(optical):
   return {"deviceName": optical.device_name,

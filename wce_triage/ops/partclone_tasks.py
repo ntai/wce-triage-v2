@@ -251,7 +251,6 @@ class task_restore_disk_image(task_partclone):
 
           m = self.error_re.match(line)
           if m:
-            self.log(line)
             self.verdict.append(m.group(2).strip())
             pass
           pass

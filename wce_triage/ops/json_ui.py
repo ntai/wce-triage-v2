@@ -32,15 +32,11 @@ def _describe_task(task, current_time):
   result["taskStatus"] = TASK_STATUS[task._get_status()]
   result["taskMessage"] = task.message
   result["taskExplain"] = task.explain()
-
   if task._get_status() > 1:
     if task.verdict:
-      result["taskVerdict"] = " ".join(task.verdict)
-    else:
-      result["taskVerdict"] = task.message
+      result["taskVerdict"] = task.verdict
       pass
     pass
-
   return result
 
 
