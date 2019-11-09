@@ -184,7 +184,7 @@ if __name__ == "__main__":
 
   installed_packages = list_installed_packages()
   
-  for _package in packages:
+  for package in packages:
     if installed_packages.get(package):
       continue
     subprocess.run(['sudo', '-H', 'apt', 'install', '-y', '--no-install-recommends', package])

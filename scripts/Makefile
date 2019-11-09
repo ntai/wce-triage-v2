@@ -1,11 +1,16 @@
 
 .PHONY: update clean client
 
+# v0.2 UI
+# https://drive.google.com/uc?export=download&id=1eNzcClc_rLebtwhR2KDfZbMA9c9W_P2Y
+#
+# v0.3 UI
+# https://drive.google.com/uc?export=download&?id=1Rjj9vD02Gid99qDrt3pvs6pitK0lBmyU
+
 update:
-	#-sudo -H pip3 uninstall wce_triage
 	sudo -H pip3 install --upgrade --no-cache-dir -i https://test.pypi.org/simple/ wce_triage
 	sudo rm -fr /usr/local/share/wce/wce-triage-ui/*
-	cd /usr/local/share/wce/wce-triage-ui && curl -L -o - "https://drive.google.com/uc?export=download&id=1eNzcClc_rLebtwhR2KDfZbMA9c9W_P2Y" | tar xzf -
+	cd /usr/local/share/wce/wce-triage-ui && curl -L -o - 'https://drive.google.com/uc?export=download&id=1Rjj9vD02Gid99qDrt3pvs6pitK0lBmyU' | tar xzf -
 	python3 -m wce_triage.setup.update_share
 
 clean:
