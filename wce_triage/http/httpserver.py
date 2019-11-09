@@ -30,6 +30,7 @@ from ..lib.pipereader import *
 from ..components import optical_drive as _optical_drive
 from ..components import sound as _sound
 from ..lib.disk_images import *
+from ..lib.cpu_info import *
 
 
 tlog = get_triage_logger()
@@ -246,7 +247,8 @@ class TriageWeb(object):
     self.saver = None
     self.wiper = None
     self.optests = []
-
+    self.cpu_info = None
+    
     self.wock = wock
 
     self.disk_portal = DiskPortal()
@@ -363,12 +365,51 @@ class TriageWeb(object):
 
     decisions = [ { "component": "Overall", "result": me.overall_decision } ] + computer.decisions
     jsonified = { "components":  decisions }
+    return aiohttp.web.json_response(jsonified)
 
-    if hello:
-      Emitter.note("Hello from Triage service Version " + TRIAGE_VERSION + "/" + TRIAGE_TIMESTAMP)
+
+  # get_cpu_info is potentially ver slow for older computers as this runs a
+  # cpu benchmark.
+  async def get_cpu_info(self):
+    if self.cpu_info is None:
+      tlog.debug("get_cpu_info: starting")
+      cpu_info = subprocess.Popen("python3 -m wce_triage.lib.cpu_info", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+      PipeReader.add_to_event_loop(cpu_info.stdout, me.watch_cpu_info, "stdout")
+      tlog.debug("get_cpu_info: started")
       pass
 
+    while self.cpu_info is None:
+      tlog.debug("get_cpu_info: waiting")
+      await asyncio.sleep(1)
+      pass
+    return self.cpu_info
+
+  @routes.get("/dispatch/cpu_info.json")
+  async def route_cpu_info(request):
+    """Handles getting CPU rating """
+    global me
+    cpu_info = await me.get_cpu_info()
+    jsonified = { "cpu_info": cpu_info }
     return aiohttp.web.json_response(jsonified)
+
+
+  def watch_cpu_info(self, pipereader):
+    line = pipereader.readline()
+    if line == b'':
+      tlog.debug("watch_cpu_info: done")
+      pipereader.remove_from_event_loop()
+      pass
+    elif line is not None:
+      if len(line.strip()) == 0:
+        return
+      try:
+        tlog.debug("watch_cpu_info: '%s'" % line)
+        self.cpu_info = json.loads(line)
+      except Exception as exc:
+        tlog.info("watch_cpu_info - json.loads: '%s'\n%s" % (line, exc.format_exc()))
+        pass
+      pass
+    pass
 
   # Updating the overall decision
   def overall_changed(self, new_decision):
@@ -510,9 +551,12 @@ class TriageWeb(object):
     line = pipereader.readline()
     if line == b'':
       tlog.debug("FromOptest: optical test stream ended.")
-      pipereader.remove_reader()
+      pipereader.remove_from_event_loop()
       pass
     elif line is not None:
+      if len(line.strip()) == 0:
+        return
+        
       tlog.debug("FromOptest: '%s'" % line)
       try:
         packet = json.loads(line)
@@ -536,7 +580,7 @@ class TriageWeb(object):
         # packet['event'] == 'triageupdate'
         Emitter._send('triageupdate', payload)
       except Exception as exc:
-        tlog.info("FromOptest: '%s'" % line)
+        tlog.info("FromOptest: '%s'\n%s" % (line, exc.format_exc()))
         pass
       pass
 
@@ -674,7 +718,7 @@ class TriageWeb(object):
           pipereader.remove_from_event_loop()
           pass
         except Exception as exc:
-          tlog.debug("%s: remove_reader %s" % (runner, traceback.format_exc()))
+          tlog.debug("%s: remove_from_event_loop %s" % (runner, traceback.format_exc()))
           pass
         pass
       pass
@@ -892,7 +936,7 @@ class TriageWeb(object):
   def wiper_progress_report(self, pipereader):
     line = pipereader.readline()
     if line == b'':
-      asyncio.get_event_loop().remove_reader(pipereader.pipe)
+      pipereader.remove_from_event_loop()
       pass
     elif line is not None:
       if line.strip() != "":

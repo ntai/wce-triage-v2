@@ -3,8 +3,6 @@
 """hwinfo runs hwinfo and caches.
 The use of hwinfo is currently suspended as it is too slow.
 Also it attempts to use lshw.
-
-Most likely
 """
 
 import os, subprocess, json

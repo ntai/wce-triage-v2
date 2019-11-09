@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<title>README.html</title>
+
+</head>
+
+<body>
+
+<h1>WCE Triage</h1>
+
+<h2>About World Computer Exchange</h2>
+
+<p>World Computer Exchange (WCE) is a volunteer organization, located in Hull, Massachusetts, USA.
+The primary mission of WCE is to refurbish and reuse computers in developing countries.
+See https://www.worldcomputerexchange.org for more details.</p>
+
+<h2>What is WCE Triage?</h2>
+
+<p>When a donated computer arrives, the volunteers first physically clean and assess the computer.
+We call this process triaging.
+For hardware, volunteers replace or install components as needed based on the triage.
+In order to streamline and have consistent decisions about the state of computer, we use software to gather information.</p>
+
+<p>Since WCE ships the computers with Ubuntu as OS, it makes sense to run Ubuntu to triage.</p>
+
+<p>This package is designed around running a minimal Ubuntu/Linux, and gather computer states, and displays the triage information. Let's call it <strong>Triage App</strong>. Triage app also restores disk image to computer disk, and creates disk image from the computer's disk as well.</p>
+
+<h2>Overview of WCE operations</h2>
+
+<p>For the operation of WCE, there are 4 categories of computers involved. </p>
+
+<ol>
+<li><strong>Desktop client</strong> - this is the product we produce</li>
+<li><strong>Triaging computer</strong> - this is a computer being triaged by the WCE voluteers using Triage app. The computer will be a desktop client when it passes the test, repaired or salvaged.</li>
+<li><strong>Network Server</strong> - this is a Ubuntu/Linux server that is capable of running Triage app on PXE booted client over network, and thus allows PXE booted Desktop clients to install the disk image over network. Typically, this is a head-less server that is used during the game day.</li>
+<li><strong>Workstation</strong> - this is a Ubuntu/Linux desktop that is used for authoring WCE contents and disk images. The workstation is also a Network Server as well. This allows us to check out the disk image created immediately by connecting a desktop client to the workstation. Typically, this is a Ubuntu desktop computer used for imaging disks and creating contents off-game day.</li>
+</ol>
+
+<p>Triage app contains a setup script for each category. For example, setup script for Workstation installs all necessary Ubuntu and Python packages, prepares the disk image directories, installs dnsmasq for PXE boot, inetd/tftp server for network boot, kernel NFS server for client's NFS booting, etc.</p>
+
+<h3>Disk image installation operation</h3>
+
+<p>Once Triage app runs, go to "Load Disk" tab, select the source disk image, and a disk to load. Click "Load". Operation is the same on both USB based Triage app or network based. When you choose the source, the restore type is automatically chosen, and generally you should not change the restore type. (See <em>Disk Image Directories</em> for the details.)</p>
+
+<p>If USB flash drive has enough storage space, it's possible to restore disk of the desktop client.</p>
+
+<h3>Creating disk image operation</h3>
+
+<p>Once Triage app runs on Workstation, or Network server, go to "Create Disk Image" tab, chose the source disk, and choose the disk image type. For Ubuntu 18.04LTS based computer, you must choose "WCE Ubuntu 18.04LTS". For older versions of Ubuntu, choose "WCE Ubuntu 16.04LTS". </p>
+
+<p>"Triage USB flash drive" is for the disk image of USB sticks and not for desktop clients.</p>
+
+<h2>Setting up Workstation/Network server</h2>
+
+<p>As the triage app contains the setup script for workstation, it requires to install Python3 pip, and install "wce_triage" Python package on the computer. The setup script is exptected to run on freshly installed Ubuntu 18.04LTS desktop (or WCE's desktop client.)</p>
+
+<pre><code>$ sudo -H apt install -y python3-pip
+$ sudo -H pip3 install --no-cache-dir -i https://test.pypi.org/simple/ --no-deps wce_triage
+</code></pre>
+
+<p>From the terminal, once this is done, run following command.</p>
+
+<pre><code>$ python3 -m wce_triage.setup.setup_workstation
+</code></pre>
+
+<p>Similary for Network server, run <code>python3 -m wce_triage.setup.setup_network_server</code>. Once again, this is expected to run on freshly installed Ubuntu 18.04LTS server with only OpenSSH server isntalled during installation. If you already have installed dnsmasq with your own settings, or lighttpd server, etc., you should avoid running the set up script as it overwrites the config files. There is no config back up or any of precautions included. You are warned.</p>
+
+<h2>Creating Bootable Triage App on Disk/USB stick</h2>
+
+<p>This is the insturctions of creating USB stick that runs Triage app. Since the Triage app can load the triage app disk image to USB stick, this is not often practiced. Bootstrapping is hard, and knowledge must be kept somewhere. In the future (very likely year 2020 for Ubuntu 20.04LTS), I have to do this again.</p>
+
+<h3>Step 1: Acquire Ubuntu 18.04LTS mini.iso installer</h3>
+
+<p>Making a bootable USB stick from mini.iso is tricky.
+  'Create Installer' of Ubuntu does not work for mini.iso.</p>
+
+<p>For Mac:
+    Use balenaEtcher. This macOS app works and probably the simplest.</p>
+
+<p>For Linux:
+    Most likely, "dd" works. Find out the USB stick device and
+    dd if=mini.iso of=/dev/<USB_STICK_DEVICE> bs=1M</p>
+
+<h3>Step 2: Install mini.iso to a disk</h3>
+
+<p>Disk can be an external disk, USB stick, etc.
+  I recommend using a normal disk (or SSD) to make it faster rather than USB stick.
+  Boot from mini.iso bootable and install minimal.
+  Machine name is "wcetriage".
+  User name/password is "triage/triage".</p>
+
+<h3>Step 3: Bootstrap</h3>
+
+<p>Once installation is done, boot into the installed system.
+  One way or the other, you need to get network going. mini.iso is bare-bone (on purpose.)</p>
+
+<p>Here is what you can do:</p>
+
+<ul>
+<li><p>if you have an ethernet, use it. First, find out the ethernet device name.</p>
+
+<p>$ ip  addr</p></li>
+</ul>
+
+<p>Usually, "lo" is the loopback device and first. 2nd and on is the network device.</p>
+
+<pre><code>2: &lt;YOUR-DEVICE-HERE&gt;: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500...
+</code></pre>
+
+<p>create netplan file</p>
+
+<pre><code>$ sudo mkdir /run/netplan
+</code></pre>
+
+<p>Using text editor, create a netplan file as follow. Indentation is critical to netplan so this should look exactly as follow:</p>
+
+<pre><code>#/run/netplan/bootstrap.yaml file example
+#
+network: 
+  version: 2
+  renderer: networkd
+  ethernets:
+    &lt;YOUR-DEVICE-HERE&gt;:
+      dhcp4: yes
+      optional: yes
+</code></pre>
+
+<p>start network:</p>
+
+<pre><code>$ sudo netplan generate
+$ sudo netplan apply
+</code></pre>
+
+<h3>Step 4: Download wce_triage software</h3>
+
+<pre><code>$ sudo -H apt install -y python3-pip
+$ sudo -H pip3 install --no-cache-dir -i https://test.pypi.org/simple/ --no-deps wce_triage
+</code></pre>
+
+<p>At this point, if you want to switch over to use WIFI instead of ethernet, you can do so by</p>
+
+<pre><code>$ sudo -H python3 -m wce_triage.bin.start_network
+</code></pre>
+
+<p>This module scans the network devices and runs netplan. If you want to use WIFI, set up a guest network as follow:</p>
+
+<pre><code>SSID: wcetriage
+Wifi password: thepasswordiswcetriage
+</code></pre>
+
+<p>You can use your existing network.</p>
+
+<pre><code>$ export TRIAGE_SSID=&lt;YOUR-SSID&gt;
+$ export TRIAGE_PASSWORD=&lt;YOUR-WIFI-PASSWORD&gt;
+$ sudo -H python3 -m wce_traige.bin.start_network
+</code></pre>
+
+<p>"wcetriage" - is used for testing WIFI device during WCE's triage.
+In other word, if you have a wifi router with wcetriage/thepasswordiswcetriage, running triage software automatically connects to the wifi router thus it tests the WIFI device.</p>
+
+<h3>Step 5: Install the rest of WCE triage assets and set up the installer.</h3>
+
+<pre><code>$ python3 -m wce_triage.setup.setup_triage_system
+</code></pre>
+
+<p>You should run this from terminal. It probably asks you some questions. Answer appropriately.
+For grub installation, install to the disk device you booted. Once the set up script has done it's job, the disk is bootable and ready for the triage.</p>
+
+<p>Since the setup script is still weak - meaning that, it may fail for many and unknown reasons. Please let me know by filing bug at the project bug report.</p>
+
+<h1>Triage App archtecture</h1>
+
+<p>Now, how-to part is done. Let's get into the technical part of Triage app. </p>
+
+<h2>Grand Overview</h2>
+
+<p>Triae app is made out of two pieces - the backend "WCE Triage" which is the engine part of operations, and Triage UI which is Web based user interface. This exercises major parts of desktop client. It runs same Xorg X-server, Pulseaudio server, so if any major component is missing such as incompatible video card or missing sound driver on Ubuntu, we will catch it.</p>
+
+<p>It also allows us to run the same Triage app on workstation for disk imaging and loading disk image from the web browser already on the workstation.</p>
+
+<h2>wce-triage overview</h2>
+
+<p>The core of WCE triage is written in Python3. The reason is that, the mini.iso of Ubuntu 18.04LTS includes Python3 already so to not increase the footprint, Python3 is a natural choice. The source code is available at https://github.com/ntai/wce-triage-v2. (This readme is part of it.)
+The details are in the latter part of this document.</p>
+
+<h2>wce-kiosk overview</h2>
+
+<p>The front-end UI uses React.js, and the source is available at https://github.com/ntai/wce-triage-ui. For the details, please see the project document.
+it's developed on Mac by me at the moment, and quite crude. The release build does not require anything extra from internet, and HTTP server in wce-triage handles the requests.</p>
+
+<h2>WCE Triage backend (wce-triage-v2)</h2>
+
+<p>The package provides following features:</p>
+
+<ul>
+<li>Triage information gathering and decision making</li>
+<li>Initialize/partition triage USB stick</li>
+<li>Initialize/partition disk for WCE's computers</li>
+<li>Create disk image from partition (aka image disk)</li>
+<li>Load disk image to partition (aka load/restore disk)</li>
+<li>Wipe disk by zero fill (no other methods provided as of now)</li>
+<li>Make usb stick/disk bootable</li>
+<li>HTTP server for WCE Kiosk web browser</li>
+</ul>
+
+<p>In the source tree, there are following directories, "bin", "components", "http", "lib", "ops", "setup". </p>
+
+<h3>"components" directory</h3>
+
+<p>Each file here represents the major component of computer. During triage, each component gathers info on the machine. "computer" component works as the clearing house/storage of components.</p>
+
+<h3>"bin", "lib", and "ops" directories</h3>
+
+<p>The files here are the back end of disk operations. The real details of design will have to wait for documenting the source code. For now, each "task" represents each step of disk operation, and "task runner" or "runner" runs these tasks in sequence to do the disk operations. For example, to partition a disk, "partition runner" creates all necessary tasks and runs it. A task in it runs "parted" to partition the disk, "fetch" to read the parition map, "refresh" to get the partition information, and "mkfs" task runs mkfs command for the partitions. Some of more "difficult" operation such as reading compressed disk image and restoring it to disk is written as a standalone command in "bin" directory, and a task runs the "bin" to complete the task. </p>
+
+<p>The design of task and task runner can be discussed and critiqued to no end but braking down small operations into task so far was a real winner as I can assemble the tasks in different ways for different application and yet I don't need to write same operations twice. </p>
+
+<h3>"http" directory</h3>
+
+<p>There is only one file in this. httpserver.py. The server is based on aiohttp package that uses Python's asyncio.</p>
+
+<p>Once the backend's functionalities are implemented and tested, wiring up the functionality such as create disk image is pretty straightforward. However, as aiohttp being coroutine, you need to care what operation is blocking. For example, Python's standard "time.sleep()" halts entire process, or looping on reading file blocks other http request. To make this to work, you need to dive into many different Python libraries. If the code looks simple, I've done a good job.</p>
+
+<h2>WCE Triage details</h2>
+
+<ul>
+<li>It boots a minimalistic Ubuntu Linux.</li>
+<li>When it boots, it starts two services "wce-triage" and "wce-kiosk" as described above.</li>
+</ul>
+
+<h3>Triage information gathering and decision making</h3>
+
+<p>Information gathering of individual component is in each python module in wce<em>triage/components, except computer/Computer.
+Currently, following components are implemented. 
+ - cpu.py
+ - disk.py
+ - memory.py
+ - network.py
+ - optical</em>drive.py
+ - pci.py
+ - sensor.py
+ - sound.py
+ - video.py</p>
+
+<p>The module name says pretty much what it is. Disk and network are somewhat special as the rest of wce-triage uses the instances of disk and network during not just triaging but imaging/restoring partclone image as well as starting network during triage.</p>
+
+<p>Computer module collects the components' information and makes the triage decision. The criteria of triage is decided by WCE. </p>
+
+<h2>WCE Disk Image File and Directories</h2>
+
+<p>In order to make things "simple" and consistent, I designed a simple structure for the disk image.
+The disk images are stored in <code>/usr/local/share/wce/wce-disk-images</code>. Under the directory, there are subdirectories. For now, conventions are "triage", "wce-16" and "wce-18". "triage" is for Triage USB image, "wce-16" for Ubuntu 16.04LTS and older, and "wce-18" for Ubuntu 18.04LTS and newer.</p>
+
+<p>The reason Ubuntu16.04 and 18.04 have to be separted is based on the EXT4 file system is not backward compatible. When you mkfs EXT4 partition for Ubuntu 16.04 on 18.04 machine, you need to pass down an option to not use "metadat_csum". If not, Ubuntu 16.04LTS disk loaded on EXT4+metadata_csum cannot boot.</p>
+
+<p>You can have arbitary subdirectory under "wce-disk-images". So, we start producing Ubuntu 20.04LTS, we'd create "wce-20" (or any other name). </p>
+
+<p>In the subdirectory, each subdirectory must contain a disk image metadata. For this, you need to create a file named ".disk<em>image</em>type.json".</p>
+
+<p>Here is the actual example of it in "wce-16".</p>
+
+<pre><code>{ "id": "wce-16",
+  "filestem": "wce-mate16",
+  "name": "WCE Ubuntu 16.04LTS",
+  "timestamp": true,
+  "ext4_version": "1.42",
+  "partition_map": "gpt"}
+</code></pre>
+
+<p>The "id" must match with the subdirectory name. (It probalby works even if it doesn't but that's the convention.) This is a tag that the web browser uses for disk image type ID. 
+"filestem" is used when you create a disk image. So, if you create a disk image in this directory, the file name starts with "wce-mate16". "timestamp" should be always true to ID when the disk image is created. The disk image creation app always adds the file system in its name as well. "ext4<em>version" is the one mentioned above. By declaring the ext4</em>version (which is actually the version number of libext4, I think), the partition task adds necessary mkfs option for Ubuntu 16.04 even if it's running on 18.04.</p>
+
+<p>For wce-18, ext4_version is 1.44. </p>
+
+<p>With the locations well known, httpsever easily finds all of disk images with it's metadata, and sends it up to web browser. Also, when you create a disk image, the image name is always consistent, and stored in well known location.</p>
+
+<p>It's not difficult to have different "wce-disk-images" directory, and as a matter of fact, if you mount a different disk and there is a directory right below the mount point, httpserver will find it as well for loading. However, for creating image, it's always stored in "/usr/local/share/wce/wce-disk-images/FOO".</p>
+
+<h2>Network Server for PXE boot and triage/disk imaging</h2>
+
+<p>The setup script does the servers set up but there are two important ingredients missing. One is the kernel/initrd for initial boot, and the NFS root directory for the desktop client. For the former, you need "/var/lib/netboot" directory sufficiently stuffed. "setup/install_pxeboot.py" should take care of this part. </p>
+
+<p>2nd ingredients is the root file system. "/var/lib/netclient/wcetriage" needs to be filled by the "triage disk". With working triage USB stick (or disk) in hand, you need to mount the disk, and rsync everything from the triage disk to the "wcetriage" directory. NFS server serves this directory as NFS root for client to use.</p>
+
+<h3>ONE VERY IMPORTANT INGREDIENTS FOR TRIAGE AND NETWORK BOOT - CUSTOM INITRD</h3>
+
+<p>For triage app to run on USB stick or NFS mounted root which is read-only, it needs to run using "unionfs" - aka aufs. What this does is to layer a file system over other file system. The base layer (read-only) is accesed if upper layer (writable and memory based tempfs) doesn't have the file, and if a file is modified or created, it stays on the upper layer. </p>
+
+<p>To this to work, initrd file contains a script to set up the aufs by creating tempfs, moving read-only file system to "/ro", and mount the aufs as root "/" file system. If you do not recreate (aka update) the initrd without this script, this does not work. triage.setup.setup_FOO installs the script and updates initrd file. If you use a stock initrd, this brakes down. If you are curious, you can take a look at the script for initrd. <code>wce-triage-v2/wce_triage/setup/patches/server/etc/initramfs-tools/scripts/init-bottom/__rootaufs</code> is the shell script for this. Same copy is included for triage and workstation, but not in the desktop client for obvious reason. </p>
+
+<h3>Network Server Post Installation Configuration</h3>
+
+<p>In order for network server to work properly, you have to manually configure the network interface (for now). This is because the network server (and workstation as well) need to prohibit offering DHCP on the NIC that is connected to your network. For PXE to work, it needs to have it's own subnet/separate network from your LAN, or else your LAN would be totally confused by more than one DHCP server running, and one of them is this destructive Triage app server. In some near future, I am thinking about the network setting to be done on the Triage web as well, but until I get there, you need to manually edit  /etc/dnsmasq.conf and /etc/netplan/foo.yaml for your network hardware.</p>
+
+</body>
+</html>
