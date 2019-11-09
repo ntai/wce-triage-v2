@@ -1,6 +1,6 @@
 import setuptools, sys, os
 
-with open("README.md", "r") as fh:
+with open("README.rst", "r") as fh:
   long_description = fh.read()
 
 # The wce triage is designed to work with Ubuntu 18.04LTS and after

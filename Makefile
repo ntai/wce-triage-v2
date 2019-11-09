@@ -16,7 +16,7 @@ bootstrap:
 	touch bootstrap
 
 upload: 
-	twine upload --repository-url https://test.pypi.org/legacy/ dist/* --skip-existing -u ${PYPI_USER} -p ${PYPI_PASSWORD}
+	. ./py3/bin/activate && twine upload --repository-url https://test.pypi.org/legacy/ dist/* --skip-existing -u ${PYPI_USER} -p ${PYPI_PASSWORD}
 
 check:
 	python3 -m twine check

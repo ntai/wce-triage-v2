@@ -87,54 +87,54 @@ Usually, "lo" is the loopback device and first. 2nd and on is the network device
     
     2: <YOUR-DEVICE-HERE>: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500...
 
-create netplan file
+create netplan file::
 
-    $ sudo mkdir /run/netplan
+  $ sudo mkdir /run/netplan
 
-Using text editor, create a netplan file as follow. Indentation is critical to netplan so this should look exactly as follow:
+Using text editor, create a netplan file as follow. Indentation is critical to netplan so this should look exactly as follow::
 
-    #/run/netplan/bootstrap.yaml file example
-    #
-    network: 
-      version: 2
-      renderer: networkd
-      ethernets:
-        <YOUR-DEVICE-HERE>:
-          dhcp4: yes
-          optional: yes
+  #/run/netplan/bootstrap.yaml file example
+  #
+  network: 
+    version: 2
+    renderer: networkd
+    ethernets:
+      <YOUR-DEVICE-HERE>:
+        dhcp4: yes
+        optional: yes
 
-start network:
+start network::
 
-    $ sudo netplan generate
-    $ sudo netplan apply
+  $ sudo netplan generate
+  $ sudo netplan apply
 
-### Step 4: Download wce_triage software
+### Step 4: Download wce_triage software::
 
-    $ sudo -H apt install -y python3-pip
-    $ sudo -H pip3 install --no-cache-dir -i https://test.pypi.org/simple/ --no-deps wce_triage
+  $ sudo -H apt install -y python3-pip
+  $ sudo -H pip3 install --no-cache-dir -i https://test.pypi.org/simple/ --no-deps wce_triage
 
-  At this point, if you want to switch over to use WIFI instead of ethernet, you can do so by
+At this point, if you want to switch over to use WIFI instead of ethernet, you can do so by::
 
-    $ sudo -H python3 -m wce_triage.bin.start_network
+  $ sudo -H python3 -m wce_triage.bin.start_network
 
-This module scans the network devices and runs netplan. If you want to use WIFI, set up a guest network as follow:
+This module scans the network devices and runs netplan. If you want to use WIFI, set up a guest network as follow::
 
-    SSID: wcetriage
-    Wifi password: thepasswordiswcetriage
+  SSID: wcetriage
+  Wifi password: thepasswordiswcetriage
   
-You can use your existing network.
+You can use your existing network.::
 
-    $ export TRIAGE_SSID=<YOUR-SSID>
-    $ export TRIAGE_PASSWORD=<YOUR-WIFI-PASSWORD>
-    $ sudo -H python3 -m wce_traige.bin.start_network
+  $ export TRIAGE_SSID=<YOUR-SSID>
+  $ export TRIAGE_PASSWORD=<YOUR-WIFI-PASSWORD>
+  $ sudo -H python3 -m wce_traige.bin.start_network
 
 "wcetriage" - is used for testing WIFI device during WCE's triage.
 In other word, if you have a wifi router with wcetriage/thepasswordiswcetriage, running triage software automatically connects to the wifi router thus it tests the WIFI device.
 
 
-### Step 5: Install the rest of WCE triage assets and set up the installer.
+### Step 5: Install the rest of WCE triage assets and set up the installer ::
 
-    $ python3 -m wce_triage.setup.setup_triage_system
+  $ python3 -m wce_triage.setup.setup_triage_system
 
 You should run this from terminal. It probably asks you some questions. Answer appropriately.
 For grub installation, install to the disk device you booted. Once the set up script has done it's job, the disk is bootable and ready for the triage.
@@ -195,15 +195,15 @@ Once the backend's functionalities are implemented and tested, wiring up the fun
 
 Information gathering of individual component is in each python module in wce_triage/components, except computer/Computer.
 Currently, following components are implemented. 
- - cpu.py
- - disk.py
- - memory.py
- - network.py
- - optical_drive.py
- - pci.py
- - sensor.py
- - sound.py
- - video.py
+- cpu.py
+- disk.py
+- memory.py
+- network.py
+- optical_drive.py
+- pci.py
+- sensor.py
+- sound.py
+- video.py
 
 The module name says pretty much what it is. Disk and network are somewhat special as the rest of wce-triage uses the instances of disk and network during not just triaging but imaging/restoring partclone image as well as starting network during triage.
 
@@ -220,7 +220,7 @@ You can have arbitary subdirectory under "wce-disk-images". So, we start produci
 
 In the subdirectory, each subdirectory must contain a disk image metadata. For this, you need to create a file named ".disk_image_type.json".
 
-Here is the actual example of it in "wce-16".
+Here is the actual example of it in "wce-16".::
 
     { "id": "wce-16",
       "filestem": "wce-mate16",
