@@ -54,8 +54,7 @@ def drain_pipe_completely(pipe, encoding='utf-8'):
 
 
 def uuidgen():
-  return str(uuid.uuid1())
-
+  return str(uuid.uuid4())
 
 def get_filename_stem(p):
   basename = os.path.basename(p)
