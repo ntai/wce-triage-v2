@@ -63,7 +63,7 @@ if __name__ == "__main__":
   try:
     src_dir = must_end_with_slash(mount_dir)
     dst_dir = must_end_with_slash(dst_dir)
-    cmd = 'rsync -av --delete --exclude=var/log --exclude=etc/fstab --exclude=home/triage/.cache --exclude=root/.cache --exclude=tmp/--exclude=var/cache/apt/ --exclude=home/triage/.config/pulse/ %s %s' % (src_dir, dst_dir)
+    cmd = 'rsync -av --delete --exclude=var/log --exclude=etc/fstab --exclude=etc/netplan --exclude=home/triage/.cache --exclude=root/.cache --exclude=tmp/--exclude=var/cache/apt/ --exclude=home/triage/.config/pulse/ %s %s' % (src_dir, dst_dir)
     print(cmd)
     sys.stdout.flush()
     subprocess.run(cmd, shell=True)
