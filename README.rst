@@ -90,7 +90,7 @@ Creating Bootable Triage App on Disk/USB stick
 This is the insturctions of creating USB stick that runs Triage app. Since the Triage app can load the triage app disk image to USB stick, this is not often practiced. Bootstrapping is hard, and knowledge must be kept somewhere. In the future (very likely year 2020 for Ubuntu 20.04LTS), I have to do this again.
 
 Step 1: Acquire Ubuntu 18.04LTS mini.iso installer
-**************************************************
+--------------------------------------------------
 
 'Create Installer' utility of Ubuntu does not work for mini.iso. This is likely because mini.iso does not contain full packages that *Create Installer* cannot detect the mini.iso.
 
@@ -102,7 +102,7 @@ Step 1: Acquire Ubuntu 18.04LTS mini.iso installer
     dd if=mini.iso of=/dev/<USB_STICK_DEVICE> bs=1M
 
 Step 2: Install mini.iso to a disk
-**********************************
+--------------------------------------------------
 
   Disk can be an external disk, USB stick, etc.
   I recommend using a normal disk (or SSD) to make it faster rather than USB stick.
@@ -111,7 +111,8 @@ Step 2: Install mini.iso to a disk
   User name/password is "triage/triage".
 
 Step 3: Bootstrap
-*****************
+--------------------------------------------------
+
   Once installation is done, boot into the installed system.
   One way or the other, you need to get network going. mini.iso is bare-bone (on purpose.)
 
@@ -147,7 +148,7 @@ start network::
     $ sudo netplan apply
 
 Step 4: Download wce_triage software
-************************************
+------------------------------------
 ::
    
     $ sudo -H apt install -y python3-pip
@@ -173,7 +174,7 @@ In other word, if you have a wifi router with wcetriage/thepasswordiswcetriage, 
 
 
 Step 5: Install the rest of WCE triage assets and set up the installer
-**********************************************************************
+----------------------------------------------------------------------
 ::
    
   $ python3 -m wce_triage.setup.setup_triage_system
@@ -184,28 +185,28 @@ For grub installation, install to the disk device you booted. Once the set up sc
 Since the setup script is still weak - meaning that, it may fail for many and unknown reasons. Please let me know by filing bug at the project bug report.
 
 
-Triage App archtecture
-######################
+Triage App architecture
+#######################
 Now, how-to part is done. Let's get into the technical part of Triage app. 
 
 Grand Overview
-**************
+--------------
 Triae app is made out of two pieces - the backend "WCE Triage" which is the engine part of operations, and Triage UI which is Web based user interface. This exercises major parts of desktop client. It runs same Xorg X-server, Pulseaudio server, so if any major component is missing such as incompatible video card or missing sound driver on Ubuntu, we will catch it.
 
 It also allows us to run the same Triage app on workstation for disk imaging and loading disk image from the web browser already on the workstation.
 
 wce-triage overview
-*******************
+-------------------
 The core of WCE triage is written in Python3. The reason is that, the mini.iso/base system of Ubuntu 18.04LTS includes Python3 so to not increase the footprint, Python3 is a natural choice. The source code is available at https://github.com/ntai/wce-triage-v2. (This readme is part of it.)
 The details are in the latter part of this document.
 
 wce-kiosk overview
-*******************
+-------------------
 The front-end UI uses React.js, and the source is available at https://github.com/ntai/wce-triage-ui. For the details, please refer the project document.
 it's developed on Mac by me at the moment, and quite crude. The release build does not require anything extra from internet, and HTTP server in wce-triage handles the requests.
 
 WCE Triage backend (wce-triage-v2)
-**********************************
+----------------------------------
 
 The package provides following features:
 
@@ -241,13 +242,13 @@ Once the backend's functionalities are implemented and tested, wiring up the fun
 
 
 WCE Triage details
-##################
+------------------
 
 - It boots a minimalistic Ubuntu Linux.
 - When it boots, it starts two services "wce-triage" and "wce-kiosk" as described above.
 
 Triage information gathering and decision making
-************************************************
+------------------------------------------------
 
 Information gathering of individual component is in each python module in wce_triage/components, except computer/Computer.
 Currently, following components are implemented. 
@@ -266,7 +267,7 @@ The module name says pretty much what it is. Disk and network are somewhat speci
 Computer module collects the components' information and makes the triage decision. The criteria of triage is decided by WCE. 
 
 WCE Disk Image File and Directories
-***********************************
+-----------------------------------
 
 In order to make things "simple" and consistent, I designed a simple structure for the disk image.
 The disk images are stored in `/usr/local/share/wce/wce-disk-images`. Under the directory, there are subdirectories. For now, conventions are "triage", "wce-16" and "wce-18". "triage" is for Triage USB image, "wce-16" for Ubuntu 16.04LTS and older, and "wce-18" for Ubuntu 18.04LTS and newer.
@@ -295,9 +296,12 @@ With the locations well known, httpsever easily finds all of disk images with it
 
 It's not difficult to have different "wce-disk-images" directory, and as a matter of fact, if you mount a different disk and there is a directory right below the mount point, httpserver will find it as well for loading. However, for creating image, it's always stored in "/usr/local/share/wce/wce-disk-images/FOO".
 
+.disk_image_types.json specs
+----------------------------
+
 
 Network Server for PXE boot and triage/disk imaging
-***************************************************
+---------------------------------------------------
 
 The setup script does the servers set up but there are two important ingredients missing. One is the kernel/initrd for initial boot, and the NFS root directory for the desktop client. For the former, you need "/var/lib/netboot" directory sufficiently stuffed. "setup/install_pxeboot.py" should take care of this part. 
 
