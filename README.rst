@@ -19,9 +19,14 @@ Since WCE ships the computers with Ubuntu as OS, it makes sense to run Ubuntu to
 
 This package is designed around running a minimal Ubuntu/Linux, and gather computer states, and displays the triage information. Let's call it **Triage App**. Triage app also restores disk image to computer disk, and creates disk image from the computer's disk as well.
 
+The game day
+------
+When the game day comes (normally once or twice a month), volunteers gather up at WCE HQ in Hull. After a huddle (well, briefing), volunteers split up to assigned tasks. The main task is about tiraging the incoming computers, gather the specs of computer, and if needed, repair the computer. Once the computer becomes operational, QA person inspects the computer, and when it's all good, the computer is marked as "Ready to ship", and goes into a warehouse.
+
+The computer needs to meet certain criterias. For example, the size of harddrive, CPU speed, memory size have to meet or exceed the required specs. Some volunteers may or may not be aware of such requirements. By providing a software for this process, the result becomes uniform. WCE Triage's first use is to catalog the specs of given computer and present the information. The triage process also doubles as a brief health check of computer.
 
 Overview of WCE operations
-####
+-----
 For the operation of WCE, there are 4 categories of computers involved. 
 
 1. **Desktop client** - this is the product we produce
@@ -29,7 +34,25 @@ For the operation of WCE, there are 4 categories of computers involved.
 3. **Network Server** - this is a Ubuntu/Linux server that is capable of running Triage app on PXE booted client over network, and thus allows PXE booted Desktop clients to install the disk image over network. Typically, this is a head-less server that is used during the game day.
 4. **Workstation** - this is a Ubuntu/Linux desktop that is used for authoring WCE contents and disk images. The workstation is also a Network Server as well. This allows us to check out the disk image created immediately by connecting a desktop client to the workstation. Typically, this is a Ubuntu desktop computer used for imaging disks and creating contents off-game day.
 
-Triage app contains a setup script for each category. For example, setup script for Workstation installs all necessary Ubuntu and Python packages, prepares the disk image directories, installs dnsmasq for PXE boot, inetd/tftp server for network boot, kernel NFS server for client's NFS booting, etc.
+The triage app for triaging
+-----
+You can boot the triage app from disk, CD/DVD, USB flash drive or over the network using PXE boot. In the end, it runs the wce-triage and wce-kiosk services. **wce-triage** service is the backend to gather the specs of computer, and **wce-kiosk** is the web browser to fetch the specs and presents it in a SPA. (Single Page Application)
+
+
+The triage app for disk imaging
+-----
+Triage app's second and could be most important part of functionality is to produce cloned disks. This is also known as *Loading image* or *Restoring image*. This is simlar to restroing a backup to a disk. (Essentially restore with some tweaks.)
+The disk image is based on **partclone** package. The triage-app partitions the disk, installs the disk image to a partition, updates ``/etc/fstab`` with parition UUIDs, generates a new hostname, updates ``/etc/default/grub`` and run ``update-grub`` and ``update-initramfs``.
+
+Triage app can create the disk image from existing disk as well. This is called *Creating disk image* or *Saving image*. 
+
+
+The triage app for setups
+-----
+Triage app contains a setup script for Network server and workstation. For example, setup script for Workstation installs all necessary Ubuntu and Python packages, prepares the disk image directories, installs dnsmasq for PXE boot, inetd/tftp server for network boot, kernel NFS server for client's NFS booting, etc. This does not involve the web UI. You can run the command ``python3 -m wce_triage.setup.setup_workstation`` to set up a workstation computer and it installs necessary packages.
+
+``python3 -m wce_triage.setup.setup_network_server`` sets up the network server. Note that, this changes the network completely, installs dnsmasq for PXE boot. Once this is done, connecting network sever to your local network is a disaster for the network. This is designed for an island network and the server provides PXE/DHCP/TFTP/NFS/HTTP for client computers. The client computers can then run the triage app, or use disk imaging to install the disk image to local harddisk over the network.
+
 
 Disk image installation operation
 ****
