@@ -299,6 +299,53 @@ It's not difficult to have different "wce-disk-images" directory, and as a matte
 .disk_image_types.json specs
 ----------------------------
 
++---------------------+------------+------------------------------------------------+------------------------------+
+| Tag                 | Type       | Value                                          | Example                      |
++=====================+============+================================================+==============================+
+| id                  | string     | ID of this disk image type.                    | wce-18                       |
+|                     |            | Should be same as the parent directory.        |                              |
++---------------------+------------+------------------------------------------------+------------------------------+
+| filestem            | string     | Leading part of file name for creating image   | wce-mate18                   |
++---------------------+------------+------------------------------------------------+------------------------------+
+| name                | string     | Descriptive name for user                      | WCE Mate 18.04LTS            |
++---------------------+------------+------------------------------------------------+------------------------------+
+| timestamp           | boolean    | timestamp added for the image file             | true                         |
++---------------------+------------+------------------------------------------------+------------------------------+
+| efi_image           | string     | file name of the EFI parition.                 | .efi-512M.fat32.partclone.gz |
++---------------------+------------+------------------------------------------------+------------------------------+
+| partition_map       | string     | "gpt", "msdos"                                 | gpt                          |
++---------------------+------------+------------------------------------------------+------------------------------+
+| hostname            | string     | Host name after the installation               | wce                          |
++---------------------+------------+------------------------------------------------+------------------------------+
+| randomize_hostname  | bool       | Add random suffix to host name                 | false                        |
++---------------------+------------+------------------------------------------------+------------------------------+
+| cmdline             | json       | See cmdline description below                  | { "splash": "_REMOVE_" }     |
++---------------------+------------+------------------------------------------------+------------------------------+
+
+cmdline
+-------
+
+cmdline is a json (or python's attrib) that can be augmented with existing cmdline available in ``/etc/default/grub`` file. For example,
+::
+
+    {
+      "id": "wce-18",
+      "filestem": "wce-mate18",
+      "name": "WCE Ubuntu 18.04LTS",
+      "timestamp": true,
+      "efi_image": ".efi-512M.fat32.partclone.gz",
+      "partition_map": "gpt",
+      "hostname": "wce",
+      "randomize_hostname": true,
+      "cmdline": {
+        "acpi_enforce_resources": "lax" ,
+        "nvme_core.default_ps_max_latency_us": "5500"
+      }
+    }
+
+Here "acpi_enforce_resource=lax nvme_core.default_ps_max_latency_us=5500" is added to the _CMDLINE for boot flags.
+The value "_REMOVE_" is special, and when this is present, the tag/value is removed from the cmdline.
+
 
 Network Server for PXE boot and triage/disk imaging
 ---------------------------------------------------
