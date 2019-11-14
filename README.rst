@@ -25,6 +25,9 @@ When the game day comes (normally once or twice a month), volunteers gather up a
 
 The computer needs to meet certain criterias. For example, the size of harddrive, CPU speed, memory size have to meet or exceed the required specs. Some volunteers may or may not be aware of such requirements. By providing a software for this process, the result becomes uniform. WCE Triage's first use is to catalog the specs of given computer and present the information. The triage process also doubles as a brief health check of computer.
 
+Here is `an example of Triage info display
+<https://raw.githubusercontent.com/ntai/wce-triage-v2/master/docs/triage-ui-example.jpg>`_.
+
 Overview of WCE operations
 --------------------------
 For the operation of WCE, there are 4 categories of computers involved. 
