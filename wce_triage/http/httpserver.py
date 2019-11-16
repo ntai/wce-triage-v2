@@ -236,6 +236,7 @@ class TriageWeb(object):
     self.loading_status = { "pages": 1, "tasks": [], "diskRestroing": False }
     self.saving_status = { "pages": 1, "tasks": [], "diskSaving": False}
     self.wiping_status = { "pages": 1, "tasks": [], "diskWiping": False }
+    self.syncing_status = { "tasks": [] }
 
     # wock (web socket) channels.
     self.channels = {}
@@ -248,6 +249,7 @@ class TriageWeb(object):
     self.wiper = None
     self.optests = []
     self.cpu_info = None
+    self.syncer = None
     
     self.wock = wock
 
@@ -323,6 +325,9 @@ class TriageWeb(object):
       pass
     elif event == "zerowipe":
       self.wiping_status = update_runner_status(self.wiping_status, message)
+      pass
+    elif event == "diskimage":
+      self.syncing_status = update_runner_status(self.syncing_status, message)
       pass
     pass
 
@@ -1080,6 +1085,77 @@ class TriageWeb(object):
   
   pass
 
+# ============================================================================
+#
+  @routes.post("/dispatch/sync")
+  async def route_sync_disk_images(request):
+    """sync disk images from the source to selected disks"""
+    global me
+
+    me.target_disks = get_target_devices_from_request(request)
+    if me.target_disks is None:
+      raise HTTPServiceUnavailable()
+
+    # Resetting the state - hack...
+    if request.query.get('sources'):
+      me.load_disk_options = request.query
+      me.start_sync_disk_images('start from request')
+    else:
+      Emitter.note("No image file selected.")
+      await Emitter.flush()
+      pass
+    return aiohttp.web.json_response({})
+
+  def _get_sync_option(self, tag):
+    value = self.load_disk_options.get(tag)
+    if isinstance(value, tuple):
+      value = value[0]
+      pass
+    return value
+
+  def start_sync_disk_images(self, log):
+    if not self.target_disks:
+      return
+
+    devname = self.target_disks[0]
+    self.target_disks = self.target_disks[1:]
+    tlog.debug(log + " Targets : " + ",".join(self.target_disks))
+    argv = ['python3', '-m', 'wce_triage.ops.sync_image_runner']
+    imagefiles = self._get_sync_option("sources")
+
+    argv = argv + [devname, imagefiles]
+    tlog.debug(argv)
+
+    # FIXME: I think I can refactor the run subprocess / gather thing. Up to this point,
+    # this is about making argv, after this, thing to do is the same. However, looking at the
+    # callbacks, there aren't much to do in it so how much I can buy from refactoring is not much.
+
+    self.syncer = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    PipeReader.add_to_event_loop(self.syncer.stdout, me.diskimage_progress_report, "diskimage")
+    PipeReader.add_to_event_loop(self.syncer.stderr, me.diskimage_progress_report, "message")
+    return
+
+  def diskimage_progress_report(self, pipereader):
+    '''Callback for checking the output of diskimage ops process'''
+    self._runner_progress_report("diskimage", pipereader)
+    if self.syncer:
+      self._runner_check_process("diskimage", self.syncer, 'check disk image operation process from status')
+      if self.syncer.returncode is not None:
+        self.syncer = None
+        self.start_load_disks("loadimage finished.")
+      pass
+    pass
+
+  @routes.get("/dispatch/sync-status.json")
+  async def route_sync_status(request):
+    """Progress of sync image to disk"""
+    global me
+    running = me.syncer and me.syncer.returncode is None
+    syncing_status = me.syncing_status
+    syncing_status['syncing'] = running
+    return aiohttp.web.json_response(syncing_status)
+
+# ============================================================================
 
 @wock.event
 async def connect(wockid, environ):

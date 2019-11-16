@@ -252,7 +252,7 @@ class op_task_process(op_task):
   def setup(self):
     tlog.debug( "op_task_process Poepn: " + repr(self.argv))
     self.verdict.append("Process: " + repr(self.argv))
-    self.process = subprocess.Popen(self.argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    self.process = subprocess.Popen(self.argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL)
     self.stdout = self.process.stdout
     self.stderr = self.process.stderr
     self.read_set = [self.stdout, self.stderr]
@@ -564,10 +564,11 @@ class task_unmount(op_task_process_simple):
 class task_mount(op_task_process_simple):
   """mount a partition on disk"""
 
-  def __init__(self, description, disk=None, partition_id='Linux', **kwargs):
+  def __init__(self, description, disk=None, partition_id='Linux', add_mount_point=None, **kwargs):
     self.disk = disk
     self.partition_id = partition_id
     self.part = None
+    self.add_mount_point = add_mount_point
     super().__init__(description, argv = ["/bin/mount"], time_estimate=2, **kwargs)
     pass
   
@@ -593,6 +594,9 @@ class task_mount(op_task_process_simple):
 
   def teardown(self):
     self.part.mounted = self.progress == 100
+    if self.part.mounted and self.add_mount_point != None:
+      self.add_mount_point(self.disk, self.part)
+      pass
     super().teardown()
     pass
 
@@ -858,8 +862,13 @@ class task_fetch_partitions(op_task_process_simple):
     super().__init__(description, argv=self.lister.argv, time_estimate=1, **kwargs)
     pass
   
+
   def poll(self):
     super().poll()
+
+    if self.process.returncode:
+      print("retcode = %d" % self.process.returncode)
+      pass
 
     if self.progress == 100:
       self.lister.set_parted_output(self.out, self.err)

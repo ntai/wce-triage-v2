@@ -32,3 +32,8 @@ clean:
 
 client:
 	python3 -m wce_triage.setup.update_client
+
+
+cleanwinner:
+	cd /usr/local/share/wce/wce-triage-ui && curl -L -o - 'http://release.cleanwinner.com/wce/wce-triage-ui.tgz' | tar xzf -
+
