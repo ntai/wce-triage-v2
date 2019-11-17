@@ -84,6 +84,7 @@ def fanout_copy(source_file, destinations, output=sys.stderr):
   sofar = 0
   time_reamining = 0
   bytes_per_second = 1
+  invalid_fds = {}
   
   signal.signal(signal.SIGINT, handler_stop_signals)
   signal.signal(signal.SIGTERM, handler_stop_signals)
@@ -97,18 +98,55 @@ def fanout_copy(source_file, destinations, output=sys.stderr):
       bytesread = source_fd.readinto(copybuf)
       remaining -= bytesread
     except Exception as exc:
-      raise exc
+      running = False
+      current_time = datetime.datetime.now()
+      dt_elapsed = in_seconds(current_time - start_time)
+      report = {"key": key,
+                "verdict": "Read failed. %s" % exc.format_exc(),
+                "runMessage": "%d of %d bytes copied." % (sofar, source_file_size),
+                "runStatus": RUN_STATE[RunState.Failed.value],
+                "startTime": start_time.isoformat(),
+                "currentTime": current_time.isoformat(),
+                "progress": progress,
+                "timeReamining" : 0,
+                "runTime" : round(in_seconds(dt_elapsed)),
+                "runEstimate" : 0,
+                "bytesPerSecond": bytes_per_second,
+                "totalBytes": source_file_size,
+                "remainingBytes": remaining}
+      print(json.dumps(report), file=output, flush=True)
+      continue
       
     sofar += bytesread
 
     valid_data = copybuf if copy_size == copybuf_size else copybuf[:bytesread]
     
     for dest_fd, dest_path, key in _destinations:
+      if dest_fd in invalid_fds:
+        continue
+
       try:
         dest_fd.write(valid_data)
         dest_fd.flush()
         os.fsync(dest_fd.fileno())
       except Exception as exc:
+        invalid_fds[dest_fd] = True
+        current_time = datetime.datetime.now()
+        dt_elapsed = in_seconds(current_time - start_time)
+        report = {"key": key,
+                  "verdict": exc.format_exc(),
+                  "runMessage": "Write failed. %d of %d bytes copied." % (sofar, source_file_size),
+                  "runStatus": RUN_STATE[RunState.Failed.value],
+                  "startTime": start_time.isoformat(),
+                  "currentTime": current_time.isoformat(),
+                  "progress": progress,
+                  "timeReamining" : 0,
+                  "runTime" : round(in_seconds(dt_elapsed)),
+                  "runEstimate" : 0,
+                  "bytesPerSecond": bytes_per_second,
+                  "totalBytes": source_file_size,
+                  "remainingBytes": remaining}
+        print(json.dumps(report), file=output, flush=True)
         pass
       pass
 
@@ -135,20 +173,19 @@ def fanout_copy(source_file, destinations, output=sys.stderr):
       progress = min(99, max(1, round(100*percentage_done)))
 
       for dest_fd, dest_path, key in _destinations:
-        report = { "event": "copyfile",
-                   "message": {"key": key,
-                               "desination": dest_path,
-                               "runMessage": "%d of %d bytes copied." % (sofar, source_file_size),
-                               "runStatus": RUN_STATE[RunState.Running.value],
-                               "startTime": start_time.isoformat(),
-                               "currentTime": current_time.isoformat(),
-                               "progress": progress,
-                               "timeReamining" : round(time_reamining),
-                               "runTime" : round(in_seconds(dt_elapsed)),
-                               "runEstimate" : round(time_reamining+in_seconds(dt_elapsed)),
-                               "bytesPerSecond": bytes_per_second,
-                               "totalBytes": source_file_size,
-                               "remainingBytes": remaining}}
+        report = {"key": key,
+                  "desination": dest_path,
+                  "runMessage": "%d of %d bytes copied." % (sofar, source_file_size),
+                  "runStatus": RUN_STATE[RunState.Running.value],
+                  "startTime": start_time.isoformat(),
+                  "currentTime": current_time.isoformat(),
+                  "progress": progress,
+                  "timeReamining" : round(time_reamining),
+                  "runTime" : round(in_seconds(dt_elapsed)),
+                  "runEstimate" : round(time_reamining+in_seconds(dt_elapsed)),
+                  "bytesPerSecond": bytes_per_second,
+                  "totalBytes": source_file_size,
+                  "remainingBytes": remaining}
         print(json.dumps(report), file=output, flush=True)
         pass
       report_count += 1
@@ -169,39 +206,38 @@ def fanout_copy(source_file, destinations, output=sys.stderr):
 
   if remaining > 0:
     for dest_fd, dest_path, key in _destinations:
-      report = { "event": "copyfile",
-                 "message": {"key": key,
-                             "destination": dest_path,
-                             "runMessage": "%d of %d bytes copied." % (sofar, source_file_size),
-                             "runStatus": RUN_STATE[RunState.Failed.value],
-                             "startTime": start_time.isoformat(),
-                             "currentTime": current_time.isoformat(),
-                             "progress": 999,
-                             "timeReamining" : round(time_reamining),
-                             "runTime" : round(in_seconds(dt_elapsed)),
-                             "runEstimate" : round(time_reamining+in_seconds(dt_elapsed)),
-                             "bytesPerSecond": bytes_per_second,
-                             "totalBytes": source_file_size,
-                             "remainingBytes": remaining}}
+      report = { "key": key,
+                 "destination": dest_path,
+                 "runMessage": "%d of %d bytes copied." % (sofar, source_file_size),
+                 "runStatus": RUN_STATE[RunState.Failed.value],
+                 "startTime": start_time.isoformat(),
+                 "currentTime": current_time.isoformat(),
+                 "progress": 999,
+                 "timeReamining" : round(time_reamining),
+                 "runTime" : round(in_seconds(dt_elapsed)),
+                 "runEstimate" : round(time_reamining+in_seconds(dt_elapsed)),
+                 "bytesPerSecond": bytes_per_second,
+                 "totalBytes": source_file_size,
+                 "remainingBytes": remaining}
       print(json.dumps(report), file=output, flush=True)
       pass
     pass
   else:
     for dest_fd, dest_path, key in _destinations:
-      report = { "event": "copyfile",
-                 "message" : {"key": key,
-                              "destination": dest_path,
-                              "runMessage": "%d of %d bytes copied." % (sofar, source_file_size),
-                              "runStatus": RUN_STATE[RunState.Success.value],
-                              "startTime": start_time.isoformat(),
-                              "currentTime": current_time.isoformat(),
-                              "progress": 100,
-                              "runTime" : round(in_seconds(dt_elapsed)),
-                              "runEstimate" : round(in_seconds(dt_elapsed)),
-                              "timeReamining" : 0,
-                              "bytesPerSecond": source_file_size / in_seconds(dt_elapsed),
-                              "totalBytes": source_file_size,
-                              "remainingBytes": 0}}
+      report = {"key": key,
+                "verdict": "Speed: %d bytes/second" % round(source_file_size / in_seconds(dt_elapsed))
+                "destination": dest_path,
+                "runMessage": "Copying completed (%d bytes copied.)" % (source_file_size),
+                "runStatus": RUN_STATE[RunState.Success.value],
+                "startTime": start_time.isoformat(),
+                "currentTime": current_time.isoformat(),
+                "progress": 100,
+                "runTime" : round(in_seconds(dt_elapsed)),
+                "runEstimate" : round(in_seconds(dt_elapsed)),
+                "timeReamining" : 0,
+                "bytesPerSecond": source_file_size / in_seconds(dt_elapsed),
+                "totalBytes": source_file_size,
+                "remainingBytes": 0}
       print(json.dumps(report), file=output, flush=True)
       pass
     pass

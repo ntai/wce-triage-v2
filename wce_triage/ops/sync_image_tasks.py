@@ -174,11 +174,17 @@ class task_image_sync_copy(op_task_process_simple, task_image_sync):
 
       # each line is a json record
       report = json.loads(line)
-      event = report['event']
-      message = report['message']
-      self.set_progress(message['progress'], message['runMessage'])
-      self.set_time_estimate(message['runEstimate'])
+      self.set_progress(report['progress'], report['runReport'])
+      self.set_time_estimate(report['runEstimate'])
+      runState = report['runState']
+      if "verdict" in report:
+        self.verdict.append(report["verdict"])
+        pass
       pass
+    pass
+
+  def teardown(self):
+    super().teardown()
     pass
 
   pass
