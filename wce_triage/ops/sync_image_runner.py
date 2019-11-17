@@ -53,6 +53,12 @@ For now, this is only dealing with the EXT4 linux partition.
     self.tasks.append(task)
     self.sync_tasks.append(task)
 
+    for disk in self.disks:
+      sync_meta_task = task_image_sync_metadata("Sync Disk Types", disk=disk, testflight=self.testflight)
+      self.tasks.append(sync_meta_task)
+      self.sync_tasks.append(sync_meta_task)
+      pass
+
     for source in self.sources:
       sync_task = task_image_sync_copy("Copy disk image", source=source, testflight=self.testflight)
       self.tasks.append(sync_task)
