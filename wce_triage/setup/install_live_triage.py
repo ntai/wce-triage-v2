@@ -2,7 +2,7 @@
 #
 # This is for Triage USB stick on mini system
 #
-import os, sys, subprocess, stat
+import subprocess
 
 if __name__ == "__main__":
   LIVE_TRIAGE="wce-live-triage"

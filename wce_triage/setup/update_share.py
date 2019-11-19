@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import os, sys, subprocess
+import os, subprocess
 env = os.environ.copy()
 
 if __name__ == "__main__":

@@ -1,25 +1,30 @@
-"""String constants. 
+"""String constants.
 Once defined, it becomes immutable.
 """
 
+
 class _const:
+
   class ConstError(TypeError):
     pass
+
   def __setattr__(self, name, value):
     if name in self.__dict__:
       raise self.ConstError
     self.__dict__[name] = value
+
   def __delattr__(self, name):
     if name in self.__dict__:
       raise self.ConstError
     raise NameError
   pass
- 
+
 const = _const()
 
 const.wce_share="wce_share"
 const.wce_payload="wce_payload"
-# 
+
+# WCE setup consts
 const.WCE_SERVER="WCE_SERVER"
 const.WCE_DESKTOP="WCE_DESKTOP"
 
@@ -55,7 +60,7 @@ const.ext4_version = 'ext4_version'
 const.ext4_version_1_42 = "1.42"
 const.ext4_version_no_metadata_csum = const.ext4_version_1_42
 
-#const.forcepae = 'forcepae'
+const.forcepae = 'forcepae'
 const.cmdline = 'cmdline'
 
 # cmdline special value for removing vlaue

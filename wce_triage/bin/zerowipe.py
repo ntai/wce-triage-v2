@@ -1,12 +1,12 @@
 #!/usr/bin/python3
 
-import os, sys, subprocess, urllib, datetime, json, traceback, signal
-from ..lib.util import *
-from ..lib.timeutil import *
-from ..ops.run_state import *
+import os, sys, subprocess, datetime, json, traceback, signal
+from ..lib.util import is_block_device, init_triage_logger
+from ..lib.timeutil import in_seconds
+from ..ops.run_state import RUN_STATE, RunState
 
 start_time = datetime.datetime.now()
-
+tlog = init_triage_logger()
 
 def handler_stop_signals(signum, frame):
   global running
@@ -152,7 +152,7 @@ def wipe(short_wipe, device):
     pass
 
   try:
-    result = wipe_disk(device, n_sectors)
+    wipe_disk(device, n_sectors)
   except Exception as exc:
     run_time = round(in_seconds( datetime.datetime.now() - start_time))
     error_message = traceback.format_exc()

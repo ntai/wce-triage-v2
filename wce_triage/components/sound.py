@@ -2,8 +2,8 @@
 # Copyright (c) 2019 Naoyuki tai
 # MIT license - see LICENSE
 
-import os, subprocess
-from .component import *
+import os
+from .component import Component
 
 def detect_sound_device():
   detected = False

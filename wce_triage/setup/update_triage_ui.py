@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import os, sys, subprocess
+import os, subprocess
 from wce_triage.setup.install_packages import list_installed_packages
 
 

@@ -11,16 +11,16 @@ The :mod:`deb_pkg_tools` module defines the `deb-pkg-tools` version number and
 the Debian packages that are required to use all of the features provided by
 the `deb-pkg-tools` package.
 """
-name = "wce_triage"
+from .version import TRIAGE_VERSION
 
-from .version import *
+name = "wce_triage"
 
 # Semi-standard module versioning.
 __version__ = TRIAGE_VERSION
 
 debian_package_dependencies = (
     'partclone',     # partclone is a part of Clonezilla
-    'pigz' ,         # parallel gzip
+    'pigz',          # parallel gzip
     'gnupg',         # apt-ftparchive
     'dmidecode',     # dpkg-architecture
     'grub2-common',  # 

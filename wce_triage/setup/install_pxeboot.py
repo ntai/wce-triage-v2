@@ -11,7 +11,7 @@
 # and the UI to drive it. The pxeboot setting probably should come from a config
 # file, and natural choice is JSON.
 #
-import os, sys, subprocess, distutils.file_util, stat
+import os, sys, distutils.file_util, stat
 
 if os.getuid() != 0:
     print("***** install_boot would only work as root *****")

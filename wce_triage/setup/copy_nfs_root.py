@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 
-import os, sys, subprocess
-from wce_triage.components.disk import *
-from wce_triage.lib.util import *
+import sys, subprocess
+from wce_triage.components.disk import PartitionLister, DiskPortal
+from wce_triage.lib.util import is_block_device
 import uuid
 
 # ID the partition
 def find_disk(portal, device_name):
-  disks = portal.decision(live_system=True)
+  portal.decision(live_system=True)
   for disk in portal.disks:
     if disk.device_name == device_name:
       return disk

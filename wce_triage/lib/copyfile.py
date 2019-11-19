@@ -2,6 +2,9 @@
 # File copying util
 #
 
+import os
+indentstr = " " * 100
+
 class node:
   def __init__(self, parent, name):
     self.total_size = 0

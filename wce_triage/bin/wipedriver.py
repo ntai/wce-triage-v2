@@ -6,9 +6,9 @@
 # dd if=/dev/zero of=/dev/sdX bs=1M, I'll do this in script so I have
 # control over the output.
 
-import os, sys, subprocess
-from .process_driver import *
-from ..lib.util import *
+import sys, subprocess
+from .process_driver import drive_process, PipeInfo
+from ..lib.util import init_triage_logger, is_block_device
 
 if __name__ == "__main__":
   tlog = init_triage_logger()

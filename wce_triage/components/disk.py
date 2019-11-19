@@ -2,12 +2,11 @@
 # Copyright (c) 2019 Naoyuki tai
 # MIT license - see LICENSE
 
-import re, sys, os, subprocess, traceback, time
-import logging
+import re, subprocess, traceback, time, os
 import json
 
-from ..lib.util import *
-from .component import *
+from ..lib.util import get_triage_logger
+from .component import Component
 
 tlog = get_triage_logger()
 
@@ -588,6 +587,9 @@ class DiskPortal(Component):
       nvme = subprocess.run("nvme list -o json", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8', timeout=5)
       out = nvme.stdout
       err = nvme.stderr
+      if err:
+        tlog.info(err)
+        pass
       nvme_output = json.loads(out)
 
       for device in nvme_output["Devices"]:
@@ -618,7 +620,7 @@ class DiskPortal(Component):
           # Consume the disk entry
           existing_disks[device_name] = None
           if nvmessd.mounted != is_mounted:
-            nvmdssd.mounted = is_mounted
+            nvmessd.mounted = is_mounted
             updated_disks.append(nvmessd)
             pass
           pass

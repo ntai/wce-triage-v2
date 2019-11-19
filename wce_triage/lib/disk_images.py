@@ -3,7 +3,7 @@
 """disk_image scans the disk image candidate directories and returns availabe disk images for loading.
 """
 import os, datetime, json, traceback
-from ..lib.util import *
+from ..lib.util import get_triage_logger, init_triage_logger
 
 tlog = get_triage_logger()
 

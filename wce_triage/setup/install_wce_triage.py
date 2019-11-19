@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import os, sys, subprocess
+import subprocess
 
 tmpfile = '/tmp/wce-triage.sh'
 

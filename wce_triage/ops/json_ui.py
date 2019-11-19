@@ -1,11 +1,12 @@
 #
-# 
+# JSON UI
 #
-import sys, os
-from .ops_ui import *
+import sys
+from .ops_ui import ops_ui
 import json
-from .run_state import *
-from ..lib.util import *
+from .run_state import RUN_STATE, RunState
+from ..lib.util import get_triage_logger
+from ..lib.timeutil import in_seconds
 
 tlog = get_triage_logger()
 
@@ -58,7 +59,7 @@ class json_ui(ops_ui):
     describe_tasks = [ _describe_task(task, current_time) for task in tasks ]
     self.send(self.wock_event,
               { "report": "tasks",
-                "device" : runner_id, 
+                "device" : runner_id,
                 "runStatus" : RUN_STATE[RunState.Preflight.value],
                 "runMessage" : "Prearing",
                 "runEstimate" : round(in_seconds(run_estimate)),

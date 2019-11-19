@@ -1,6 +1,4 @@
-import os, subprocess, datetime, request
-import urllib.request
-
+import subprocess
 
 def get_my_ip_address():
   ip_route = subprocess.run('ip route', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

@@ -5,7 +5,7 @@
 # This sets up the USB stick after installing mini.iso
 #
 
-import os, sys, subprocess
+import os, subprocess
 
 env = os.environ.copy()
 

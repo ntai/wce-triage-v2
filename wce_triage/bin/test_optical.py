@@ -4,14 +4,10 @@
 # good/bad is printed in json.
 # Since thing this does is too simple, I'll do kind of one-off.
 #
-import os, sys, subprocess, urllib, datetime, traceback
+import os, sys, subprocess, datetime, traceback
 
-import urllib.parse
-from collections import deque
-
-from ..lib.util import *
-from ..lib.timeutil import *
-from .process_driver import *
+from ..lib.util import init_triage_logger, is_block_device, get_test_password
+from ..lib.timeutil import in_seconds
 
 tlog = init_triage_logger()
 
@@ -41,7 +37,7 @@ def check_child_directory(path):
 def unmount(password, mountpoint):
   umount = subprocess.Popen(['sudo', '-H', '-S', 'umount', mountpoint], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   try:
-    mount.communicate(password, timeout=3)
+    umount.communicate(password, timeout=3)
   except Exception as exc:
     error_message = traceback.format_exc()
     tlog.info(error_message)
@@ -125,7 +121,6 @@ def test_optical(password, source, encoding='iso-8859-1'):
     all_the_messages.append(error_message)
     pass
 
-  result = { "device": source, "elapseTime": deltatime(start_time, end_time) }
   reply_result({"component": "Optical drive",
                 "result": okay,
                 "runMessage" : "The device %s passed the test." % source,

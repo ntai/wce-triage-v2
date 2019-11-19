@@ -7,30 +7,27 @@ and webscoket server
 
 """
 
-from ..version import *
-from ..const import *
+from ..version import TRIAGE_VERSION, TRIAGE_TIMESTAMP
+from ..const import const
 import aiohttp
 import aiohttp.web
-from aiohttp.web_exceptions import *
+from aiohttp.web_exceptions import HTTPNotFound, HTTPServiceUnavailable
 import aiohttp_cors
 from argparse import ArgumentParser
-from collections import namedtuple
-from contextlib import closing
 import json
-import os, sys, re, subprocess, datetime, asyncio, pathlib, traceback, queue, time, uuid
+import os, re, subprocess, datetime, asyncio, traceback, queue
 import logging, logging.handlers
-import functools
 
 from ..components.computer import Computer
-from ..components.disk import Disk, Partition, DiskPortal, PartitionLister
-from ..lib.util import *
-from ..lib.timeutil import *
-from ..ops.ops_ui import ops_ui
-from ..lib.pipereader import *
-from ..components import optical_drive as _optical_drive
+from ..components.disk import DiskPortal, PartitionLister
+from ..lib.util import get_triage_logger, init_triage_logger
+# from ..lib.timeutil import in_seconds
+from ..lib.pipereader import PipeReader
+# from ..components import optical_drive as _optical_drive
 from ..components import sound as _sound
-from ..lib.disk_images import *
-from ..lib.cpu_info import *
+from ..lib.disk_images import get_disk_images, read_disk_image_types
+from ..components import network as _network
+# from ..lib.cpu_info import cpu_info
 
 
 tlog = get_triage_logger()
@@ -241,6 +238,7 @@ class TriageWeb(object):
     # wock (web socket) channels.
     self.channels = {}
     self.target_disks = []
+    self.sync_target_disks = []
 
     # FIXME: ? It might make sense to refactor these processes for reducing code.
     # It also helps to do parallel exec.
@@ -364,7 +362,6 @@ class TriageWeb(object):
   async def route_triage(request):
     """Handles requesting triage result"""
     global me
-    hello = me.computer is None
     await me.triage()
     computer = me.computer
 
@@ -378,8 +375,8 @@ class TriageWeb(object):
   async def get_cpu_info(self):
     if self.cpu_info is None:
       tlog.debug("get_cpu_info: starting")
-      cpu_info = subprocess.Popen("python3 -m wce_triage.lib.cpu_info", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-      PipeReader.add_to_event_loop(cpu_info.stdout, me.watch_cpu_info, "stdout")
+      self.cpu_info = subprocess.Popen("python3 -m wce_triage.lib.cpu_info", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+      PipeReader.add_to_event_loop(self.cpu_info.stdout, self.watch_cpu_info, "stdout")
       tlog.debug("get_cpu_info: started")
       pass
 
@@ -393,8 +390,8 @@ class TriageWeb(object):
   async def route_cpu_info(request):
     """Handles getting CPU rating """
     global me
-    cpu_info = await me.get_cpu_info()
-    jsonified = { "cpu_info": cpu_info }
+    me.cpu_info = await me.get_cpu_info()
+    jsonified = { "cpu_info": me.cpu_info }
     return aiohttp.web.json_response(jsonified)
 
 
@@ -444,6 +441,9 @@ class TriageWeb(object):
       raise HTTPServiceUnavailable()
 
     computer = me.computer
+    device_name = request.query.get('deviceName')
+    if device_name is None:
+      raise HTTPServiceUnavailable()
     disk_info = computer.hw_info.find_entry("storage", {"logicalname" : device_name})
     if disk_info:
       return aiohttp.web.json_response(disk_info)
@@ -478,6 +478,10 @@ class TriageWeb(object):
                                             {"result": True,
                                              "message": "Sound is tested." },
                                             overall_changed=me.overall_changed)
+        # FIXME: Do something meaningful, like send a wock message.
+        if updated:
+          tlog.info("updated")
+          pass
         pass
       return resp
     
@@ -493,9 +497,10 @@ class TriageWeb(object):
       await me.triage()
       pass
     
-    reply = [ jsoned_optical(optical) for disk in computer.opticals._drives ]
+    reply = [ jsoned_optical(optical) for optical in me.computer.opticals._drives ]
     jsonified = { "opticaldrives": reply }
     return aiohttp.web.json_response(jsonified)
+
 
   @routes.post("/dispatch/opticaldrivetest")
   async def route_opticaldrive(request):
@@ -601,13 +606,13 @@ class TriageWeb(object):
     computer = me.computer
 
     netstat = []
-    for netdev in detect_net_devices():
+    for netdev in _network.detect_net_devices():
       netstat.append( { "device": netdev.device_name, "carrier": netdev.is_network_connected() } )
-      updated = computer.update_decision( {"component": "Network",
-                                           "device": netdev.device_name},
-                                          { "result": netdev.is_network_connected(),
-                                            "message": "Connection detected." if netdev.is_network_connected() else "Not conntected."},
-                                          overall_changed=me.overall_changed)
+      computer.update_decision( {"component": "Network",
+                                 "device": netdev.device_name},
+                                {"result": netdev.is_network_connected(),
+                                 "message": "Connection detected." if netdev.is_network_connected() else "Not conntected."},
+                                overall_changed=me.overall_changed)
       pass
     return aiohttp.web.json_response({ "network": netstat })
 
@@ -640,7 +645,7 @@ class TriageWeb(object):
   # Disk wipe types.
   #  
   @routes.get("/dispatch/wipe-types.json")
-  async def route_restore_types(request):
+  async def route_wipe_types(request):
     """Returning wipe types."""
     return aiohttp.web.json_response({ "wipeTypes": WIPE_TYPES})
 
@@ -909,13 +914,11 @@ class TriageWeb(object):
     if me.target_disks is None:
       raise HTTPServiceUnavailable()
 
-    target = None
     for disk in disks:
       if disk.device_name in me.target_disks:
         if disk.mounted:
           return aiohttp.web.json_response({})
           pass
-        target = disk
         break
       pass
         
@@ -994,6 +997,7 @@ class TriageWeb(object):
     wiping_status["diskWiping"] = wiper_running
     return aiohttp.web.json_response(wiping_status)
 
+  # FIXME: Not implemented yet
   @routes.post("/dispatch/mount")
   async def route_mount_disk(request):
     """Mount disk"""
@@ -1001,7 +1005,7 @@ class TriageWeb(object):
     me.disk_portal.detect_disks()
     disks = me.disk_portal.disks
 
-    requested = requst.query.get("deviceName")
+    requested = request.query.get("deviceName")
     for disk in disks:
       if disk.device_name in requested:
         try:
@@ -1017,7 +1021,7 @@ class TriageWeb(object):
           pass
         pass
       pass
-    return aiohttp.web.json_response(fake_status)
+    return aiohttp.web.json_response({})
 
   @routes.post("/dispatch/unmount")
   async def route_unmount_disk(request):
@@ -1092,39 +1096,39 @@ class TriageWeb(object):
     """sync disk images from the source to selected disks"""
     global me
 
-    me.target_disks = get_target_devices_from_request(request)
-    if me.target_disks is None:
+    me.sync_target_disks = get_target_devices_from_request(request)
+    if me.sync_target_disks is None:
       raise HTTPServiceUnavailable()
 
     # Resetting the state - hack...
     if request.query.get('sources'):
-      me.load_disk_options = request.query
-      me.start_sync_disk_images('start from request')
+      me.sync_disk_image_options = request.query
+      me.start_sync_disk_images('start sync from request')
     else:
       Emitter.note("No image file selected.")
       await Emitter.flush()
       pass
     return aiohttp.web.json_response({})
 
-  def _get_sync_option(self, tag):
-    value = self.load_disk_options.get(tag)
+  def _get_sync_disk_image_option(self, tag):
+    value = self.sync_disk_image_options.get(tag)
     if isinstance(value, tuple):
       value = value[0]
       pass
     return value
 
   def start_sync_disk_images(self, log):
-    if not self.target_disks:
+    if not self.sync_target_disks:
       return
-
-    devname = self.target_disks[0]
-    self.target_disks = self.target_disks[1:]
-    tlog.debug(log + " Targets : " + ",".join(self.target_disks))
-    argv = ['python3', '-m', 'wce_triage.ops.sync_image_runner']
-    imagefiles = self._get_sync_option("sources")
-
-    argv = argv + [devname, imagefiles]
-    tlog.debug(argv)
+    imagefiles = self._get_sync_disk_image_option("sources")
+    if len(imagefiles) == 0 or self.sync_target_disks == 0:
+      tlog.debug("SYNC: imagefile is none, or sync target disk is none. Check the sync_disk_image_options")
+      tlog.debug(self.sync_disk_image_options)
+      argv = ['true']
+    else:
+      argv = ['python3', '-m', 'wce_triage.ops.sync_image_runner', ",".join(self.sync_target_disks)] + imagefiles.split(',')
+      pass
+    tlog.debug("SYNC: " + " ".join(argv))
 
     # FIXME: I think I can refactor the run subprocess / gather thing. Up to this point,
     # this is about making argv, after this, thing to do is the same. However, looking at the
@@ -1142,7 +1146,8 @@ class TriageWeb(object):
       self._runner_check_process("diskimage", self.syncer, 'check disk image operation process from status')
       if self.syncer.returncode is not None:
         self.syncer = None
-        self.start_load_disks("loadimage finished.")
+        self.sync_target_disks = []
+        pass
       pass
     pass
 

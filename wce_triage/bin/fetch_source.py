@@ -2,10 +2,8 @@
 # WIP:
 # Getting the file list and size using curl
 #
-import os, sys, subprocess, urllib, datetime
-from ..lib.util import *
-from ..lib.timeutil import *
-import urllib.parse
+import os, sys, subprocess, urllib
+from ..lib.util import get_transport_scheme
 
 def get_directory(source):
   

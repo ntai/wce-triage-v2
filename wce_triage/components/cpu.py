@@ -7,7 +7,7 @@ CPU detection and triaging.
 
 import os
 
-from .component import *
+from .component import Component
 
 from collections import namedtuple
 CPUInfo = namedtuple('CPUInfo', 'cpu_class, cores, processors, vendor, model, bogomips, speed')
@@ -103,9 +103,9 @@ CPUInfo contains following:
   cpu_info.close()
   
   cpu_class = 1
-  if cpu_cores >= 2 and cpu_sse4_2:
+  if cpu_cores >= 2 and (cpu_sse4_2 and cpu_64):
     cpu_class = 6
-  if cpu_cores >= 2:
+  if cpu_cores >= 2 and cpu_64:
     cpu_class = 5
   elif cpu_sse2 or (cpu_3dnow and cpu_sse):
     cpu_class = 4

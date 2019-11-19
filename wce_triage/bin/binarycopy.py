@@ -5,14 +5,11 @@ This reads the partition map using parted and figures out the size of copy.
 If there is no partition, then this is no go.
 """
 
-import os, sys, subprocess, urllib, datetime, json, traceback, signal, time
-from ..lib.util import *
-from ..lib.timeutil import *
-from ..components.computer import Computer
-from ..components.disk import Partition, DiskPortal, PartitionLister
+import os, sys, datetime, json
+from ..lib.timeutil import in_seconds
+from ..components.disk import DiskPortal, PartitionLister
 import threading
 import io
-from collections import namedtuple
 import queue
 import mmap
 

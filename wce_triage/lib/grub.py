@@ -1,8 +1,8 @@
 
 import re
 import sys
-from .kernel_flags import *
-from ..const import *
+from .kernel_flags import kernel_flags
+from ..const import const
 
 #
 # GRUB_CMDLINE=""

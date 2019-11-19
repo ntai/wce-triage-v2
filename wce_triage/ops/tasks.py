@@ -7,20 +7,21 @@
 # exec runs through the tasks.
 #
 
-import datetime, re, subprocess, abc, os, select, time, uuid, json, traceback, shutil
+import datetime, re, subprocess, abc, os, select, uuid, json, traceback, shutil
 import struct
+import errno
 from ..components.pci import find_pci_device_node
-from ..components.disk import Disk, Partition, PartitionLister, canonicalize_file_system_name
-from ..lib.util import drain_pipe, drain_pipe_completely, get_triage_logger
-from ..lib.timeutil import *
-from ..lib.grub import *
-from .pplan import *
-import uuid
-
+from ..components.disk import Partition, PartitionLister, canonicalize_file_system_name
+from ..components.network import detect_net_devices, get_router_ip_address
+from ..lib.util import get_triage_logger, safe_string, get_filename_stem
+from ..lib.timeutil import in_seconds
+from ..lib.grub import grub_config
+from .pplan import EFI_NAME
+from ..version import TRIAGE_VERSION, TRIAGE_TIMESTAMP
+from ..const import const
 
 tlog = get_triage_logger()
 
-from .estimate import *
 
 class op_task(object, metaclass=abc.ABCMeta):
   def __init__(self, description, encoding='utf-8', time_estimate=None, estimate_factors=None, **kwargs):
@@ -163,6 +164,12 @@ class op_task(object, metaclass=abc.ABCMeta):
       self.time_estimate = total_seconds+1
       return 99
     return progress
+
+
+  def set_task_finished_message(self, msg):
+    """This is to change the message for finished state."""
+    self.kwargs['progress_finished'] = "No disk image files to delete"
+    pass
 
   pass
 
@@ -606,7 +613,7 @@ class task_mount(op_task_process_simple):
 def task_get_uuid_from_partition(op_task_process_simple):
   def __init__(self, description, partition=None, **kwargs):
     self.part = partition
-    arg = ["/sbin/blkid", part.device_name]
+    arg = ["/sbin/blkid", self.part.device_name]
     super().__init__(description, argv=arg, time_estimate=2, **kwargs)
     pass
 
@@ -741,7 +748,7 @@ class task_create_wce_tag(op_task_python_simple):
     # Set up the /etc/wce-release file
     release = open(self.disk.wce_release_file, "w+")
     release.write("wce-contents: %s\n" % get_filename_stem(self.source))
-    release.write("installer-version: %s\n" % installer_version)
+    release.write("installer-version: %s.%s\n" % TRIAGE_VERSION, TRIAGE_TIMESTAMP)
     release.write("installation-date: %s\n" % datetime.datetime.isoformat( datetime.datetime.utcnow() ))
     release.close()
     self.set_progress(100, "WCE release tag written")
@@ -767,7 +774,6 @@ class task_remove_files(op_task_python_simple):
       return
     
     rootpath = part.get_mount_point()
-    n = len(self.files)
     i = 0
     # Protect myself from stupidity
     toplevels = os.listdir("/")
@@ -932,12 +938,13 @@ class task_refresh_partitions(op_task_command):
     devdelim = out.find(':')
     # device_name should match with the part.device_name
     device_name = out[:devdelim]
-
+    if device_name != part.device_name:
+      tlog.info("Fishy! %s != %s" % (device_name, part.device_name))
+      pass
+    
     # The rest is key=value with space delimiter.
     tokens = self.tagvalre.split(out[devdelim+1:].strip())
-    index = 0
     tag = None
-    value = None
     for token in tokens:
       if token == '':
         continue
@@ -1435,7 +1442,7 @@ class task_finalize_disk_aux(op_task_python):
   def __init__(self, description, disk=None, newhostname=None, partition_id='Linux', **kwargs):
     super().__init__(description, time_estimate=1, **kwargs)
     self.disk = disk
-    self.linuxpart = self.disk.find_partition(partition_id)
+    self.partition_id = partition_id
     self.newhostname = newhostname
     pass
    
@@ -1447,6 +1454,7 @@ class task_finalize_disk_aux(op_task_python):
     #
     # This should fix up the most of unbootable disk imaging.
     #
+    part1 = self.disk.find_partition(self.partition_id)
     root_fs = "UUID=%s" % part1.uuid
     linux_re = re.compile(r'(\s+linux\s+[^ ]+\s+root=)([^ ]+)(\s+ro .*)')
     grub_cfg_file = open("%s/boot/grub/grub.cfg" % self.mount_dir)
@@ -1523,21 +1531,28 @@ class task_finalize_efi(op_task_python_simple):
 #
 #
 class task_mount_nfs_destination(op_task_process):
+  nfs_server = None
 
   def __init__(self, description, **kwargs):
     super().__init__(description, **kwargs)
     pass
   
   def setup(self):
-    if not is_network_connected():
+    connected = False
+    for netdev in detect_net_devices():
+      if netdev.is_network_connected():
+        connected = True
+        break
+      pass
+    if not connected:
       self.set_progress(999, "Network is not working.")
       return
     
-    if nfs_server is None:
-      nfs_server = get_router_ip_address()
+    if self.nfs_server is None:
+      self.nfs_server = get_router_ip_address()
       pass
 
-    if not nfs_server:
+    if not self.nfs_server:
       self.set_progress(999, "No NFS server")
       return
 
@@ -1550,7 +1565,7 @@ class task_mount_nfs_destination(op_task_process):
         pass
       pass
 
-    self.argv = [ "mount", "-t", "nfs",  "%s:/var/www" %nfs_server, "/mnt/www"]
+    self.argv = [ "mount", "-t", "nfs",  "%s:/var/www" % self.nfs_server, "/mnt/www"]
     super().setup()
     pass
   pass

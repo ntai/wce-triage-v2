@@ -2,17 +2,14 @@
 # Copyright (c) 2019 Naoyuki tai
 # MIT license - see LICENSE
 
-import os
-import sys
-import urllib.parse
-import json
-import hashlib
-
-from .pci import *
-from .component import *
-from ..lib.util import *
-
+import os, re, subprocess
+from .pci import detect_blacklist_devices
+from .component import Component
+from ..lib.util import safe_string, get_triage_logger
 from enum import Enum
+import urllib.parse
+
+tlog = get_triage_logger()
 
 class NetworkDeviceType(Enum):
   Unknown = 0
@@ -98,6 +95,10 @@ def detect_net_devices():
     out = ""
     pass
 
+  if ethernet_detected:
+    tlog.info("Ethernet detected.")
+    pass
+
   net_entry_re = re.compile(r"\d+: (\w+):")
   for line in out.splitlines():
     m = net_entry_re.match(line.strip())
@@ -112,7 +113,7 @@ def detect_net_devices():
 def get_transport_scheme(u):
   transport_scheme = None
   try:
-    transport_scheme = urlparse.urlsplit(u).scheme
+    transport_scheme = urllib.parse.urlsplit(u).scheme
   except:
     pass
   return transport_scheme

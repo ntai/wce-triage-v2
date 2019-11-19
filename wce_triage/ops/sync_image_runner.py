@@ -3,16 +3,16 @@
 # Create disk image
 #
 
-import datetime, re, subprocess, sys, os, logging
+import sys, logging, traceback
 
-from .partclone_tasks import *
-from .ops_ui import *
+from .ops_ui import console_ui
+from .runner import Runner
+from ..lib.disk_images import get_disk_images
+from .json_ui import json_ui
+from .sync_image_tasks import task_image_sync_delete, task_image_sync_metadata, task_image_sync_copy
+from .tasks import task_fetch_partitions, task_refresh_partitions, task_mount, task_unmount
+from ..lib.util import is_block_device, init_triage_logger
 from ..components.disk import create_storage_instance
-from .runner import *
-from ..lib.disk_images import *
-from .json_ui import *
-from .sync_image_tasks import *
-from .run_state import *
 
 
 # "Waiting", "Prepare", "Preflight", "Running", "Success", "Failed"]
@@ -37,16 +37,20 @@ For now, this is only dealing with the EXT4 linux partition.
     self.partition_id = 'Linux'
     self.sync_tasks = []
     self.testflight = testflight
-    print("Test flight" if self.testflight else "Real flight")
+    self.scoreboard = {}
     pass
 
   def prepare(self):
     super().prepare()
     
     for disk in self.disks:
-      self.tasks.append(task_fetch_partitions("Fetch partitions", disk=disk))
-      self.tasks.append(task_refresh_partitions("Refresh partitions", disk=disk))
-      self.tasks.append(task_mount("Mount the target disk", disk=disk, partition_id=self.partition_id, add_mount_point=self.add_mount_point))
+      self.scoreboard[disk.device_name] = {"total_size": 0, "completed_size": 0, "inflight_size" : 0, "completed_seconds": 0, "inflight_seconds": 0, "bps": 0}
+      pass
+
+    for disk in self.disks:
+      self.tasks.append(task_fetch_partitions("Fetch partitions on %s" % disk.device_name , disk=disk))
+      self.tasks.append(task_refresh_partitions("Refresh partitions on %s" % disk.device_name, disk=disk))
+      self.tasks.append(task_mount("Mount the disk %s" % disk.device_name, disk=disk, partition_id=self.partition_id, add_mount_point=self.add_mount_point))
       pass
 
     task = task_image_sync_delete("Delete unwanted disk images", keepers=self.sources, testflight=self.testflight)
@@ -54,19 +58,25 @@ For now, this is only dealing with the EXT4 linux partition.
     self.sync_tasks.append(task)
 
     for disk in self.disks:
-      sync_meta_task = task_image_sync_metadata("Sync Disk Types", disk=disk, testflight=self.testflight)
+      sync_meta_task = task_image_sync_metadata("Sync metadata on %s" % disk.device_name, disk=disk, testflight=self.testflight)
       self.tasks.append(sync_meta_task)
       self.sync_tasks.append(sync_meta_task)
       pass
 
+    total_size = 0
     for source in self.sources:
-      sync_task = task_image_sync_copy("Copy disk image", source=source, testflight=self.testflight)
+      sync_task = task_image_sync_copy("Copy %s" % source['name'], source=source, testflight=self.testflight, scoreboard=self.scoreboard)
       self.tasks.append(sync_task)
       self.sync_tasks.append(sync_task)
+      total_size += source["size"]
       pass
 
     for disk in self.disks:
-      task = task_unmount("Unmount target", disk=disk, partition_id=self.partition_id)
+      self.scoreboard[disk.device_name]["total_size"] = total_size
+      pass
+
+    for disk in self.disks:
+      task = task_unmount("Unmount disk %s" % disk.device_name, disk=disk, partition_id=self.partition_id)
       task.set_teardown_task()
       self.tasks.append(task)
       pass
@@ -78,6 +88,35 @@ For now, this is only dealing with the EXT4 linux partition.
       pass
     pass
 
+
+  def report_run_state(self):
+    sb_fd = open("/tmp/scoreboard", "w")
+
+    for disk in self.disks:
+      self.ui.report_run_progress(disk.device_name, self.current_time, self.state, self.run_estimate, self.run_time, self.task_step, self.tasks)
+
+      print("%s:" % disk.device_name, file=sb_fd)
+      print(self.scoreboard[disk.device_name], file=sb_fd)
+      print("", file=sb_fd)
+      pass
+
+    sb_fd.close()
+
+    for task in self.sync_tasks:
+      if task._get_status() == 0:
+        task.update_time_estimate()
+        pass
+      pass
+
+    super().report_run_state()
+    pass
+
+  def report_task_progress(self, run_time, task):
+    for disk in self.disks:
+      ui.report_task_progress(disk.device_name, self.current_time, self.run_estimate, run_time, task, self.tasks)
+      pass
+    pass
+
   pass
 
 
@@ -85,13 +124,13 @@ if __name__ == "__main__":
   tlog = init_triage_logger(log_level=logging.DEBUG)
 
   if len(sys.argv) == 1:
-    print( 'SYNC: images devicenames opt')
+    print( 'SYNC: devicenames [opt] image...')
     sys.exit(0)
     # NOTREACHED
     pass 
 
-  sources = sys.argv[1] # list of image files
-  devnames = sys.argv[2]
+  devnames = sys.argv[1]
+  sources = sys.argv[2:] # list of image files
   disks = []
   for devname in devnames.split(','):
     if not is_block_device(devname):
@@ -99,29 +138,26 @@ if __name__ == "__main__":
       sys.exit(1)
       # NOTREACHED
       pass
-    disks.append(Disk(device_name = devname))
+    disks.append(create_storage_instance(device_name = devname))
     pass
 
   # Preflight is for me to see the tasks. http server runs this with json_ui.
-  if len(sys.argv) >= 4:
-    opt = sys.argv[3]
-  else:
-    opt = devnames
-    pass
-
-  print(opt)
+  opt = sources[0]
 
   do_it = True
   testflight = False
   if opt == "preflight":
+    print("Preflight only.")
     ui = console_ui()
     do_it = False
+    sources = sources[1:]
     pass
   elif opt == "testflight":
     print("Should be test flight")
     ui = console_ui()
     do_it = True
     testflight = True
+    sources = sources[1:]
     pass
   else:
     ui = json_ui(wock_event="diskimage", message_catalog=my_messages)
@@ -131,7 +167,8 @@ if __name__ == "__main__":
   # This is to rehydrate the disk image metas.
   disk_images = get_disk_images()
   _sources = {}
-  for src in sources.split(','):
+
+  for src in sources:
     _sources[src] = True
     pass
 
@@ -141,6 +178,11 @@ if __name__ == "__main__":
       syncing.append(disk_image)
       pass
     pass
+
+  if not syncing:
+    tlog.info("Images: " + " ".join([ str(disk_image) for disk_image in disk_images ]))
+    tlog.info("Sources: " + " ".join(_sources.keys()))
+    raise Exception("no sources?")
 
   runner_id = "diskimage"
   runner = SyncImageRunner(ui, runner_id, syncing, disks, testflight=testflight)

@@ -6,9 +6,9 @@
 # When the triage service starts, it runs this to generate default network
 # setup so that it can do triaging of network device.
 #
-import os, sys, subprocess
-from ..components.network import * 
-from ..lib.netplan import *
+import sys, subprocess
+from ..components.network import detect_net_devices
+from ..lib.netplan import load_network_config, generate_default_config, generate_netplan_file
 
 if __name__ == "__main__":
   netman = subprocess.run('systemctl status -n 0 NetworkManager.service', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

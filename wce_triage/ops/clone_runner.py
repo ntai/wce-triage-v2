@@ -8,22 +8,25 @@ This is because making USB stick is panifully slow, and binary copy is
 
 """
 
-import datetime, re, subprocess, sys, os
+import sys
 
-from .tasks import *
-from .ops_ui import *
-from .pplan import *
-from ..components.disk import Disk, Partition
-from .runner import *
-from ..lib.util import *
+from .tasks import op_task_wipe_disk, op_task_process, task_sync_partitions, task_mkfs, task_mkswap
+from .ops_ui import console_ui
+from .pplan import make_usb_stick_partition_plan
+from ..components.disk import create_storage_instance, Partition
+from .runner import Runner
+from ..lib.util import init_triage_logger
+
+tlog = init_triage_logger()
+
 #
 # create a new gpt partition from partition plan
 #
 class CloneRunner(Runner):
-  def __init__(self, ui, runner_id, disk, wipe=None, media=None):
-    super().__init__(ui, runner_id)
-    self.partition_map = partition_map # label is the parted's partition map type
+  def __init__(self, ui, runner_id, disk=None, partition_map=None, partition_plan=None, wipe=None, media=None, **kwargs):
+    super().__init__(ui, runner_id, **kwargs)
     self.disk = disk
+    self.partition_map = partition_map
     self.pplan = partition_plan
     self.efi_boot = efi_boot
     self.wipe = wipe
@@ -120,11 +123,11 @@ class CloneRunner(Runner):
 
 if __name__ == "__main__":
   devname = sys.argv[1]
-  disk = Disk(device_name=devname)
+  disk = create_storage_instance(device_name=devname)
   efi_boot = True
   part_map = 'gpt' if efi_boot else 'msdos'
   ui = console_ui()
-  runner = PartitionDiskRunner(ui, disk.device_name, disk, make_usb_stick_partition_plan(disk, efi_boot=efi_boot), partition_map=part_map)
+  runner = CloneRunner(ui, disk.device_name, disk, make_usb_stick_partition_plan(disk, efi_boot=efi_boot), partition_map=part_map)
   runner.prepare()
   runner.preflight()
   runner.explain()

@@ -2,8 +2,8 @@
 #
 # This is for setting up network server
 #
-import os, sys, subprocess
-from ..const import *
+import os, subprocess
+from ..const import const
 
 # For the setup user 
 env = os.environ.copy()

@@ -17,13 +17,13 @@ class Test_partitions(unittest.TestCase):
     self.assertEqual(part1.start, 2)
     part2 = pplan[2]
     self.assertEqual(part2.start, 34)
-    self.assertEqual(part2.parttype, 'EF00')
+    self.assertEqual(part2.partcode, 'EF00')
     part3 = pplan[3]
     self.assertEqual(part3.start, 546)
-    self.assertEqual(part3.parttype, '8200')
+    self.assertEqual(part3.partcode, '8200')
     part4 = pplan[4]
     self.assertEqual(part4.start, 2594)
-    self.assertEqual(part4.parttype, '8300')
+    self.assertEqual(part4.partcode, '8300')
 
     pplan = _pplan.make_efi_partition_plan(disk, ext4_version=const.ext4_version_no_metadata_csum, efi_boot=False, partition_id=None)
     #print("EFI no metadata csum")
@@ -43,7 +43,7 @@ class Test_partitions(unittest.TestCase):
     self.assertEqual(len(pplan), 3)
     part1 = pplan[1]
     self.assertEqual(part1.start, 2)
-    self.assertEqual(part1.parttype, '8300')
+    self.assertEqual(part1.partcode, '8300')
     self.assertEqual(part1.flags, 'boot')
 
     pplan = _pplan.make_traditional_partition_plan(disk, ext4_version=const.ext4_version_no_metadata_csum, partition_id=None)
@@ -52,13 +52,13 @@ class Test_partitions(unittest.TestCase):
     self.assertEqual(len(pplan), 3)
     part1 = pplan[1]
     self.assertEqual(part1.start, 2)
-    self.assertEqual(part1.parttype, '8300')
+    self.assertEqual(part1.partcode, '8300')
     self.assertEqual(part1.flags, 'boot')
     self.assertEqual(part1.mkfs_opts, ['-O', '^metadata_csum'])
 
     part2 = pplan[2]
     self.assertEqual(part2.start, 58367)
-    self.assertEqual(part2.parttype, '8200')
+    self.assertEqual(part2.partcode, '8200')
     pass
 
   def test_make_usb_stick_partition_plan(self):

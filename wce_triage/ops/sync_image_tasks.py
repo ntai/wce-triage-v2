@@ -7,19 +7,13 @@
 # exec runs through the tasks.
 #
 
-import datetime, re, subprocess, abc, os, select, time, uuid, json, traceback, shutil
-import struct
-from ..components.disk import Disk, Partition, PartitionLister, canonicalize_file_system_name
+import os, json, traceback
 from ..lib.util import get_triage_logger
-from ..lib.timeutil import *
-import uuid
-from .run_state import *
-from ..lib.disk_images import *
-
+from .run_state import RUN_STATE, RunState
+from ..lib.disk_images import list_image_files
+from .tasks import op_task_process_simple
 
 tlog = get_triage_logger()
-
-from .tasks import *
 
 
 class task_image_sync:
@@ -31,6 +25,9 @@ class task_image_sync:
 
   def add_mount_point(self, disk, part):
     self.partitions.append((disk, part))
+    pass
+
+  def update_time_estimate(self):
     pass
 
   pass
@@ -56,7 +53,8 @@ class task_image_sync_delete( op_task_process_simple, task_image_sync ):
       pass
     super().__init__(description,
                      argv=argv,
-                     progress_finished="Images deleted",
+                     progress_running="Deleting disk image files",
+                     progress_finished="Disk image files deleted",
                      time_estimate=5,
                      **kwargs)
     task_image_sync.__init__(self, description)
@@ -102,6 +100,7 @@ class task_image_sync_delete( op_task_process_simple, task_image_sync ):
     
     if not do_rm:
       self.argv = ["true"]
+      self.set_task_finished_message("No disk image files to delete")
       pass
 
     super().setup()
@@ -113,8 +112,9 @@ class task_image_sync_copy(op_task_process_simple, task_image_sync):
   """copy disk image files
 """
 
-  def __init__(self, description, source={}, testflight=False, **kwargs):
+  def __init__(self, description, source={}, scoreboard={}, testflight=False, **kwargs):
     self.source = source
+    self.scoreboard = scoreboard
     self.testflight = testflight
     if self.testflight:
       bin = ["echo", "python3"]
@@ -130,6 +130,10 @@ class task_image_sync_copy(op_task_process_simple, task_image_sync):
                      time_estimate=100,
                      **kwargs)
     task_image_sync.__init__(self, description)
+    pass
+
+  def preflight(self, tasks):
+    super().preflight(tasks)
     pass
 
   def setup(self):
@@ -148,13 +152,14 @@ class task_image_sync_copy(op_task_process_simple, task_image_sync):
         pass
       if do_copy:
         self.argv.append("%s:%s" % (disk.device_name, os.path.join(dir, self.source["restoreType"], src_fname)))
+        self.scoreboard[disk.device_name]["total_size"] += self.source["size"]
         pass
       pass
     super().setup()
     pass
 
   def poll(self):
-    super().poll()
+    self._poll_process()
     self.parse_fanout_copy_progess()
     pass
 
@@ -164,27 +169,64 @@ class task_image_sync_copy(op_task_process_simple, task_image_sync):
       return
 
     # look for a line
+    last_report = None
     while True:
       newline = self.err.find('\n')
       if newline < 0:
         break
       line = self.err[:newline]
       self.err = self.err[newline+1:]
-      current_time = datetime.datetime.now()
+      #current_time = datetime.datetime.now()
 
       # each line is a json record
-      report = json.loads(line)
-      self.set_progress(report['progress'], report['runReport'])
-      self.set_time_estimate(report['runEstimate'])
-      runState = report['runState']
-      if "verdict" in report:
-        self.verdict.append(report["verdict"])
+      try:
+        report = json.loads(line)
+        device_name = report['key']
+        self.scoreboard[device_name]["report"] = report
+        last_report = report
+
+        if "verdict" in report:
+          self.verdict.append("%s: %s" % (device_name, report["verdict"]))
+          pass
+
+        scoreboard = self.scoreboard[device_name]
+        if report["runStatus"] == RUN_STATE[RunState.Running.value]:
+          scoreboard["inflight_size"] = report["totalBytes"]
+          scoreboard["inflight_seconds"] = report["runTime"]
+        elif report["runStatus"] == RUN_STATE[RunState.Success.value]:
+          scoreboard["inflight_size"] = 0
+          scoreboard["inflight_seconds"] = 0
+
+          scoreboard["completed_size"] += report["totalBytes"]
+          scoreboard["completed_seconds"] += report["runTime"]
+        elif report["runStatus"] == RUN_STATE[RunState.Failed.value]:
+          scoreboard["inflight_size"] = 0
+          scoreboard["inflight_seconds"] = report["runTime"]
+          pass
+
+        scoreboard["bps"] = (scoreboard["completed_size"] + scoreboard["inflight_size"]) / (scoreboard["completed_seconds"] + scoreboard["inflight_seconds"])
         pass
+      except Exception as exc:
+        msg = "Output line: '" + line + "'\n" + traceback.format_exc()
+        tlog.info("Image copy: "+ msg)
+        self.verdict.append(msg)
+        pass
+      pass
+
+    if last_report:
+      report = last_report
+      self.set_progress(report['progress'], report['runMessage'])
+      self.set_time_estimate(report['runEstimate'])
       pass
     pass
 
+
   def teardown(self):
     super().teardown()
+    for disk, part in self.partitions:
+      scoreboard = self.scoreboard[disk.device_name]
+      self.verdict.append("%s: Copied %d bytes in %d seconds. Byte/sec = %d" % (disk.device_name, scoreboard["completed_size"], scoreboard["completed_seconds"], scoreboard["bps"]))
+      pass
     pass
 
   pass
@@ -201,6 +243,7 @@ class task_image_sync_metadata(op_task_process_simple, task_image_sync):
     super().__init__(description,
                      argv=argv,
                      time_estimate=2,
+                     progress_running="Synching disk metadata synced for %s" % disk.device_name,
                      progress_finished="Disk metadata synced for %s" % disk.device_name,
                      **kwargs)
     task_image_sync.__init__(self, description)

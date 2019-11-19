@@ -3,8 +3,8 @@
 # This is to set up a laptop or desktop to be used for
 # WCE's disk prep.
 #
-import os, sys, subprocess
-from ..const import *
+import os, subprocess
+from ..const import const
 
 env = os.environ.copy()
 env[const.GRUB_DISABLE_OS_PROBER] = const.true

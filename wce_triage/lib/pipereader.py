@@ -3,7 +3,7 @@ pipe reader utility. reads stream from pipe and buffer data.
 """
 from collections import deque
 import subprocess, sys, asyncio
-from ..lib.util import *
+from ..lib.util import get_triage_logger
 import functools
 
 

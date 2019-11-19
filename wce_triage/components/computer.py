@@ -2,8 +2,8 @@
 # Copyright (c) 2019 Naoyuki tai
 # MIT license - see LICENSE
 
-from .component import *
-from . import pci as _pci
+from .component import Component
+# from . import pci as _pci
 from . import cpu as _cpu
 from . import memory as _memory
 from . import network as _network
@@ -12,13 +12,13 @@ from . import video as _video
 from . import sound as _sound
 from . import optical_drive as _optical_drive
 
-import re, subprocess, os, sys, json
+import re
 
 re_socket_designation = re.compile(r'\s*Socket Designation: ([\w\d]+)')
 re_enabled_size = re.compile(r'\s*Enabled Size: (\d+) MB')
 re_error_status = re.compile(r'\sError Status: (\w+)')
 
-from ..lib.util import *
+from ..lib.util import get_triage_logger
 
 tlog = get_triage_logger()
 

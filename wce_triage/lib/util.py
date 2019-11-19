@@ -1,4 +1,4 @@
-import uuid, os, subprocess, datetime, select, stat
+import uuid, os, subprocess, datetime, select, stat, errno, re
 import urllib.parse
 import logging
 import logging.handlers
@@ -38,7 +38,7 @@ def drain_pipe(pipe, encoding='utf-8', timeout=0.5):
 
 
 def drain_pipe_completely(pipe, encoding='utf-8'):
-  read_set = [pipe]
+  # read_set = [pipe]
   data = ""
   draining = True
   while draining:

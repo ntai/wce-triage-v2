@@ -10,14 +10,17 @@
 # exec runs through the tasks.
 #
 
-import datetime, re, subprocess, sys, os
+import sys
 
-from .tasks import *
-from .ops_ui import *
-from .pplan import *
-from ..components.disk import Disk, Partition, Nvme, create_storage_instance, canonicalize_file_system_name
-from .runner import *
-from ..lib.util import *
+from .tasks import op_task_wipe_disk, op_task_process, task_sync_partitions, task_mkfs, task_mkswap
+from .ops_ui import console_ui
+from .pplan import make_usb_stick_partition_plan
+from ..components.disk import Disk, Partition
+from .runner import Runner
+from ..lib.util import init_triage_logger
+
+tlog = init_triage_logger()
+
 #
 # create a new gpt partition from partition plan
 #

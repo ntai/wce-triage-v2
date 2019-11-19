@@ -3,9 +3,9 @@
 # MIT license - see LICENSE
 """Memory module detection."""
 
-import re, subprocess, string, os
-from .component import *
-from ..lib.util import *
+import re, subprocess, os
+from .component import Component
+from ..lib.util import get_test_password, safe_string
 
 from collections import namedtuple
 MemoryInfo = namedtuple('MemoryInfo', 'rams, ramtype, total, slots')
@@ -222,7 +222,6 @@ WCETRIAGE_DMIDECODE_OUTPUT: If set, reads a text file as dmidecode output for te
 """
   out =  _maybe_run_dmidecode()
 
-  rams = []
   parse_state = 0
   dmi_type_handlers = {
     "6": dmi_type_handler_6(),

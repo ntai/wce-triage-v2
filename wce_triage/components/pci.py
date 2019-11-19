@@ -120,7 +120,7 @@ def detect_blacklist_devices():
       pass
     elif pcidev.device_class == 'video':
       if pcidev.vendor in video_device_blacklist and pcidev.device in video_device_blacklist[pcidev.vendor]:
-        blacklisted_videos.append(get_lspci_device_desc(m.group(1)))
+        blacklisted_videos.append(get_lspci_device_desc(pcidev.address))
         pass
       pass
     pass

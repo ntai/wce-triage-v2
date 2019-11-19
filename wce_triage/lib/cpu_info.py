@@ -4,9 +4,9 @@
 Currently, this uses hardinfo.
 """
 
-import os, subprocess, json
+import subprocess, json
 
-from .util import *
+from .util import get_triage_logger
 tlog = get_triage_logger()
 
 global cpu_info
@@ -70,7 +70,7 @@ def get_cpu_info():
       details = bm_columns[0].split(';')
 
       result = float(details[3])
-      n_threas = details[4]
+      # n_threas = details[4]
 
       benchmark = benchmarks[bm_name]
       normalized_score = None

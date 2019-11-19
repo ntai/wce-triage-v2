@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 """Yes, this is was a shell script."""
 #
-import os, sys, subprocess
+import os, subprocess
 
 TRIAGEUSER=os.environ.get("TRIAGEUSER", "triage")
 
