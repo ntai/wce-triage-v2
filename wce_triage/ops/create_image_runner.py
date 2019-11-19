@@ -5,7 +5,8 @@
 
 import re, sys, traceback
 
-from .tasks import task_fetch_partitions, task_refresh_partitions, task_mount, task_remove_persistent_rules, task_remove_logs, task_fsck, task_shrink_partition, task_create_disk_image, task_expand_partition, task_unmount
+from .tasks import task_fetch_partitions, task_refresh_partitions, task_mount, task_remove_persistent_rules, task_remove_logs, task_fsck, task_shrink_partition, task_expand_partition, task_unmount
+from .partclone_tasks import task_create_disk_image
 from .ops_ui import console_ui
 from ..components.disk import create_storage_instance
 from .runner import Runner

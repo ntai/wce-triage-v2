@@ -7,7 +7,7 @@ Also it attempts to use lshw.
 
 import subprocess, json
 
-from util import get_triage_logger, get_test_password
+from .util import get_triage_logger, get_test_password
 tlog = get_triage_logger()
 
 # lshw is far better!

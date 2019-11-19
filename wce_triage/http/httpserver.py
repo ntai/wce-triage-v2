@@ -211,7 +211,8 @@ class TriageWeb(object):
     self.asset_path = os.path.join(wcedir, "triage", "assets")
     self.load_disk_options = load_disk_options
     self.autoload = True if self.load_disk_options else False
-
+    self.sync_disk_image_options = {}
+    
     app.router.add_routes(routes)
 
     app.router.add_static("/wce", os.path.join(wcedir))
@@ -408,7 +409,7 @@ class TriageWeb(object):
         tlog.debug("watch_cpu_info: '%s'" % line)
         self.cpu_info = json.loads(line)
       except Exception as exc:
-        tlog.info("watch_cpu_info - json.loads: '%s'\n%s" % (line, exc.format_exc()))
+        tlog.info("watch_cpu_info - json.loads: '%s'\n%s" % (line, traceback.format_exc()))
         pass
       pass
     pass
@@ -1016,7 +1017,7 @@ class TriageWeb(object):
           subprocess.run(["mount", disk.device_name, mount_point])
           pass
         except Exception as exc:
-          Emitter.note(exc.format_exc())
+          Emitter.note(traceback.format_exc())
           await Emitter.flush()
           pass
         pass
