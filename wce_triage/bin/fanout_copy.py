@@ -10,7 +10,7 @@ import time
 
 start_time = datetime.datetime.now()
 tlog = init_triage_logger()
-debugging = True
+debugging = False
 
 def handler_stop_signals(signum, frame):
   fanout_copy.running = False
@@ -235,27 +235,33 @@ class fanout_copy:
       speed = 2 ** 24
       pass
 
+
+    bytesCopied = 0
+
     if run_state is RunState.Running:
-      run_message = "Copied %d of %d bytes. (%dMB/sec)" % (self.sofar, self.source_file_size, round(speed/2*20, 1)),
+      bytesCopied = self.sofar
+      run_message = "Copied %d of %d bytes. (%dMB/sec)" % (self.sofar, self.source_file_size, round(speed/(2**20), 1)),
       percentage_done = float(self.sofar) / float(self.source_file_size)
       progress = min(99, max(1, round(100*percentage_done)))
       remaining_bytes = self.source_file_size - self.sofar
       time_remaining = remaining_bytes / speed
     elif run_state is RunState.Success:
+      bytesCopied = self.source_file_size
       run_message = "Copying completed (%d bytes copied.)" % (self.source_file_size),
       progress = 100
       remaining_bytes = 0
       time_remaining = 0
     else:
       msg, size_failed = self.invalid_fds[dest_fd]
+      bytesCopied = size_failed
       run_message = "Copying failed at %d." % size_failed
       progress = 999
       remaining_bytes = 0
       time_remaining = 0
       pass
 
-
     report = {"key": key,
+              "totalBytes": bytesCopied,
               "destination": dest_path,
               "runStatus": RUN_STATE[run_state.value],
               "runMessage": run_message,

@@ -931,12 +931,10 @@ class TriageWeb(object):
     if not self.target_disks:
       return
 
-    devname = self.target_disks[0]
-    self.target_disks = self.target_disks[1:]
-    tlog.debug( "Wipe targets : " + ",".join(self.target_disks))
+    cmd = ['python3', '-m', 'wce_triage.bin.multiwipe'] + self.target_disks
+    self.target_disks = []
 
-    # wiper image runs its own course, and output will be monitored by a call back
-    me.wiper = subprocess.Popen( ['python3', '-m', 'wce_triage.bin.wipedriver', devname], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    me.wiper = subprocess.Popen( cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     PipeReader.add_to_event_loop(me.wiper.stdout, me.wiper_progress_report, "message")
     PipeReader.add_to_event_loop(me.wiper.stderr, me.wiper_progress_report, "wipe")
     pass
@@ -953,20 +951,17 @@ class TriageWeb(object):
         if pipereader.tag == "wipe":
           # This is a progress report from wiper driver. Unlike json_ui, the output contains the
           # prefix from processDriver.
-          matched = self.wiper_output_re.match(line)
-          if matched:
-            packet = json.loads(matched.group(1))
+          try:
+            packet = json.loads(line)
             Emitter._send(packet['event'], packet['message'])
             pass
-          else:
-            tlog.debug("Unrecognized line from wiper: " +line)
-            Emitter.note(line)
+          except:
+            tlog.info("Unrecognized line from wiper: " +line)
             pass
           pass
         else:
           # This is from stdout
-          tlog.debug(line)
-          Emitter.note(line)
+          tlog.info(line)
           pass
         pass
       pass

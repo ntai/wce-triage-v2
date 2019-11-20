@@ -9,12 +9,12 @@ from .tasks import task_fetch_partitions, task_refresh_partitions, task_set_fat_
 from .ops_ui import console_ui
 from .partition_runner import PartitionDiskRunner
 from ..components.video import detect_video_cards
-from ..components.disk import create_storage_instance, EFI_NAME
+from ..components.disk import create_storage_instance
 from .partclone_tasks import task_restore_disk_image
 from ..lib.util import init_triage_logger
 from .json_ui import json_ui
 from ..const import const
-from .pplan import make_traditional_partition_plan, make_efi_partition_plan, make_usb_stick_partition_plan
+from .pplan import make_traditional_partition_plan, make_efi_partition_plan, make_usb_stick_partition_plan, EFI_NAME
 from ..lib.disk_images import read_disk_image_types
 
 
