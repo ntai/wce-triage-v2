@@ -328,15 +328,25 @@ class Disk:
 
     out = ""
     err = ""
+    cmd = ['udevadm', 'info', '--query=property', '--name=' + self.device_name]
     try:
-      cmd = ['udevadm', 'info', '--query=property', '--name=' + self.device_name]
-      udevadm = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8', timeout=5)
+      udevadm = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='iso-8859-1', timeout=5)
       out = udevadm.stdout
       err = udevadm.stderr
     except Exception as exc:
       tlog.debug(traceback.format_exc())
       pass
       
+    err = err.strip()
+    if err:
+      tlog.info(" ".join(cmd) + ":\n" + err)
+      pass
+
+    if err == "device node not found":
+      # The disk has a bad partition map and udevadm doesn't produce
+      # any info.
+      pass
+
     if out:
       self.is_disk = True
       for line in out.splitlines():
@@ -387,7 +397,7 @@ class Disk:
       pass
 
     if err.strip():
-      tlog.info(err)
+      tlog.info(" ".join(cmd) + ":\n" + err)
       pass
 
     if self.is_usb:
@@ -584,12 +594,21 @@ class DiskPortal(Component):
       pass
 
     if has_nvme:
-      nvme = subprocess.run("nvme list -o json", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8', timeout=5)
-      out = nvme.stdout
-      err = nvme.stderr
-      if err:
-        tlog.info(err)
+      cmd = "nvme list -o json"
+      out = None
+      err = None
+      try:
+        nvme = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8', timeout=5)
+        out = nvme.stdout
+        err = nvme.stderr
+      except Exception as exc:
+        tlog.info(cmd + ":\n" + traceback.format_exc())
         pass
+
+      if err:
+        tlog.info(cmd + ":\n" + err)
+        pass
+
       nvme_output = json.loads(out)
 
       for device in nvme_output["Devices"]:

@@ -144,7 +144,7 @@ tasks: array of tasks
   # Log message. Probably better to be stored in file so we can see it
   # FIXME: probably should use python's logging.
   def log(self, runner_id, msg):
-    tlog.info(msg)
+    tlog.info("JSON-LOG: " +  msg)
     self.send('message', {"message": runner_id + ": " + msg})
     pass
 

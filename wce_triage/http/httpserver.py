@@ -175,7 +175,7 @@ class Emitter:
 
   # This is to send alert message (aka popping up a dialog
   def alert(message):
-    tlog.info(message)
+    tlog.info("ALERT: " + message)
     Emitter._send('message', {"message": message,
                               "severity": 2})
     pass
@@ -1157,6 +1157,68 @@ class TriageWeb(object):
     return aiohttp.web.json_response(syncing_status)
 
 # ============================================================================
+
+  @routes.post("/dispatch/rename")
+  async def route_rename_image(request):
+    """Rename a disk image file.
+Error status report is a lot to be desired.
+"""
+    global me
+
+    name_from = request.query.get("from")
+    name_to = request.query.get("to")
+    restoretype = request.query.get("restoretype")
+
+    for disk_image in get_disk_images():
+      if disk_image['name'] != name_from or disk_image['restoreType'] != restoretype:
+        continue
+      
+      fullpath = disk_image['fullpath']
+      parent_dir = os.path.split(fullpath)[0]
+      to_path = os.path.join(parent_dir, name_to)
+      try:
+        os.rename(fullpath, to_path)
+      except Exception as exc:
+        # FIXME: better response?
+        tlog.info("RENAME failed - %s/%s.\n%s" % (restoretype, name_from, traceback.format_exc()))
+        raise HTTPServiceUnavailable()
+        pass
+      disk_image['name'] = name_to
+      disk_image['fullpath'] = to_path
+      return aiohttp.web.json_response(disk_image)
+
+    # FIXME: better response?
+    tlog.info("RENAME failed - %s/%s not found." % (restoretype, name_from))
+    raise HTTPNotFound()
+    pass
+
+  @routes.post("/dispatch/delete")
+  async def route_rename_image(request):
+    """Delete a disk image file.
+Error status report is a lot to be desired.
+"""
+    global me
+
+    name = request.query.get("name")
+    restoretype = request.query.get("restoretype")
+
+    for disk_image in get_disk_images():
+      if disk_image['name'] != name or disk_image['restoreType'] != restoretype:
+        continue
+      
+      fullpath = disk_image['fullpath']
+      try:
+        os.remove(fullpath, to_path)
+        return aiohttp.web.json_response({})
+      except Exception as exc:
+        # FIXME: better response?
+        raise HTTPServiceUnavailable()
+        pass
+      pass
+    # FIXME: better response?
+    raise HTTPNotFound()
+    pass
+
 
 @wock.event
 async def connect(wockid, environ):
