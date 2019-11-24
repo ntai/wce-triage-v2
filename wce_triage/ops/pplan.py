@@ -72,9 +72,10 @@ def size_partitions(pplan, diskmbsize):
 # 
 def make_efi_partition_plan(disk, ext4_version=None, efi_boot=False, partition_id=None):
   diskmbsize = int(disk.get_byte_size() / (1024*1024))
-  # Use up to 5% of disk for swap, but stop at 8GB. 
-  swapsize = int(diskmbsize * 0.05)
-  swapsize = 8192 if swapsize > 8192 else (2048 if swapsize < 2048 else swapsize)
+
+  # Use up to 5% of disk for swap, but max of 8GB.
+  # Smallest swap size is 2GB.
+  swapsize = min(8192, max(2048, int(diskmbsize * 0.05)))
 
   mkfs_opts = _ext4_version_to_mkfs_opts(ext4_version)
 

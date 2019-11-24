@@ -247,7 +247,8 @@ class TriageWeb(object):
     self.saver = None
     self.wiper = None
     self.optests = []
-    self.cpu_info = None
+    self.cpu_info = None # This is the process instance of cpu info
+    self.benchmark = None # THis is the output of cpu info aka benchmark
     self.syncer = None
     
     self.wock = wock
@@ -381,18 +382,18 @@ class TriageWeb(object):
       tlog.debug("get_cpu_info: started")
       pass
 
-    while self.cpu_info is None:
+    while self.benchmark is None:
       tlog.debug("get_cpu_info: waiting")
       await asyncio.sleep(1)
       pass
-    return self.cpu_info
+    return self.benchmark
 
   @routes.get("/dispatch/cpu_info.json")
   async def route_cpu_info(request):
     """Handles getting CPU rating """
     global me
-    me.cpu_info = await me.get_cpu_info()
-    jsonified = { "cpu_info": me.cpu_info }
+    benchmark = await me.get_cpu_info()
+    jsonified = { "cpu_info": benchmark }
     return aiohttp.web.json_response(jsonified)
 
 
@@ -407,7 +408,7 @@ class TriageWeb(object):
         return
       try:
         tlog.debug("watch_cpu_info: '%s'" % line)
-        self.cpu_info = json.loads(line)
+        self.benchmark = json.loads(line)
       except Exception as exc:
         tlog.info("watch_cpu_info - json.loads: '%s'\n%s" % (line, traceback.format_exc()))
         pass

@@ -27,7 +27,7 @@ my_messages = { "Waiting":   "Disk image load is waiting.",
                 "Failed":    "Disk image load failed." }
 
 def make_random_hostname(stemname="wce"):
-  return stemname + uuid.uuid4().hex[:8]
+  return stemname + uuid.uuid4().hex[:4]
 #
 #
 class RestoreDiskRunner(PartitionDiskRunner):
