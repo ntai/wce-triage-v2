@@ -11,7 +11,7 @@ from ..version import TRIAGE_VERSION, TRIAGE_TIMESTAMP
 from ..const import const
 import aiohttp
 import aiohttp.web
-from aiohttp.web_exceptions import HTTPNotFound, HTTPServiceUnavailable
+from aiohttp.web_exceptions import HTTPNotFound, HTTPServiceUnavailable, HTTPBadRequest
 import aiohttp_cors
 from argparse import ArgumentParser
 import json
@@ -1209,12 +1209,16 @@ Error status report is a lot to be desired.
       
       fullpath = disk_image['fullpath']
       try:
-        os.remove(fullpath, to_path)
+        tlog.debug( "Delete '%s'" % fullpath)
+        os.remove(fullpath)
+        tlog.debug( "Delete '%s' succeeded." % fullpath)
         return aiohttp.web.json_response({})
       except Exception as exc:
         # FIXME: better response?
-        raise HTTPServiceUnavailable()
-        pass
+        msg = "Delete '%s' failed.\n%s" % traceback.format_exc()
+        tlog.info(msg)
+        raise HTTPBadRequest(text=msg)
+        Pass
       pass
     # FIXME: better response?
     raise HTTPNotFound()

@@ -1,5 +1,5 @@
 
-.PHONY: update clean client
+.PHONY: update update-backend clean client
 
 # v0.2 UI
 # https://drive.google.com/uc?export=download&id=1eNzcClc_rLebtwhR2KDfZbMA9c9W_P2Y
@@ -7,11 +7,16 @@
 # v0.3 UI
 # https://drive.google.com/uc?export=download&?id=1Rjj9vD02Gid99qDrt3pvs6pitK0lBmyU
 
-update:
+update: update-backend update-frontend
+
+update-backend:
 	sudo -H pip3 install --upgrade --no-cache-dir -i https://test.pypi.org/simple/ wce_triage
+
+update-frontend:
 	sudo rm -fr /usr/local/share/wce/wce-triage-ui/*
 	cd /usr/local/share/wce/wce-triage-ui && curl -L -o - 'https://drive.google.com/uc?export=download&id=1Rjj9vD02Gid99qDrt3pvs6pitK0lBmyU' | tar xzf -
 	python3 -m wce_triage.setup.update_share
+
 
 clean:
 	sudo apt clean
