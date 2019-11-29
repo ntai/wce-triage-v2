@@ -142,10 +142,15 @@ if __name__ == "__main__":
     pass
 
   # Preflight is for me to see the tasks. http server runs this with json_ui.
-  opt = sources[0]
+  if len(sources) > 0:
+    opt = sources[0]
+  else:
+    opt = None
+    pass
 
   do_it = True
   testflight = False
+
   if opt == "preflight":
     print("Preflight only.")
     ui = console_ui()
@@ -160,31 +165,38 @@ if __name__ == "__main__":
     sources = sources[1:]
     pass
   else:
+    if opt == "clean":
+      do_it = True
+      sources = []
+      pass
     ui = json_ui(wock_event="diskimage", message_catalog=my_messages)
     pass
 
-  # Union existing disk images and syncing sources which is subset of disk images.
-  # This is to rehydrate the disk image metas.
-  disk_images = get_disk_images()
-  _sources = {}
-
-  for src in sources:
-    _sources[src] = True
-    pass
-
   syncing = []
-  for disk_image in disk_images:
-    if disk_image['name'] in _sources:
-      syncing.append(disk_image)
+  runner_id = "diskimage"
+
+  if opt != "clean":
+    # Union existing disk images and syncing sources which is subset of disk images.
+    # This is to rehydrate the disk image metas.
+    disk_images = get_disk_images()
+    _sources = {}
+
+    for src in sources:
+      _sources[src] = True
       pass
+
+    for disk_image in disk_images:
+      if disk_image['name'] in _sources:
+        syncing.append(disk_image)
+        pass
+      pass
+
+    if not syncing:
+      tlog.info("Images: " + " ".join([ str(disk_image) for disk_image in disk_images ]))
+      tlog.info("Sources: " + " ".join(_sources.keys()))
+      raise Exception("no sources?")
     pass
 
-  if not syncing:
-    tlog.info("Images: " + " ".join([ str(disk_image) for disk_image in disk_images ]))
-    tlog.info("Sources: " + " ".join(_sources.keys()))
-    raise Exception("no sources?")
-
-  runner_id = "diskimage"
   runner = SyncImageRunner(ui, runner_id, syncing, disks, testflight=testflight)
   try:
     runner.prepare()

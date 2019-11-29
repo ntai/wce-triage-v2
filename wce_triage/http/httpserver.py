@@ -1087,6 +1087,7 @@ class TriageWeb(object):
   pass
 
 # ============================================================================
+# sync and clean
 #
   @routes.post("/dispatch/sync")
   async def route_sync_disk_images(request):
@@ -1097,7 +1098,6 @@ class TriageWeb(object):
     if me.sync_target_disks is None:
       raise HTTPServiceUnavailable()
 
-    # Resetting the state - hack...
     if request.query.get('sources'):
       me.sync_disk_image_options = request.query
       me.start_sync_disk_images('start sync from request')
@@ -1107,6 +1107,20 @@ class TriageWeb(object):
       pass
     return aiohttp.web.json_response({})
 
+  @routes.post("/dispatch/clean")
+  async def route_sync_disk_images(request):
+    """clean disk images from the target disks"""
+    global me
+
+    me.sync_target_disks = get_target_devices_from_request(request)
+    if me.sync_target_disks is None:
+      raise HTTPServiceUnavailable()
+
+    me.sync_disk_image_options = {}
+    me.start_sync_disk_images('start sync from request', clean=True)
+    return aiohttp.web.json_response({})
+
+
   def _get_sync_disk_image_option(self, tag):
     value = self.sync_disk_image_options.get(tag)
     if isinstance(value, tuple):
@@ -1114,16 +1128,24 @@ class TriageWeb(object):
       pass
     return value
 
-  def start_sync_disk_images(self, log):
+  def start_sync_disk_images(self, log, clean=False):
     if not self.sync_target_disks:
       return
-    imagefiles = self._get_sync_disk_image_option("sources")
-    if len(imagefiles) == 0 or self.sync_target_disks == 0:
-      tlog.debug("SYNC: imagefile is none, or sync target disk is none. Check the sync_disk_image_options")
-      tlog.debug(self.sync_disk_image_options)
-      argv = ['true']
+
+    if clean:
+      # clean
+      argv = ['python3', '-m', 'wce_triage.ops.sync_image_runner', ",".join(self.sync_target_disks)] + ["clean"]
+      pass
     else:
-      argv = ['python3', '-m', 'wce_triage.ops.sync_image_runner', ",".join(self.sync_target_disks)] + imagefiles.split(',')
+      imagefiles = self._get_sync_disk_image_option("sources")
+
+      if len(imagefiles) == 0 or self.sync_target_disks == 0:
+        tlog.debug("SYNC: imagefile is none, or sync target disk is none. Check the sync_disk_image_options")
+        tlog.debug(self.sync_disk_image_options)
+        argv = ['true']
+      else:
+        argv = ['python3', '-m', 'wce_triage.ops.sync_image_runner', ",".join(self.sync_target_disks)] + imagefiles.split(',')
+        pass
       pass
     tlog.debug("SYNC: " + " ".join(argv))
 
@@ -1195,7 +1217,7 @@ Error status report is a lot to be desired.
 
   @routes.post("/dispatch/delete")
   async def route_rename_image(request):
-    """Delete a disk image file.
+    """clean: Delete a disk image file.
 Error status report is a lot to be desired.
 """
     global me
