@@ -7,20 +7,21 @@
 # exec runs through the tasks.
 #
 
-import datetime, re, subprocess, abc, os, select, time, uuid, json, traceback, shutil
+import datetime, re, subprocess, abc, os, select, uuid, json, traceback, shutil
 import struct
+import errno
 from ..components.pci import find_pci_device_node
-from ..components.disk import Disk, Partition, PartitionLister, canonicalize_file_system_name
-from ..lib.util import drain_pipe, drain_pipe_completely, get_triage_logger
-from ..lib.timeutil import *
-from ..lib.grub import *
-from .pplan import *
-import uuid
-
+from ..components.disk import Partition, PartitionLister, canonicalize_file_system_name
+from ..components.network import detect_net_devices, get_router_ip_address
+from ..lib.util import get_triage_logger, safe_string, get_filename_stem
+from ..lib.timeutil import in_seconds
+from ..lib.grub import grub_config
+from .pplan import EFI_NAME
+from ..version import TRIAGE_VERSION, TRIAGE_TIMESTAMP
+from ..const import const
 
 tlog = get_triage_logger()
 
-from .estimate import *
 
 class op_task(object, metaclass=abc.ABCMeta):
   def __init__(self, description, encoding='utf-8', time_estimate=None, estimate_factors=None, **kwargs):
@@ -164,6 +165,12 @@ class op_task(object, metaclass=abc.ABCMeta):
       return 99
     return progress
 
+
+  def set_task_finished_message(self, msg):
+    """This is to change the message for finished state."""
+    self.kwargs['progress_finished'] = "No disk image files to delete"
+    pass
+
   pass
 
 
@@ -199,9 +206,15 @@ class op_task_python_simple(op_task_python):
     pass
 
   def poll(self):
-    self.run_python()
+    try:
+      self.run_python()
+    except Exception as exc:
+      msg = traceback.format_exc(exc)
+      self.verdict.append(msg)
+      raise exc
+
     if self.progress < 100:
-      self.set_progress(100, "finished.")
+      self.set_progress(100, "Finished")
       pass
     pass
 
@@ -245,7 +258,8 @@ class op_task_process(op_task):
 
   def setup(self):
     tlog.debug( "op_task_process Poepn: " + repr(self.argv))
-    self.process = subprocess.Popen(self.argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    self.verdict.append("Process: " + repr(self.argv))
+    self.process = subprocess.Popen(self.argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL)
     self.stdout = self.process.stdout
     self.stderr = self.process.stderr
     self.read_set = [self.stdout, self.stderr]
@@ -307,14 +321,16 @@ class op_task_process(op_task):
       if self.process.returncode in self.good_returncode:
         self.set_progress(100, self.kwargs.get('progress_finished', "Finished" ) )
         if self.out:
-          tlog.info("Process stdout: " + self.out)
+          out_msg = "Process stdout: " + self.out
+          tlog.info(out_msg)
           pass
         if self.err:
-          tlog.info("Process stderr: " + self.err)
+          err_msg = "Process stderr: " + self.err
+          tlog.info(err_msg)
           pass
         pass
       else:
-        self.set_progress(999, "Failed with return code %d\n%s" % (self.process.returncode, self.err))
+        self.set_progress(999, "Failed with return code %d" % (self.process.returncode))
         log_msg = "%s failed with return code %d" % (self.description, self.process.returncode)
         if self.out:
           log_msg = log_msg + "\nstdout\n" + self.out
@@ -322,9 +338,17 @@ class op_task_process(op_task):
         if self.err:
           log_msg = log_msg + "\nstderr\n" + self.err
           pass
-        self.log(log_msg)
         tlog.info(log_msg)
         pass
+
+      if self.out:
+        self.verdict.append("stdout: " + self.out)
+        pass
+
+      if self.err:
+        self.verdict.append("stderr: " + self.err)
+        pass
+
       pass
     pass
 
@@ -547,10 +571,11 @@ class task_unmount(op_task_process_simple):
 class task_mount(op_task_process_simple):
   """mount a partition on disk"""
 
-  def __init__(self, description, disk=None, partition_id='Linux', **kwargs):
+  def __init__(self, description, disk=None, partition_id='Linux', add_mount_point=None, **kwargs):
     self.disk = disk
     self.partition_id = partition_id
     self.part = None
+    self.add_mount_point = add_mount_point
     super().__init__(description, argv = ["/bin/mount"], time_estimate=2, **kwargs)
     pass
   
@@ -567,7 +592,8 @@ class task_mount(op_task_process_simple):
       try:
         os.makedirs(mount_point)
       except Exception as exc:
-        self.set_progress(999, "Creating mount point failed. " + traceback.format_exc())
+        self.set_progress(999, "Creating mount point failed. ")
+        self.verdict.append(traceback.format_exc())
         pass
       pass
     super().setup()
@@ -575,6 +601,9 @@ class task_mount(op_task_process_simple):
 
   def teardown(self):
     self.part.mounted = self.progress == 100
+    if self.part.mounted and self.add_mount_point != None:
+      self.add_mount_point(self.disk, self.part)
+      pass
     super().teardown()
     pass
 
@@ -584,7 +613,7 @@ class task_mount(op_task_process_simple):
 def task_get_uuid_from_partition(op_task_process_simple):
   def __init__(self, description, partition=None, **kwargs):
     self.part = partition
-    arg = ["/sbin/blkid", part.device_name]
+    arg = ["/sbin/blkid", self.part.device_name]
     super().__init__(description, argv=arg, time_estimate=2, **kwargs)
     pass
 
@@ -719,7 +748,7 @@ class task_create_wce_tag(op_task_python_simple):
     # Set up the /etc/wce-release file
     release = open(self.disk.wce_release_file, "w+")
     release.write("wce-contents: %s\n" % get_filename_stem(self.source))
-    release.write("installer-version: %s\n" % installer_version)
+    release.write("installer-version: %s.%s\n" % TRIAGE_VERSION, TRIAGE_TIMESTAMP)
     release.write("installation-date: %s\n" % datetime.datetime.isoformat( datetime.datetime.utcnow() ))
     release.close()
     self.set_progress(100, "WCE release tag written")
@@ -745,7 +774,6 @@ class task_remove_files(op_task_python_simple):
       return
     
     rootpath = part.get_mount_point()
-    n = len(self.files)
     i = 0
     # Protect myself from stupidity
     toplevels = os.listdir("/")
@@ -764,18 +792,24 @@ class task_remove_files(op_task_python_simple):
         try:
           if os.path.isdir(path):
             shutil.rmtree(path)
-            tlog.debug("Dir %s deleted." % path)
+            msg = "Dir %s deleted." % path
             pass
           else:
             os.remove(path)
-            tlog.debug("File %s deleted." % path)
+            msg = "File %s deleted." % path
             pass
+          tlog.debug(msg)
+          self.verdict.append(msg)
           pass
-        except:
+        except Exception as exc:
+          self.verdict.append("Failed to remove %s" % path)
+          self.verdict.append(str(exc))
           pass
         pass
       else:
-        tlog.debug("Path %s does not exist." % path)
+        msg = "Path %s does not exist." % path
+        tlog.info(msg)
+        self.verdict.append(msg)
         pass
       pass
     pass
@@ -834,8 +868,13 @@ class task_fetch_partitions(op_task_process_simple):
     super().__init__(description, argv=self.lister.argv, time_estimate=1, **kwargs)
     pass
   
+
   def poll(self):
     super().poll()
+
+    if self.process.returncode:
+      print("retcode = %d" % self.process.returncode)
+      pass
 
     if self.progress == 100:
       self.lister.set_parted_output(self.out, self.err)
@@ -899,12 +938,13 @@ class task_refresh_partitions(op_task_command):
     devdelim = out.find(':')
     # device_name should match with the part.device_name
     device_name = out[:devdelim]
-
+    if device_name != part.device_name:
+      tlog.info("Fishy! %s != %s" % (device_name, part.device_name))
+      pass
+    
     # The rest is key=value with space delimiter.
     tokens = self.tagvalre.split(out[devdelim+1:].strip())
-    index = 0
     tag = None
-    value = None
     for token in tokens:
       if token == '':
         continue
@@ -1028,24 +1068,43 @@ class task_set_fat_volume_id(op_task_python_simple):
     hex_str = part1.fs_uuid[:4] + part1.fs_uuid[5:]
     id = struct.pack("<I", int(hex_str, 16))
 
-    device_file = open(device_name, "rb")
-    # https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2003/cc776720(v=ws.10)?redirectedfrom=MSDN#w2k3tr_fat_how_gkxz
-    # Extended BPB Fields for FAT32 Volumes
-    device_file.seek(0x43)
-    device_file.read(4)
-    device_file.close()
+    is_healthy = True
+    try:
+      device_file = open(device_name, "rb")
+      # https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2003/cc776720(v=ws.10)?redirectedfrom=MSDN#w2k3tr_fat_how_gkxz
+      # Extended BPB Fields for FAT32 Volumes
+      device_file.seek(0x43)
+      device_file.read(4)
+      device_file.close()
+    except Exception as exc:
+      is_healthy = False
+      msg = "Failed during attempting to read from byte 67 to 71.\n" + str(exc)
+      self.verdict.append(msg)
+      tlog.info(msg)
+      pass
 
+    if is_healthy:
+      try:
+        device_file = open(device_name, "wb")
+        # https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2003/cc776720(v=ws.10)?redirectedfrom=MSDN#w2k3tr_fat_how_gkxz
+        # Extended BPB Fields for FAT32 Volumes
+        device_file.seek(0x43)
+        device_file.write(id)
+        device_file.close()
+      except Exception as exc:
+        is_healthy = False
+        msg = "Failed during attempting to write from byte 67 to 71.\n" + str(exc)
+        self.verdict.append(msg)
+        tlog.info(msg)
+        pass
+      pass
 
-    device_file = open(device_name, "wb")
-    # https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2003/cc776720(v=ws.10)?redirectedfrom=MSDN#w2k3tr_fat_how_gkxz
-    # Extended BPB Fields for FAT32 Volumes
-    device_file.seek(0x43)
-    device_file.write(id)
-    device_file.close()
-
-    tlog.debug("FAT volume id - wrote %08x to %s" % (struct.unpack("<I", id)[0], device_name))
+    if is_healthy:
+      msg = "FAT volume id - wrote %08x to %s" % (struct.unpack("<I", id)[0], device_name)
+      self.verdict.append(msg)
+      tlog.debug(msg)
+      pass
     return
-
   pass
 
 
@@ -1140,12 +1199,17 @@ class task_install_grub(op_task_process):
 
     # Write out the bless script
     script_file = open(self.script_path, "w")
-    script_file.write("\n".join(self.script))
+    script_text = "\n".join(self.script)
+    script_file.write(script_text)
     script_file.close()
     os.chmod(self.script_path, 0o755)
 
+    self.verdict.append("Running following script with chroot\n%s\n" % script_text)
+
     # Set up the /dev for chroot
-    subprocess.run("mount --bind /dev/ %s/dev" % self.mount_dir, shell=True)
+    cmd = "mount --bind /dev/ %s/dev" % self.mount_dir
+    subprocess.run(cmd, shell=True)
+    self.verdict.append(cmd)
 
     # Run the blessing script with chroot
     self.argv = ["/usr/sbin/chroot",  self.mount_dir, "/bin/sh", self.script_path_template % ""]
@@ -1168,23 +1232,28 @@ class task_install_grub(op_task_process):
   def teardown(self):
     super().teardown()
     # tear down the /dev for chroot
-    subprocess.run("umount %s/dev" % self.mount_dir, shell=True)
+    cmd = "umount %s/dev" % self.mount_dir
+    subprocess.run(cmd, shell=True)
     if self.script_path:
       try:
         os.unlink(self.script_path)
-      except:
+      except Exception as exc:
+        self.verdict.append("Failed: " + cmd)
+        self.verdict.append(str(exc))
         pass
       pass
 
     bless_log=open("/tmp/bless.log", "w")
     if self.out:
-      bless_log.write("stdout\n")
-      bless_log.write(self.out)
+      msg = "stdout: \n" + self.out
+      self.verdict.append(msg)
+      bless_log.write(msg)
       pass
     
     if self.err:
-      bless_log.write("stderr\n")
-      bless_log.write(self.err)
+      msg = "stderr: \n" + self.err
+      self.verdict.append(msg)
+      bless_log.write(msg)
       pass
     bless_log.close()
     pass
@@ -1315,8 +1384,7 @@ new hostname set up is only done if the new hostname is provided. If it's None, 
           pass
         pass
       hosts.close()
-
-      self.log("Hostname in %s/etc is updated with %s." % (self.mount_dir, self.newhostname))
+      self.verdict.append("Hostname in %s/etc is updated with %s." % (self.mount_dir, self.newhostname))
       pass
 
     # Set the wce_share_url to /etc/default/grub
@@ -1374,7 +1442,7 @@ class task_finalize_disk_aux(op_task_python):
   def __init__(self, description, disk=None, newhostname=None, partition_id='Linux', **kwargs):
     super().__init__(description, time_estimate=1, **kwargs)
     self.disk = disk
-    self.linuxpart = self.disk.find_partition(partition_id)
+    self.partition_id = partition_id
     self.newhostname = newhostname
     pass
    
@@ -1386,6 +1454,7 @@ class task_finalize_disk_aux(op_task_python):
     #
     # This should fix up the most of unbootable disk imaging.
     #
+    part1 = self.disk.find_partition(self.partition_id)
     root_fs = "UUID=%s" % part1.uuid
     linux_re = re.compile(r'(\s+linux\s+[^ ]+\s+root=)([^ ]+)(\s+ro .*)')
     grub_cfg_file = open("%s/boot/grub/grub.cfg" % self.mount_dir)
@@ -1449,9 +1518,12 @@ class task_finalize_efi(op_task_python_simple):
     self.efi_dir = self.efi_part.get_mount_point()
 
     # patch up the grub.cfg
-    grub_cfg = open("%s/EFI/ubuntu/grub.cfg" % self.efi_dir, "w")
-    grub_cfg.write(EFI_ubuntu_grub_template.format(Linux_UUID=self.linuxpart.fs_uuid, Linux_part_no=self.linuxpart.partition_number))
-    grub_cfg.close()
+    efi_grub_cfg_path = "%s/EFI/ubuntu/grub.cfg" % self.efi_dir
+    efi_grub_cfg_fd = open(efi_grub_cfg_path, "w")
+    efi_grub_cfg = EFI_ubuntu_grub_template.format(Linux_UUID=self.linuxpart.fs_uuid, Linux_part_no=self.linuxpart.partition_number)
+    efi_grub_cfg_fd.write(efi_grub_cfg)
+    efi_grub_cfg_fd.close()
+    self.verdict.append("%s:\n%s" % (efi_grub_cfg_path, efi_grub_cfg))
     pass
   pass
 
@@ -1459,21 +1531,28 @@ class task_finalize_efi(op_task_python_simple):
 #
 #
 class task_mount_nfs_destination(op_task_process):
+  nfs_server = None
 
   def __init__(self, description, **kwargs):
     super().__init__(description, **kwargs)
     pass
   
   def setup(self):
-    if not is_network_connected():
+    connected = False
+    for netdev in detect_net_devices():
+      if netdev.is_network_connected():
+        connected = True
+        break
+      pass
+    if not connected:
       self.set_progress(999, "Network is not working.")
       return
     
-    if nfs_server is None:
-      nfs_server = get_router_ip_address()
+    if self.nfs_server is None:
+      self.nfs_server = get_router_ip_address()
       pass
 
-    if not nfs_server:
+    if not self.nfs_server:
       self.set_progress(999, "No NFS server")
       return
 
@@ -1486,7 +1565,7 @@ class task_mount_nfs_destination(op_task_process):
         pass
       pass
 
-    self.argv = [ "mount", "-t", "nfs",  "%s:/var/www" %nfs_server, "/mnt/www"]
+    self.argv = [ "mount", "-t", "nfs",  "%s:/var/www" % self.nfs_server, "/mnt/www"]
     super().setup()
     pass
   pass
@@ -1591,7 +1670,9 @@ class op_task_wipe_disk(op_task_process):
         self.time_estimate = message.get("runEstimate")
         pass
       except Exception as exc:
-        tlog.info("bad wipe ouptut? " + traceback.format_exc() + "\n" + line)
+        msg = "bad wipe ouptut? " + traceback.format_exc() + "\n" + line
+        self.verdict.append(msg)
+        tlog.info(msg)
         pass
       pass
 
@@ -1601,7 +1682,7 @@ class op_task_wipe_disk(op_task_process):
         break
       line = self.out[:newline]
       self.out = self.out[newline+1:]
-      self.log(line)
+      self.verdict(line)
       pass
     pass
   pass

@@ -9,11 +9,10 @@
 # exec runs through the tasks.
 #
 
-import datetime, re, subprocess, traceback
-from .run_state import *
-from ..lib.timeutil import *
+import datetime, traceback
+from .run_state import RunState, RUN_STATE
+from ..lib.timeutil import in_seconds
 from .tasks import op_task
-import functools
 
 #
 # Base class for runner
@@ -108,6 +107,7 @@ class Runner:
     self.ui.report_run_progress(self.runner_id, self.current_time, self.state, self.run_estimate, self.run_time, self.task_step, self.tasks)
     pass
 
+  #
   def get_run_state_name(self):
     return RUN_STATE[self.state.value]
       
@@ -131,8 +131,8 @@ class Runner:
           tb = traceback.format_exc()
           fail_msg = "Task: " + task.description + "\n" + tb
           self.ui.log(self.runner_id, fail_msg)
-          task.set_progress(999, 'Task failed due to internal error. See logging.')
           task.verdict.append(tb)
+          task.set_progress(999, 'Task failed due to internal error. See details/logging.')
           pass
         pass
       else:
@@ -148,6 +148,11 @@ class Runner:
     pass
 
 
+  def report_task_progress(self, run_time, task):
+    self.ui.report_task_progress(self.runner_id, self.current_time, self.run_estimate, run_time, task, self.tasks)
+    pass
+
+
   def _run_task(self, task, ui):
     task.pre_setup()
     task.setup()
@@ -156,7 +161,7 @@ class Runner:
     run_time = self.current_time - self.start_time
     last_progress_time = current_time
 
-    ui.report_task_progress(self.runner_id, self.current_time, self.run_estimate, run_time, task, self.tasks)
+    self.report_task_progress(run_time, task)
 
     while task.progress < 100:
       task.poll()
@@ -171,7 +176,7 @@ class Runner:
 
         # When the poll comes back too fast, this creates a lot of traffic.
         # Need to tame down a little
-        ui.report_task_progress(self.runner_id, self.current_time, self.run_estimate, run_time, task, self.tasks)
+        self.report_task_progress(run_time, task)
         pass
 
       # Update the estimate time with actual elapsed time.
@@ -183,6 +188,9 @@ class Runner:
         # something went wrong.
         self.state = RunState.Failed
         ui.report_task_failure(self.runner_id, self.current_time, run_time, task)
+        if task.verdict:
+          self.ui.log(self.runner_id, "%s failed.\n%s" % (task.description, "\n".join(task.verdict)))
+          pass
         break
 
       if task.progress == 100:

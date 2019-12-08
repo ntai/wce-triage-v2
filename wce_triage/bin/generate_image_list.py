@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 
-import os, json, re
-from ..lib.util import  *
-
+import json
+from ..lib.util import get_ip_addresses, get_lighttpd_server_port
+from ..lib.disk_images import get_disk_images
 
 if __name__ == "__main__":
 

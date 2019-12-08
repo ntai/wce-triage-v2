@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-import os, sys, subprocess
+import os, subprocess
 import json
 
 patch_dir = os.path.dirname(__file__)
@@ -36,11 +36,17 @@ class patch_plan:
 
       self.plans.append(['mkdir', '-p', target_dir])
 
+      # FIXME: metadata manipulation needs implementation.
       metadata_file = os.path.join(self.dir, ".metadata.json")
       metadata = {}
       if os.path.exists(metadata_file):
         with open(metadata_file) as metadata_fd:
           metadata = json.load(metadata_fd)
+          pass
+        pass
+      if metadata:
+        if "mode" in metadata:
+          os.chmod(self.dir, int(metadata["mode"], 8))
           pass
         pass
 

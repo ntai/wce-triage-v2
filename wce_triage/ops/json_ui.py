@@ -1,11 +1,12 @@
 #
-# 
+# JSON UI
 #
-import sys, os
-from .ops_ui import *
+import sys
+from .ops_ui import ops_ui
 import json
-from .run_state import *
-from ..lib.util import *
+from .run_state import RUN_STATE, RunState
+from ..lib.util import get_triage_logger
+from ..lib.timeutil import in_seconds
 
 tlog = get_triage_logger()
 
@@ -32,15 +33,11 @@ def _describe_task(task, current_time):
   result["taskStatus"] = TASK_STATUS[task._get_status()]
   result["taskMessage"] = task.message
   result["taskExplain"] = task.explain()
-
   if task._get_status() > 1:
     if task.verdict:
-      result["taskVerdict"] = " ".join(task.verdict)
-    else:
-      result["taskVerdict"] = task.message
+      result["taskVerdict"] = task.verdict
       pass
     pass
-
   return result
 
 
@@ -62,7 +59,7 @@ class json_ui(ops_ui):
     describe_tasks = [ _describe_task(task, current_time) for task in tasks ]
     self.send(self.wock_event,
               { "report": "tasks",
-                "device" : runner_id, 
+                "device" : runner_id,
                 "runStatus" : RUN_STATE[RunState.Preflight.value],
                 "runMessage" : "Prearing",
                 "runEstimate" : round(in_seconds(run_estimate)),
@@ -147,7 +144,7 @@ tasks: array of tasks
   # Log message. Probably better to be stored in file so we can see it
   # FIXME: probably should use python's logging.
   def log(self, runner_id, msg):
-    tlog.info(msg)
+    tlog.info("JSON-LOG: " +  msg)
     self.send('message', {"message": runner_id + ": " + msg})
     pass
 

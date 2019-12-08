@@ -9,8 +9,8 @@
 #
 import abc
 import datetime
-from ..lib.timeutil import *
-from .run_state import RunState
+from ..lib.timeutil import in_seconds
+from .run_state import RunState, RUN_STATE
 
 class ops_ui(object):
   def __init__(self):
@@ -84,7 +84,7 @@ class console_ui(ops_ui):
     
     msg = (" " + task.message) if task and task.message else ""
     self.last_report_time = current_time
-    print("%s %3d: %d%% done. Estimate for %s is %d.%s" % (runner_id, in_seconds(run_time), in_seconds(progress), task.description, time_estimate, msg))
+    print("Running step %d of %d tasks. %s" % (task.task_number+1, len(tasks), msg))
     pass
 
 
@@ -92,11 +92,17 @@ class console_ui(ops_ui):
     elapsed_time = in_seconds(task.end_time - task.start_time)
     print("%s %s failed in %d seconds. Aborting." % (runner_id, task.description, elapsed_time))
     print(task.message)
+    for verdict in task.verdict:
+      print(verdict)
+      pass
     pass
 
   def report_task_success(self, runner_id, current_time, run_time, task):
     elapsed_time = in_seconds(task.end_time - task.start_time)
     print("%s %s finised in %d seconds." % (runner_id, task.description, in_seconds(elapsed_time)))
+    for verdict in task.verdict:
+      print(verdict)
+      pass
     pass
 
 

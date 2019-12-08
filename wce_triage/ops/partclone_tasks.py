@@ -8,15 +8,12 @@ Actual running of process is done by wce_triage/bin's process driver and this on
 Important part is about parsing the partclone output and send out the progress.
 """
 
-import datetime, re, subprocess, abc, os, select, time, uuid
+import datetime, re
 
-from ..components.disk import Disk, Partition
-from .tasks import *
-from ..lib.timeutil import *
-import functools
-from .estimate import *
-from ..lib.util import *
-from ..lib.disk_images import *
+from .tasks import op_task_process
+from ..lib.timeutil import in_seconds
+from ..lib.util import get_triage_logger
+from ..lib.disk_images import get_file_system_from_source
 
 tlog = get_triage_logger()
 
@@ -85,7 +82,7 @@ class task_partclone(op_task_process):
         if m:
           elapsed = m.group(1)
           remaining = m.group(2)
-          completed = float(m.group(3))
+          # completed = float(m.group(3))
 
           dt_elapsed = datetime.datetime.strptime(elapsed, '%H:%M:%S') - self.t0
           dt_remaining = datetime.datetime.strptime(remaining, '%H:%M:%S') - self.t0
@@ -251,7 +248,6 @@ class task_restore_disk_image(task_partclone):
 
           m = self.error_re.match(line)
           if m:
-            self.log(line)
             self.verdict.append(m.group(2).strip())
             pass
           pass

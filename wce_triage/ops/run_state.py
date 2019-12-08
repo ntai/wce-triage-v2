@@ -10,4 +10,3 @@ class RunState(Enum):
   pass
 
 RUN_STATE = ["Waiting", "Prepare", "Preflight", "Running", "Success", "Failed"]
-

@@ -6,14 +6,13 @@
 # The status goes to the stderr. To make things simple, all of status
 # is prefixed and each status is a single line.
 #
-import os, sys, subprocess, urllib, datetime
+import os, sys, subprocess, urllib
 
 import urllib.parse
-from collections import deque
 
-from ..lib.util import *
-from ..lib.timeutil import *
-from .process_driver import *
+from ..lib.util import is_block_device, get_file_compression_app
+
+from ..bin.process_driver import drive_process, PipeInfo
 
 def save_disk(source, dest, filesystem=None, encoding='iso-8859-1'):
   if not is_block_device(source):

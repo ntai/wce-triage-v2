@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #
-from ..components.disk import Disk, Partition
-from ..const import *
+from ..components.disk import Partition
+from ..const import const
 
 EFI_NAME = 'EFI_System_Partition'
 EFI_PART_OPT ='boot,esp'
@@ -72,9 +72,10 @@ def size_partitions(pplan, diskmbsize):
 # 
 def make_efi_partition_plan(disk, ext4_version=None, efi_boot=False, partition_id=None):
   diskmbsize = int(disk.get_byte_size() / (1024*1024))
-  # Use up to 5% of disk for swap, but stop at 8GB. 
-  swapsize = int(diskmbsize * 0.05)
-  swapsize = 8192 if swapsize > 8192 else (2048 if swapsize < 2048 else swapsize)
+
+  # Use up to 5% of disk for swap, but max of 8GB.
+  # Smallest swap size is 2GB.
+  swapsize = min(8192, max(2048, int(diskmbsize * 0.05)))
 
   mkfs_opts = _ext4_version_to_mkfs_opts(ext4_version)
 
@@ -110,7 +111,7 @@ def make_traditional_partition_plan(disk, ext4_version=None, partition_id=None):
   swapsize = 8192 if swapsize > 8192 else (2048 if swapsize < 2048 else swapsize)
   mkfs_opts = _ext4_version_to_mkfs_opts(ext4_version)
   bios_part_opt = 'boot'
-  efi_part_opt = None
+  #efi_part_opt = None
 
   pplan = [PartPlan(0, None,         None,         0,        2, Partition.MBR,      None,          None),
            PartPlan(1, None,         'ext4',       0,        0, Partition.EXT4,     bios_part_opt, mkfs_opts),

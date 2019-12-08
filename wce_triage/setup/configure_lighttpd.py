@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-import os, sys, subprocess
+import os, subprocess
 
 stem = ['sudo', '-H', 'lighty-enable-mod']
 

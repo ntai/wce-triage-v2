@@ -2,9 +2,9 @@
 # Copyright (c) 2019 Naoyuki tai
 # MIT license - see LICENSE
 
-import os, subprocess, string
-from ..lib.util import *
-from .component import *
+import os
+from ..lib.util import get_triage_logger
+from .component import Component
 
 tlog = get_triage_logger()
 

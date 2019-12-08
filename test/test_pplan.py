@@ -13,7 +13,7 @@ class Test_(unittest.TestCase):
         plan = make_usb_stick_partition_plan(disk, ext4_version=ext4_version, efi_boot=efi_boot)
 
         for part in plan:
-          print( "EFI = {} Version = {} Part {} {} {} {}".format(str(efi_boot), ext4_version, part.no, part.start, part.size, part.parttype))
+          print( "EFI = {} Version = {} Part {} {} {} {}".format(str(efi_boot), ext4_version, part.no, part.start, part.size, part.partcode))
           pass
 
         self.assertEqual(len(plan), 3 if efi_boot else 2)

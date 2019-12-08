@@ -2,18 +2,20 @@
 # Restore disk
 #
 
-import datetime, re, subprocess, sys, os, uuid, traceback, logging, argparse
+import sys, uuid, traceback, argparse, os, json
 
-from .tasks import *
-from .ops_ui import *
-from .runner import *
-from .partition_runner import *
+from .tasks import task_fetch_partitions, task_refresh_partitions, task_set_fat_volume_id, task_fsck, task_set_ext_partition_uuid, task_mount, task_unmount, task_remove_persistent_rules, task_finalize_disk, task_install_grub, task_expand_partition, task_finalize_efi
+
+from .ops_ui import console_ui
+from .partition_runner import PartitionDiskRunner
 from ..components.video import detect_video_cards
-from .partclone_tasks import *
-from ..lib.util import is_block_device
-from .json_ui import *
-from ..lib.disk_images import *
-from ..const import *
+from ..components.disk import create_storage_instance
+from .partclone_tasks import task_restore_disk_image
+from ..lib.util import init_triage_logger
+from .json_ui import json_ui
+from ..const import const
+from .pplan import make_traditional_partition_plan, make_efi_partition_plan, make_usb_stick_partition_plan, EFI_NAME
+from ..lib.disk_images import read_disk_image_types
 
 
 # "Waiting", "Prepare", "Preflight", "Running", "Success", "Failed"]
@@ -25,7 +27,7 @@ my_messages = { "Waiting":   "Disk image load is waiting.",
                 "Failed":    "Disk image load failed." }
 
 def make_random_hostname(stemname="wce"):
-  return stemname + uuid.uuid4().hex[:8]
+  return stemname + uuid.uuid4().hex[:4]
 #
 #
 class RestoreDiskRunner(PartitionDiskRunner):

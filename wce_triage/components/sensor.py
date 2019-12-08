@@ -2,8 +2,8 @@
 # Copyright (c) 2019 Naoyuki tai
 # MIT license - see LICENSE
 
-import subprocess
-from ..lib.util import *
+import subprocess, re, os
+from ..lib.util import safe_string
 
 def detect_sensor_modules(modules_path):
   if modules_path:
@@ -53,7 +53,7 @@ def detect_sensor_modules(modules_path):
 
     for module in drivers:
       try:
-        retcode = subprocess.call("modprobe %s" % module, shell=True)
+        subprocess.call("modprobe %s" % module, shell=True)
       except:
         pass
       pass

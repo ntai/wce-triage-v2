@@ -69,7 +69,7 @@ class FactorMultiplier(object):
     pass
 
   def compute_factors(self, factors):
-    return [ Evaluators[i](factor[i], self.multipliers[i]) for i in range(len(self.multipliers)) ]
+    return [ Evaluators[i](factors[i], self.multipliers[i]) for i in range(len(self.multipliers)) ]
   pass
 
 

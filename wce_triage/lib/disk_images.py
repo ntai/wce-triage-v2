@@ -3,7 +3,7 @@
 """disk_image scans the disk image candidate directories and returns availabe disk images for loading.
 """
 import os, datetime, json, traceback
-from ..lib.util import *
+from ..lib.util import get_triage_logger, init_triage_logger
 
 tlog = get_triage_logger()
 
@@ -56,13 +56,52 @@ def get_disk_image_list_order():
   return list_order
 
 #
+#
+#
+def list_image_files(dirs):
+  """lists the images files under the dirs.
+
+  :return:
+  a list of tuples
+
+  the shape of tuple: (image_filename, subdir, fullpath)
+"""
+  images = []
+  for a_dir in dirs:
+    for direntry in os.listdir(a_dir):
+      # Anything starting with "." is ignored
+      if direntry[0:1] == '.':
+        continue
+      catalog_dir = os.path.join(a_dir, direntry)
+      image_meta_file = os.path.join(catalog_dir, IMAGE_META_JSON_FILE)
+      if not os.path.exists(image_meta_file) or not os.path.isfile(image_meta_file):
+        continue
+      if direntry.endswith(".partclone.gz"):
+        images.append( (direntry, "", catalog_dir) )
+        pass
+      if os.path.isdir(catalog_dir):
+        for direntryinsubdir in os.listdir(catalog_dir):
+          # Anything starting with "." is ignored
+          if direntryinsubdir[0:1] == '.':
+            continue
+          if direntryinsubdir.endswith(".partclone.gz"):
+            images.append((direntryinsubdir, direntry, os.path.join(catalog_dir, direntryinsubdir)) )
+            pass
+          pass
+        pass
+      pass
+    pass
+  return images
+  
+#
 # 
 #
 def get_disk_images(wce_share_url=None):
   '''scans the known drectories for disk image and returns the list of disk images
-
-    :arg none
-
+    
+    :arg:
+      wce_share_url: prefix for the disk imagefile.
+    
     :returns: list of dict instances. 
       mtime: file modify time
       restoreType: keyword for restore type. [wce|wce-16|triage|clone]
@@ -75,38 +114,17 @@ def get_disk_images(wce_share_url=None):
     ..note the entries are deduped by the filename so if two directories
            contain the same file name, only one is pikced.
   '''
+  # gather disk image files
+  _images= list_image_files(get_maybe_disk_image_directories())
+
   # Dedup the same file name
   images = {}
-  for subdir in get_maybe_disk_image_directories():
-    for direntry in os.listdir(subdir):
-      # Anything starting with "." is ignored
-      if direntry[0:1] == '.':
-        continue
-
-      catalog_dir = os.path.join(subdir, direntry)
-      image_meta_file = os.path.join(catalog_dir, IMAGE_META_JSON_FILE)
-      if not os.path.exists(image_meta_file) or not os.path.isfile(image_meta_file):
-        continue
-
-      if direntry.endswith(".partclone.gz"):
-        images[direntry] = (direntry, "", catalog_dir)
-        pass
-
-      if os.path.isdir(catalog_dir):
-        for direntryinsubdir in os.listdir(catalog_dir):
-          # Anything starting with "." is ignored
-          if direntryinsubdir[0:1] == '.':
-            continue
-          if direntryinsubdir.endswith(".partclone.gz"):
-            images[direntryinsubdir] = (direntryinsubdir, direntry, os.path.join(catalog_dir, direntryinsubdir))
-            pass
-          pass
-        pass
-      pass
+  for image in _images:
+    fname, subdir, fullpath = image
+    images[fname] = image
     pass
 
   # Sort image listing order
-
   result = []
   for filename, image in images.items():
     fname, subdir, fullpath = image
@@ -140,6 +158,22 @@ def read_disk_image_types(verbose=False):
     :arg none
 
     :returns: list of dict instances which is .disk_image_type.json file in the directory. 
+
+  [ { "id": "wce-18",
+      "filestem": "wce-mate18",
+      "name": "WCE Ubuntu 18.04LTS",
+      "timestamp": true,
+      "efi_image": ".efi-512M.fat32.partclone.gz",
+      "partition_map": "gpt",
+      "hostname": "wce",
+      "randomize_hostname": true,
+      "cmdline": {
+        "acpi_enforce_resources": "lax" ,
+        "nvme_core.default_ps_max_latency_us": "5500"
+      }
+    },
+    { ... }
+  ]
 
   '''
   image_metas = []

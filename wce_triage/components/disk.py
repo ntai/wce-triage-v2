@@ -2,12 +2,11 @@
 # Copyright (c) 2019 Naoyuki tai
 # MIT license - see LICENSE
 
-import re, sys, os, subprocess, traceback, time
-import logging
+import re, subprocess, traceback, time, os
 import json
 
-from ..lib.util import *
-from .component import *
+from ..lib.util import get_triage_logger
+from .component import Component
 
 tlog = get_triage_logger()
 
@@ -176,6 +175,8 @@ class Disk:
     self.wce_release_file = os.path.join(self.mount_dir, "etc", wce_release_file_name)
     self.is_detected = False
     self.disappeared = False
+    self.smart = False
+    self.smart_enabled = False
 
     # These two will be redesigned. Need a better way.
     self.is_usb3 = False
@@ -327,15 +328,25 @@ class Disk:
 
     out = ""
     err = ""
+    cmd = ['udevadm', 'info', '--query=property', '--name=' + self.device_name]
     try:
-      cmd = ['udevadm', 'info', '--query=property', '--name=' + self.device_name]
-      udevadm = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8', timeout=5)
+      udevadm = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='iso-8859-1', timeout=5)
       out = udevadm.stdout
       err = udevadm.stderr
     except Exception as exc:
       tlog.debug(traceback.format_exc())
       pass
       
+    err = err.strip()
+    if err:
+      tlog.info(" ".join(cmd) + ":\n" + err)
+      pass
+
+    if err == "device node not found":
+      # The disk has a bad partition map and udevadm doesn't produce
+      # any info.
+      pass
+
     if out:
       self.is_disk = True
       for line in out.splitlines():
@@ -369,6 +380,12 @@ class Disk:
             self.usb_driver = value
             self.is_usb = True
             pass
+          elif tag == "ID_ATA_FEATURE_SET_SMART":
+            self.smart = (value is '1')
+            pass
+          elif tag == "ID_ATA_FEATURE_SET_SMART_ENABLED":
+            self.smart_enabled = (value is '1')
+            pass
           pass
         except:
           tlog.debug(traceback.format_exc())
@@ -380,7 +397,7 @@ class Disk:
       pass
 
     if err.strip():
-      tlog.info(err)
+      tlog.info(" ".join(cmd) + ":\n" + err)
       pass
 
     if self.is_usb:
@@ -577,9 +594,21 @@ class DiskPortal(Component):
       pass
 
     if has_nvme:
-      nvme = subprocess.run("nvme list -o json", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8', timeout=5)
-      out = nvme.stdout
-      err = nvme.stderr
+      cmd = "nvme list -o json"
+      out = None
+      err = None
+      try:
+        nvme = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8', timeout=5)
+        out = nvme.stdout
+        err = nvme.stderr
+      except Exception as exc:
+        tlog.info(cmd + ":\n" + traceback.format_exc())
+        pass
+
+      if err:
+        tlog.info(cmd + ":\n" + err)
+        pass
+
       nvme_output = json.loads(out)
 
       for device in nvme_output["Devices"]:
@@ -610,7 +639,7 @@ class DiskPortal(Component):
           # Consume the disk entry
           existing_disks[device_name] = None
           if nvmessd.mounted != is_mounted:
-            nvmdssd.mounted = is_mounted
+            nvmessd.mounted = is_mounted
             updated_disks.append(nvmessd)
             pass
           pass

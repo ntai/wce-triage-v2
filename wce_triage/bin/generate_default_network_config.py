@@ -6,9 +6,8 @@
 # When the triage service starts, it runs this to generate default network
 # setup so that it can do triaging of network device.
 #
-import os, sys, subprocess
-from ..components.network import * 
-from ..lib.netplan import *
+from ..components.network import detect_net_devices
+from ..lib.netplan import generate_default_config, save_network_config
 
 if __name__ == "__main__":
   devices = detect_net_devices()

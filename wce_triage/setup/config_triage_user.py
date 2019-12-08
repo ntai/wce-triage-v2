@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-import os, sys, subprocess
+import os, subprocess
 
 TRIAGEUSER = os.environ.get("TRIAGEUSER", "wce")
 TRIAGEPASS = os.environ.get('TRIAGEPASS', 'wce123')

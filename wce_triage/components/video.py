@@ -6,8 +6,7 @@
 # Video detection
 #
 
-from .pci import *
-from .component import *
+from .component import Component
 from . import pci as _pci
 
 from collections import namedtuple
@@ -21,13 +20,13 @@ def detect_video_cards():
   n_ati = 0
   n_vga = 0
 
-  for pcidev in list_pci():
+  for pcidev in _pci.list_pci():
     if pcidev.device_class == 'video':
-      if pcidev.vendor == PCI_VENDOR_NVIDIA:
+      if pcidev.vendor == _pci.PCI_VENDOR_NVIDIA:
         # nVidia
         n_nvidia = n_nvidia + 1
         pass
-      elif pcidev.vendor == PCI_VENDOR_ATI:
+      elif pcidev.vendor == _pci.PCI_VENDOR_ATI:
         # ATI
         n_ati = n_ati + 1
         pass

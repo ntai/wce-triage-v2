@@ -2,8 +2,8 @@
 #
 # Install Ubunto packages (some are python packages)
 #
-import os, sys, subprocess
-from ..const import *
+import os, subprocess
+from ..const import const
 
 def list_installed_packages():
   """Lists and returns installed packages.
@@ -103,7 +103,8 @@ triage_kiosk_packages = [
   'vbetool',
   'gfxboot',
   'lighttpd',
-  'hardinfo'
+  'hardinfo',
+  'smartmontools'
 ]
 
 # python-socketio - websocket.

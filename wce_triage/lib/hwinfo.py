@@ -3,13 +3,11 @@
 """hwinfo runs hwinfo and caches.
 The use of hwinfo is currently suspended as it is too slow.
 Also it attempts to use lshw.
-
-Most likely
 """
 
-import os, subprocess, json
+import subprocess, json
 
-from util import *
+from .util import get_triage_logger, get_test_password
 tlog = get_triage_logger()
 
 # lshw is far better!

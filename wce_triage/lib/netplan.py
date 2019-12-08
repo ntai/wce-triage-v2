@@ -4,9 +4,9 @@ There are two cases, one for during triage where a machine generates a default n
 and other is for server.
 
 """
-from ..const import *
-from ..components.network import *
-import sys, os
+from ..const import const
+from ..components.network import NetworkDeviceType, NetworkDevice
+import sys, os, json, hashlib
 
 indentspace = '  '
 

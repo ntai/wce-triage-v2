@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-import os, sys, subprocess
+import os, subprocess
 
 TRIAGEUSER=os.environ.get("TRIAGEUSER", "triage")
 
@@ -10,25 +10,29 @@ subprocess.run('sudo rm -f /tmp/wce-kiosk.sh /tmp/wce-kiosk.service /tmp/wce-tri
 #
 wce_kiosk_sh = open('/tmp/wce-kiosk.sh', 'w')
 wce_kiosk_sh.write('''#!/bin/bash
+
+BROWSER=/usr/bin/chromium-browser
+if [ ! -x $BROWSER ] ; then
+  BROWSER=/usr/bin/google-chrome
+fi
+sudo -H -u {U} rm -rf /home/{U}/.{{config,cache}}/{{google-chrome,chromium}}/
+
 xset -dpms
 xset s off
 xhost + localhost SI:localuser:{U}
 sudo -H -u {U} DISPLAY=$DISPLAY openbox-session &
 sudo -H -u {U} DISPLAY=$DISPLAY start-pulseaudio-x11
-BROWSER=/usr/bin/chromium-browser
-if [ ! -x $BROWSER ] ; then
-  BROWSER=/usr/bin/google-chrome
-fi
+sudo -H -u {U} DISPLAY=$DISPLAY xbacklight -set 90
+sudo -H -u {U} DISPLAY=$DISPLAY pactl set-sink-mute 0 false
+sudo -H -u {U} DISPLAY=$DISPLAY pactl set-sink-volume 0 90%
+
+while ! wget -T 1 -O /dev/null -q http://localhost:8312/version.json; do
+  sleep 1
+done
+
 while true; do
-  sleep 1
-  if lsof -Pi :8312 -sTCP:LISTEN -t >/dev/null ; then
-      sudo -H -u {U} DISPLAY=$DISPLAY xbacklight -set 90
-      sudo -H -u {U} DISPLAY=$DISPLAY pactl set-sink-mute 0 false
-      sudo -H -u {U} DISPLAY=$DISPLAY pactl set-sink-volume 0 90%
-      sudo -H -u {U} rm -rf /home/{U}/.{{config,cache}}/{{google-chrome,chromium}}/
-      sudo -H -u {U} $BROWSER --display=$DISPLAY --kiosk --no-first-run 'http://localhost:8312'
-  fi
-  sleep 1
+  sleep 2
+  sudo -H -u {U} $BROWSER --display=$DISPLAY --kiosk --temp-profile --no-first-run 'http://localhost:8312'
 done
 '''.format(U=TRIAGEUSER))
 wce_kiosk_sh.close()
