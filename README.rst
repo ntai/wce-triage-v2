@@ -54,7 +54,7 @@ In order to load/save disk image, there are following ways.
 
 * Offline - Have a running Ubuntu, and load disk image to non-system disk. 
 * Boot from USB stick - Boot minimul Ubuntu from USB, and load the diks image on the USB stick.
-* Nework boot - PXE boot, NFS mount the root file system, and download the disk image on NFS or HTTP server.
+* Network boot - PXE boot, NFS mount the root file system, and download the disk image on NFS or HTTP server.
 
 The triage app for setups
 -------------------------
