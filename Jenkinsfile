@@ -7,7 +7,7 @@ pipeline {
         }
         stage('Test WCE Triage app') {
             steps {
-                sh 'java -version'
+                sh 'test/run_test.sh'
             }
         }
     }
