@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 while [ ! -r /usr/local/share/wce/contents/wikipedia/*.zim ] ; do
   sleep 30
 done
