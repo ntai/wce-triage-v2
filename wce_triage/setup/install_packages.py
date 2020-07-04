@@ -179,7 +179,7 @@ if __name__ == "__main__":
     pass
 
   if os.environ.get('WCE_DESKTOP') == "true":
-    packages = packages + server_packages
+    packages = packages + desktop_packages
     pass
 
   installed_packages = list_installed_packages()
