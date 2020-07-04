@@ -54,7 +54,9 @@ feature_map = {'Can read multisession': ('Multisession', lambda x: int(x) == 1),
                'Can write DVD-RAM': ('DVDRAM-W', lambda x: int(x) == 1),
                'Can read MRW': ('MRW-R', lambda x: int(x) == 1),
                'Can write MRW': ('MRW-W', lambda x: int(x) == 1),
-               'Can write RAM': ('RAM-W', lambda x: int(x) == 1)}
+               'Can write RAM': ('RAM-W', lambda x: int(x) == 1),
+               'drive speed': ('Drive speed', lambda x: int(x) >= 18)
+}
 
 def detect_optical_drives():
   drives = []

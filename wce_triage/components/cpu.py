@@ -37,7 +37,7 @@ CPUInfo contains following:
   max_processor = 0
   cpu_vendor = "other"
   model_name = ""
-  cpu_cores = 1
+  cpu_cores = 0
   cpu_class = 1
   bogomips = 0
   cpu_speed = 0
@@ -73,7 +73,7 @@ CPUInfo contains following:
       model_name = value
       pass
     elif tag == 'cpu cores':
-      cpu_cores = int(value)
+      cpu_cores += int(value)
       pass
     elif tag == 'flags':
       
