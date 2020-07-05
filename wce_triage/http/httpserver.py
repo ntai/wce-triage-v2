@@ -1322,7 +1322,7 @@ cli.add_argument("--live-triage", dest="live_triage", action='store_true')
 arguments = cli.parse_args()
 
 # If the module is invoked directly, initialize the application
-if __name__ == '__main__':
+def my_main():
   tlog = init_triage_logger(log_level=logging.DEBUG)
   
   # Create and configure the HTTP server instance
@@ -1403,4 +1403,8 @@ if __name__ == '__main__':
   Emitter.register(loop)
 
   aiohttp.web.run_app(app, host="0.0.0.0", port=arguments.port, access_log=get_triage_logger())
+  pass
+
+if __name__ == '__main__':
+  my_main()
   pass
