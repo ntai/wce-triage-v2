@@ -765,4 +765,12 @@ if __name__ == "__main__":
     print("%s is %s" % (disk.device_name, "mounted." if disk.mounted else "not mounted."))
     pass
   
+  for disk in portal.disks:
+    lister = PartitionLister(disk)
+    lister.execute()
+    for part in disk.partitions:
+      print( "  Parition {} device file {}: parition_name {}".format(part.partition_number, part._device_name, part.partition_name))
+      pass
+    pass
+  
   pass

@@ -126,15 +126,18 @@ def update_runner_status(runner_status, progress):
 #
 # Known event type: message, diskupdate, triageupdate, loadimage, saveimage
 # 
+
 class Emitter:
   queue = None
   item_count = 0
 
+  # noinspection PyMethodParameters
   def register(loop):
     Emitter.queue = queue.Queue()
     asyncio.ensure_future(Emitter._task(), loop=loop)
     pass
 
+  # noinspection PyMethodParameters
   async def _task():
     while True:
       await Emitter.flush()
@@ -142,6 +145,7 @@ class Emitter:
       pass
     pass
 
+  # noinspection PyMethodParameters
   async def flush():
     global me
     running = True
@@ -160,7 +164,7 @@ class Emitter:
       pass
     pass
 
-
+  # noinspection PyMethodParameters
   def _send(event, data):
     tlog.debug("EMITTER: queueing %d  %s" % (Emitter.item_count, event))
     Emitter.queue.put((Emitter.item_count, event, data))
@@ -168,12 +172,14 @@ class Emitter:
     pass
 
   # This is to send message
+  # noinspection PyMethodParameters
   def note(message):
     Emitter._send('message', {"message": message,
                               "severity": 1})
     pass
 
   # This is to send alert message (aka popping up a dialog
+  # noinspection PyMethodParameters
   def alert(message):
     tlog.info("ALERT: " + message)
     Emitter._send('message', {"message": message,
@@ -1316,7 +1322,7 @@ cli.add_argument("--live-triage", dest="live_triage", action='store_true')
 arguments = cli.parse_args()
 
 # If the module is invoked directly, initialize the application
-if __name__ == '__main__':
+def my_main():
   tlog = init_triage_logger(log_level=logging.DEBUG)
   
   # Create and configure the HTTP server instance
@@ -1397,4 +1403,8 @@ if __name__ == '__main__':
   Emitter.register(loop)
 
   aiohttp.web.run_app(app, host="0.0.0.0", port=arguments.port, access_log=get_triage_logger())
+  pass
+
+if __name__ == '__main__':
+  my_main()
   pass

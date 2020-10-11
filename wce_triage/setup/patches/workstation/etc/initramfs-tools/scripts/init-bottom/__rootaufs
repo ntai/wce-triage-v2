@@ -129,7 +129,7 @@ fi
 #
 # When there is a ROOT, it could be "very messy" when it's NFS mount.
 #
-if [ x${ROOT} != x } ; then
+if [ x${ROOT} != x ] ; then
 
 ROOTTYPE=$(fgrep -e "${ROOT}" /proc/mounts|cut -d' ' -f3)
 ROOTOPTIONS=$(fgrep -e "${ROOT}" /proc/mounts|cut -d' ' -f4)

@@ -51,6 +51,7 @@ base_packages = [
   'python3-aiohttp',          # for python http server
   'python3-aiohttp-cors',     # for python http server
   'rfkill',                   # rfkill reports the wifi hardware/software switches
+  'fonts-roboto',             # Google's fonts for UI.
   'wpasupplicant',            # wifi auth
   #
   # Network device Firmware

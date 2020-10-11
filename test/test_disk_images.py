@@ -4,6 +4,8 @@ from wce_triage.lib.disk_images import *
 import subprocess
 import tempfile
 import shutil
+import os
+ROOTDIR=os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
 
 tlog = init_triage_logger(filename='/tmp/disk_images.log')
 
@@ -14,7 +16,8 @@ class Test_DiskImages(unittest.TestCase):
 
   def setUp(self):
     self.test_dir = tempfile.mkdtemp()
-    subprocess.run(["rsync", "-a", "../wce_triage/setup/share/wce/wce-disk-images", self.test_dir])
+    cmd = ["rsync", "-a", os.path.join(ROOTDIR, "wce_triage/setup/share/wce/wce-disk-images"), self.test_dir]
+    subprocess.run(cmd)
     set_wce_disk_image_dir(os.path.join(self.test_dir, "wce-disk-images"))
 
     test1 = os.path.join(self.test_dir, "wce-disk-images", "wce-18", "test1.partclone.gz")

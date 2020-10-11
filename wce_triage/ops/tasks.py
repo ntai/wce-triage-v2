@@ -928,7 +928,6 @@ class task_refresh_partitions(op_task_command):
 
     part = self.disk.partitions[self.step]
     self.step += 1
-    part.partition_number = self.step
 
     result = subprocess.run([ '/sbin/blkid', part.device_name ],
                               timeout=10, encoding=self.encoding,
