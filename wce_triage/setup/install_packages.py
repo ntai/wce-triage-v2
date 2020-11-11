@@ -2,7 +2,8 @@
 #
 # Install Ubunto packages (some are python packages)
 #
-import os, subprocess
+import os, subprocess, re, tempfile
+
 from ..const import const
 
 def list_installed_packages():
@@ -25,65 +26,71 @@ def list_installed_packages():
 # yes, you can cross-domain
 # probably, not used for live triage.
 
-base_packages = [
-  'python3-pip',              # bootstrapping pip3 ???
-  'alsa-utils',               # Audio
-  'curl',                     # cURL
-  'gnupg',                    # for Google key installation
-  'dmidecode',                # decoding bios, detects memory
-  'efibootmgr',               # for EFI boot (not yet implemented, sadly)
-  'gdisk',                    # gdisk
-  'grub2-common',             # boot manager
-  'grub-pc',                  # boot manager
-  'hardinfo',                 # hardinfo - hardware profiling app
-  'iwconfig',                 # for seeing wifi device list
-  'make',                     # make makes 
-  'mg',                       # small emacs-like editor
-  'net-tools',                # netstat
-  'nfs-common',               # mounting nfs
-  'nvme-cli',                 # nvme cli commands
-  'pigz',                     # parallel gzip
-  'patch',                    # patch - needed to patch config files
-  'partclone',                # partclone
-  'parted',                   # parted
-  'pulseaudio',               # Ubuntu audio server
-  'pulseaudio-utils',         # Ubuntu PA utils
-  'python3-aiohttp',          # for python http server
-  'python3-aiohttp-cors',     # for python http server
-  'rfkill',                   # rfkill reports the wifi hardware/software switches
-  'fonts-roboto',             # Google's fonts for UI.
-  'wpasupplicant',            # wifi auth
-  #
-  # Network device Firmware
-  #
-  'linux-firmware',
-  'firmware-b43-installer',
-  'firmware-b43legacy-installer',
-  'firmware-ath9k-htc',
-  'linux-wlan-ng-firmware',   # wlan fw
+base_packages = {
+  None: [
+    'python3-pip',              # bootstrapping pip3 ???
+    'alsa-utils',               # Audio
+    'curl',                     # cURL
+    'gnupg',                    # for Google key installation
+    'dmidecode',                # decoding bios, detects memory
+    'efibootmgr',               # for EFI boot (not yet implemented, sadly)
+    'gdisk',                    # gdisk
+    'grub2-common',             # boot manager
+    'grub-pc',                  # boot manager
+    'hardinfo',                 # hardinfo - hardware profiling app
+    'iwconfig',                 # for seeing wifi device list
+    'make',                     # make makes 
+    'mg',                       # small emacs-like editor
+    'net-tools',                # netstat
+    'nfs-common',               # mounting nfs
+    'nvme-cli',                 # nvme cli commands
+    'pigz',                     # parallel gzip
+    'patch',                    # patch - needed to patch config files
+    'partclone',                # partclone
+    'parted',                   # parted
+    'pulseaudio',               # Ubuntu audio server
+    'pulseaudio-utils',         # Ubuntu PA utils
+    'python3-aiohttp',          # for python http server
+    'python3-aiohttp-cors',     # for python http server
+    'rfkill',                   # rfkill reports the wifi hardware/software switches
+    'fonts-roboto',             # Google's fonts for UI.
+    'wpasupplicant',            # wifi auth
+    #
+    # Network device Firmware
+    #
+    'linux-firmware',
+    'firmware-b43-installer',
+    'firmware-b43legacy-installer',
+    'firmware-ath9k-htc',
+    'linux-wlan-ng-firmware',   # wlan fw
 
-  # audio device firmware
-  'alsa-firmware-loaders',
-]
+    # audio device firmware
+    'alsa-firmware-loaders',
+  ],
+}
+  
 
 #
 # xserver packages - this is in the base package but it's easier to see
 #
-xorg_packages = [
-  'xorg',
-  'xserver-xorg-video-all',
-  'xserver-xorg-video-fbdev',
-  'xserver-xorg-video-intel',
-  'xserver-xorg-video-vmware',
-  'xserver-xorg-video-geode',
-  'xserver-xorg-video-mach64',
-  'xserver-xorg-video-openchrome',
-  'xserver-xorg-video-r128',
-  'xserver-xorg-video-savege',
-  'xserver-xorg-video-trident',
-  'xserver-xorg-video-vesa',
-  'xbacklight'
+xorg_packages = {
+  None: [
+    'xorg',
+    'xserver-xorg-video-all',
+    'xserver-xorg-video-fbdev',
+    'xserver-xorg-video-intel',
+    'xserver-xorg-video-vmware',
+    'xserver-xorg-video-geode',
+    'xserver-xorg-video-mach64',
+    'xserver-xorg-video-openchrome',
+    'xserver-xorg-video-r128',
+    'xserver-xorg-video-savege',
+    'xserver-xorg-video-trident',
+    'xserver-xorg-video-vesa',
+    'xbacklight'
   ]
+}
+
 
 #
 # Triage system packages
@@ -97,61 +104,91 @@ xorg_packages = [
 #
 # Note that the browser is installed by install_chrome.py
 #
-triage_kiosk_packages = [
-  'openbox',
-  'aufs-tools',
-  'vbetool',
-  'gfxboot',
-  'lighttpd',
-  'hardinfo',
-  'smartmontools'
-]
+triage_kiosk_packages = {
+  None: [
+    'openbox',
+    'aufs-tools',
+    'vbetool',
+    'gfxboot',
+    'lighttpd',
+    'hardinfo',
+    'smartmontools'
+  ]
+}
 
 # python-socketio - websocket.
 # I would have used the ubuntu package if provided.
 # semms to not work for now.
 #
-python_packages = ['python-socketio']
+python_packages = {
+  None: ['python-socketio']
+}
 
 #
 # Packages for the server
 #
-server_packages = [
-  'atftpd',
-  'lighttpd',
-  'dnsmasq',
-  'emacs',
-  'openbsd-inetd',
-  'nfs-common',
-  'nfs-kernel-server',
-  'openssh-server',
-  'pxelinux',
-  'syslinux',
-  'syslinux-common',
-  'python3-distutils'
-]
+server_packages = {
+  None: [
+    'atftpd',
+    'lighttpd',
+    'dnsmasq',
+    'emacs',
+    'openbsd-inetd',
+    'nfs-common',
+    'nfs-kernel-server',
+    'openssh-server',
+    'pxelinux',
+    'syslinux',
+    'syslinux-common',
+    'python3-distutils'
+  ],
+  '18.04': [],
+  '20.04': [],
+}
+
 
 #
 # Packages for desktop client
 #
-desktop_packages = [
-  'seahorse',
-  'ubuntu-edu-preschool',
-  'ubuntu-edu-primary',
-  'ubuntu-edu-secondary',
-  'ubuntu-edu-tertiary',
-  'eclipse',
-  'gpg',
-  'apt-transport-https',
-  'zlib1g',
-  'libicu60',
-  'libpugixml1v5',
-  'liblzma5',
-  'libxapian30',
-  'libcurl4',
-  'libmicrohttpd12'
-  ]
+desktop_packages = {
+  None: [
+    'arguino',
+    'seahorse',
+    'eclipse',
+    'gpg',
+    'apt-transport-https',
+    'octave',
+    'octave-doc',
+    'zlib1g',
+    'libicu60',
+    'libpugixml1v5',
+    'liblzma5',
+    'libxapian30',
+    'libcurl4',
+    'libmicrohttpd12'
+  ],
+  '18.04': [
+    'ubuntu-edu-preschool',
+    'ubuntu-edu-primary',
+    'ubuntu-edu-secondary',
+    'ubuntu-edu-tertiary',
+  ],
+  '20.04': [],
+}
 
+
+
+external_packages = {
+  None: [],
+  '18.04': [],
+  '20.04' : [
+    ( 'preschool.deb', ['curl', '-L', '-o', 'preschool.deb', 'https://drive.google.com/uc?export=download&id=1xYANzX2gZMKzurZ-qC7hPQjLUkrEsaBy'] ),
+    ( 'primary.deb',   ['curl', '-L', '-o', 'primary.deb',   'https://drive.google.com/uc?export=download&id=1JNn5EvNPnR2XyWJVImVDa2qAQXLhOab7'] ),
+    ( 'secondary.deb', ['curl', '-L', '-o', 'secondary.deb', 'https://drive.google.com/uc?export=download&id=1kuuSriqjDGBa9XgOctV4a5FkUOQ80A8Y'] ),
+    ( 'tertiary.deb',  ['curl', '-L', '-o', 'tertiary.deb',  'https://drive.google.com/uc?export=download&id=1b_vbnKZcLBMfGbkSfrUkvPUin7U2LKAm'] ),
+  ]
+}
+  
 
 def install_vs_code():
   """Install Visual Studio Code"""
@@ -166,36 +203,74 @@ def install_vs_code():
   pass
 
 
+def get_ubuntu_release():
+  release_re = re.compile( 'DISTRIB_RELEASE\s*=\s*(\d+\.\d+)' )
+  with open('/etc/lsb-release') as lsb_release_fd:
+    for line in lsb_release_fd.readlines():
+      result = release_re.search(line)
+      if result:
+        return result.group(1)
+      pass
+    pass
+  return None
 
-if __name__ == "__main__":
-  packages = base_packages + xorg_packages
+
+
+def get_package_list(package_list, release_version) -> list:
+  return package_list.get(None, []) + package_list.get(release_version, [])
+
+
+def get_package_plan():
+  release_version = get_ubuntu_release()
+
+  packages = get_package_list(base_packages, release_version) + get_package_list(xorg_packages, release_version)
 
   if os.environ.get('WCE_TRIAGE_DISK') == "true":
     subprocess.run('sudo -H apt remove -y apparmor', shell=True)
-    packages = packages + triage_kiosk_packages
+    packages = packages + get_package_list(triage_kiosk_packages, release_version)
     pass
 
   if os.environ.get(const.WCE_SERVER) == "true":
-    packages = packages + server_packages
+    packages = packages + get_package_list(server_packages, release_version)
     pass
 
   if os.environ.get('WCE_DESKTOP') == "true":
-    packages = packages + desktop_packages
+    packages = packages + get_package_list(desktop_packages, release_version)
     pass
+  return packages, release_version
 
+if __name__ == "__main__":
+  packages, release_version = get_package_plan()
   installed_packages = list_installed_packages()
   
+  cmd = 'sudo'
+
   for package in packages:
     if installed_packages.get(package):
       continue
-    subprocess.run(['sudo', '-H', 'apt', 'install', '-y', '--no-install-recommends', package])
+    subprocess.run([cmd, '-H', 'apt', 'install', '-y', '--no-install-recommends', package])
+    
     pass
+
+  # install external packages
+  # Edubuntu is now released as separate meta packages in google drive.
+  # 
+  cwd = os.getcwd()
+  tempdir = tempfile.mkdtemp()
+  os.chdir(tempdir)
+  ext_package_files = []
+  for deb_name, pkg_argv in get_package_list(external_packages, release_version):
+    ext_package_files.append(deb_name)
+    subprocess.run([cmd, '-H', 'apt', 'install', '-y', '--no-install-recommends', package])
+    pass
+  subprocess.run([cmd, 'apt', 'install', '-y', '--no-install-recommends'] + ext_package_files)
+  os.chdir(cwd)
 
   # install python packages.
   #  Why not use pip3? Ubuntu server is far more stable than pypi server.
   #  Also, the packages on pypi moves too fast and dependencies can be a headache.
   #
-  for ppkg in python_packages:
-    subprocess.run(['sudo', '-H', 'pip3', 'install', ppkg])
+  for ppkg in get_package_list(python_packages, release_version):
+    subprocess.run([cmd, '-H', 'pip3', 'install', ppkg])
     pass
   pass
