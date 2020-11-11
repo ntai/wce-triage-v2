@@ -1,10 +1,10 @@
 packages.microsoft.gpg
 *~
-build	
-dist	
-wce_triage.egg-info	
-aiohttp	
-socketio	
-\#*	
+build
+dist
+wce_triage.egg-info
+aiohttp
+socketio
+\#*
 foo*
 py3
