@@ -38,7 +38,6 @@ base_packages = {
     'grub2-common',             # boot manager
     'grub-pc',                  # boot manager
     'hardinfo',                 # hardinfo - hardware profiling app
-    'iwconfig',                 # for seeing wifi device list
     'make',                     # make makes 
     'mg',                       # small emacs-like editor
     'net-tools',                # netstat
@@ -67,8 +66,14 @@ base_packages = {
     # audio device firmware
     'alsa-firmware-loaders',
   ],
+  '18.04': [
+    'iwconfig',                 # for seeing wifi device list
+  ],
+  '20.04': [
+    'iw',                       # for seeing wifi device list
+  ],
 }
-  
+
 
 #
 # xserver packages - this is in the base package but it's easier to see
@@ -80,14 +85,19 @@ xorg_packages = {
     'xserver-xorg-video-fbdev',
     'xserver-xorg-video-intel',
     'xserver-xorg-video-vmware',
+    'xserver-xorg-video-openchrome',
+    'xserver-xorg-video-vesa',
+    'xbacklight'
+  ],
+  '18.04': [
     'xserver-xorg-video-geode',
     'xserver-xorg-video-mach64',
-    'xserver-xorg-video-openchrome',
     'xserver-xorg-video-r128',
     'xserver-xorg-video-savege',
     'xserver-xorg-video-trident',
-    'xserver-xorg-video-vesa',
-    'xbacklight'
+  ],
+  '20.04': [
+    'xserver-xorg-video-mga',
   ]
 }
 
@@ -182,10 +192,10 @@ external_packages = {
   None: [],
   '18.04': [],
   '20.04' : [
-    ( 'preschool.deb', ['curl', '-L', '-o', 'preschool.deb', 'https://drive.google.com/uc?export=download&id=1xYANzX2gZMKzurZ-qC7hPQjLUkrEsaBy'] ),
-    ( 'primary.deb',   ['curl', '-L', '-o', 'primary.deb',   'https://drive.google.com/uc?export=download&id=1JNn5EvNPnR2XyWJVImVDa2qAQXLhOab7'] ),
-    ( 'secondary.deb', ['curl', '-L', '-o', 'secondary.deb', 'https://drive.google.com/uc?export=download&id=1kuuSriqjDGBa9XgOctV4a5FkUOQ80A8Y'] ),
-    ( 'tertiary.deb',  ['curl', '-L', '-o', 'tertiary.deb',  'https://drive.google.com/uc?export=download&id=1b_vbnKZcLBMfGbkSfrUkvPUin7U2LKAm'] ),
+    ( './preschool.deb', ['curl', '-L', '-o', 'preschool.deb', 'https://drive.google.com/uc?export=download&id=1xYANzX2gZMKzurZ-qC7hPQjLUkrEsaBy'] ),
+    ( './primary.deb',   ['curl', '-L', '-o', 'primary.deb',   'https://drive.google.com/uc?export=download&id=1JNn5EvNPnR2XyWJVImVDa2qAQXLhOab7'] ),
+    ( './secondary.deb', ['curl', '-L', '-o', 'secondary.deb', 'https://drive.google.com/uc?export=download&id=1kuuSriqjDGBa9XgOctV4a5FkUOQ80A8Y'] ),
+    ( './tertiary.deb',  ['curl', '-L', '-o', 'tertiary.deb',  'https://drive.google.com/uc?export=download&id=1b_vbnKZcLBMfGbkSfrUkvPUin7U2LKAm'] ),
   ]
 }
   
@@ -249,7 +259,6 @@ if __name__ == "__main__":
     if installed_packages.get(package):
       continue
     subprocess.run([cmd, '-H', 'apt', 'install', '-y', '--no-install-recommends', package])
-    
     pass
 
   # install external packages
@@ -262,8 +271,8 @@ if __name__ == "__main__":
   for deb_name, pkg_argv in get_package_list(external_packages, release_version):
     ext_package_files.append(deb_name)
     subprocess.run([cmd, '-H', 'apt', 'install', '-y', '--no-install-recommends', package])
+    subprocess.run([cmd, 'apt', 'install', '--fix-broken', '-y', '--no-install-recommends', deb_name])
     pass
-  subprocess.run([cmd, 'apt', 'install', '-y', '--no-install-recommends'] + ext_package_files)
   os.chdir(cwd)
 
   # install python packages.
