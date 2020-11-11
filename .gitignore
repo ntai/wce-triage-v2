@@ -1,9 +1,1 @@
-*~
-build
-dist
-wce_triage.egg-info
-aiohttp
-socketio
-\#*
-foo*
-py3
+packages.microsoft.gpg
