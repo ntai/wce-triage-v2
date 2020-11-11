@@ -163,13 +163,23 @@ server_packages = {
 desktop_packages = {
   None: [
     'arguino',
+    'audacity',
     'seahorse',
     'eclipse',
     'gpg',
     'apt-transport-https',
     'octave',
     'octave-doc',
+    'gperiodic',
+    'gdis',
+    'chemical-structures',
+    'chemtool',
+    'easychem',
+    'cp2k',
+    'cp2k-data',
     'zlib1g',
+    'etoys',
+    'etoys-doc',
     'libicu60',
     'libpugixml1v5',
     'liblzma5',
@@ -249,6 +259,7 @@ def get_package_plan():
     pass
   return packages, release_version
 
+
 if __name__ == "__main__":
   packages, release_version = get_package_plan()
   installed_packages = list_installed_packages()
@@ -261,19 +272,23 @@ if __name__ == "__main__":
     subprocess.run([cmd, '-H', 'apt', 'install', '-y', '--no-install-recommends', package])
     pass
 
-  # install external packages
-  # Edubuntu is now released as separate meta packages in google drive.
-  # 
-  cwd = os.getcwd()
-  tempdir = tempfile.mkdtemp()
-  os.chdir(tempdir)
-  ext_package_files = []
-  for deb_name, pkg_argv in get_package_list(external_packages, release_version):
-    ext_package_files.append(deb_name)
-    subprocess.run([cmd, '-H', 'apt', 'install', '-y', '--no-install-recommends', package])
-    subprocess.run([cmd, 'apt', 'install', '--fix-broken', '-y', '--no-install-recommends', deb_name])
+  if os.environ.get('WCE_DESKTOP') == "true":
+    install_vs_code()
+
+    # install external packages
+    # Edubuntu is now released as separate meta packages in google drive.
+    # 
+    cwd = os.getcwd()
+    tempdir = tempfile.mkdtemp()
+    os.chdir(tempdir)
+    ext_package_files = []
+    for deb_name, pkg_argv in get_package_list(external_packages, release_version):
+      ext_package_files.append(deb_name)
+      subprocess.run(pkg_argv)
+      subprocess.run([cmd, 'apt', 'install', '--fix-broken', '-y', '--no-install-recommends', deb_name])
+      pass
+    os.chdir(cwd)
     pass
-  os.chdir(cwd)
 
   # install python packages.
   #  Why not use pip3? Ubuntu server is far more stable than pypi server.
