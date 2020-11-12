@@ -162,7 +162,7 @@ server_packages = {
 #
 desktop_packages = {
   None: [
-    'arguino',
+    'arduino',
     'audacity',
     'seahorse',
     'eclipse',
