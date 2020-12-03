@@ -73,7 +73,8 @@ CPUInfo contains following:
       model_name = value
       pass
     elif tag == 'cpu cores':
-      cpu_cores += int(value)
+      # /proc/cpuinfo for AMD and Intel report 'cpu cores' differently.
+      cpu_cores += 1
       pass
     elif tag == 'flags':
       

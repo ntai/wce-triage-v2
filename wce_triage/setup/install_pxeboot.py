@@ -76,8 +76,22 @@ pxe_menu.write(pxelinux_cfg_default)
 pxe_menu.close()
 
 
-for src, dest in [ ('/vmlinuz', '/var/lib/netboot/wce/vmlinuz'),
-                   ('/initrd.img', '/var/lib/netboot/wce/initrd.img') ]:
+import re
+
+version_id_re = re.compile(r'VERSION_ID=\"(\d+\.\d+)\"')
+
+with open("/etc/os-release") as osrel:
+  os_version = version_id_re.search(osrel.read(), re.MULTILINE).group(1)
+  pass
+
+kernel_files = {
+  "18.04" : [('/vmlinuz', '/var/lib/netboot/wce/vmlinuz'),
+             ('/initrd.img', '/var/lib/netboot/wce/initrd.img')],
+  "20.04" : [('/boot/vmlinuz', '/var/lib/netboot/wce/vmlinuz'),
+             ('/boot/initrd.img', '/var/lib/netboot/wce/initrd.img')]
+}
+                   
+for src, dest in kernel_files[os_version]:
     distutils.file_util.copy_file(src, dest, update=True)
     os.chmod(dest, stat.S_IRUSR|stat.S_IRGRP|stat.S_IROTH)
     pass

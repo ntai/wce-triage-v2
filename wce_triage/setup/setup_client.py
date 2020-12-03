@@ -18,7 +18,7 @@ if __name__ == "__main__":
            'install_assets',
            # patch up system and boot loader installation
            'patch_system',
-           # 
+           # Install kiwix server
            'install_kiwix_server'
   ]
   
