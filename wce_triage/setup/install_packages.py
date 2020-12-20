@@ -5,6 +5,7 @@
 import os, subprocess, re, tempfile
 
 from ..const import const
+from .install_vscode import install_vscode
 
 def list_installed_packages():
   """Lists and returns installed packages.
@@ -209,18 +210,6 @@ external_packages = {
 }
   
 
-def install_vs_code():
-  """Install Visual Studio Code"""
-  subprocess.run('curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg', shell=True)
-  subprocess.run('sudo -H install -o root -g root -m 644 packages.microsoft.gpg /usr/share/keyrings/', shell=True)
-
-  cat = subprocess.Popen('sudo -H tee /etc/apt/sources.list.d/vscode.list', shell=True, stdin=subprocess.PIPE)
-  cat.communicate("deb [arch=amd64 signed-by=/usr/share/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/vscode stable main".encode('iso-8859-1'))
-
-  subprocess.run('sudo -H apt-get update', shell=True)
-  subprocess.run('sudo -H apt-get install code', shell=True) # or code-insiders
-  pass
-
 
 def get_ubuntu_release():
   release_re = re.compile( 'DISTRIB_RELEASE\s*=\s*(\d+\.\d+)' )
@@ -272,7 +261,7 @@ if __name__ == "__main__":
     pass
 
   if os.environ.get('WCE_DESKTOP') == "true":
-    install_vs_code()
+    install_vscode()
 
     # install external packages
     # Edubuntu is now released as separate meta packages in google drive.

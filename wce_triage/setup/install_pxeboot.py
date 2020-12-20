@@ -18,7 +18,7 @@ if os.getuid() != 0:
     sys.exit(1)
 #
 
-for ndir in ['/var/lib/netclinet', '/var/lib/netboot', '/var/lib/netboot/pxelinux.cfg', '/var/lib/netboot/wce']:
+for ndir in ['/var/lib/netclient', '/var/lib/netboot', '/var/lib/netboot/pxelinux.cfg', '/var/lib/netboot/wce']:
     if not os.path.exists(ndir):
         os.mkdir(ndir)
         pass

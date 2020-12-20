@@ -29,7 +29,9 @@ if __name__ == "__main__":
            'patch_system',
            'install_boot',
            #
-           'install_pxeboot'
+           'install_pxeboot',
+           #
+           'configure_lighttpd'
   ]
   
   for step in steps:
