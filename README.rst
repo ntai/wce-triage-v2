@@ -82,7 +82,7 @@ Setting up Workstation/Network server
 As the triage app contains the setup script for workstation, it requires to install Python3 pip, and install "wce_triage" Python package on the computer. The setup script is exptected to run on freshly installed Ubuntu 18.04LTS desktop (or WCE's desktop client.)
 ::
 
-    $ sudo -H apt install -y python3-pip
+    $ sudo -H apt install -y python3-pip --no-install-recommends
     $ sudo -H pip3 install --no-cache-dir -i https://test.pypi.org/simple/ --no-deps wce_triage
 
 From the terminal, once this is done, run following command.
@@ -159,7 +159,7 @@ Step 4: Download wce_triage software
 ------------------------------------
 ::
    
-    $ sudo -H apt install -y python3-pip
+    $ sudo -H apt install -y python3-pip --no-install-recommends
     $ sudo -H pip3 install --no-cache-dir -i https://test.pypi.org/simple/ --no-deps wce_triage
 
 At this point, if you want to switch over to use WIFI instead of ethernet, you can do so by::
