@@ -10,9 +10,9 @@ setup: manifest
 	python3 setup.py sdist bdist_wheel
 
 bootstrap:
-	sudo apt install python3-pip virtualenv
-	virtualenv -p python3 py3
-	. ./py3/bin/activate && python3 -m pip install --upgrade setuptools wheel twine
+	sudo apt install python3.8 python3.8-venv 
+	python3.8 -m venv py3
+	. ./py3/bin/activate && python3.8 -m pip install --upgrade setuptools wheel twine
 	touch bootstrap
 
 upload: 

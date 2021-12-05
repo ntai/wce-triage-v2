@@ -131,9 +131,20 @@ triage_kiosk_packages = {
 # I would have used the ubuntu package if provided.
 # semms to not work for now.
 #
-python_packages = {
+base_python_packages = {
   None: ['python-socketio']
 }
+
+# Some interesting packages.
+desktop_python_packages = {
+  None: [ 'tensorflow==2.0.0b1',
+          'numpy==1.16.*',
+          'tensorflow-datasets',
+          'h5py'
+  ]
+}
+
+
 
 #
 # Packages for the server
@@ -166,6 +177,7 @@ desktop_packages = {
     'arduino',
     'audacity',
     'seahorse',
+    'eclipse',
     'gpg',
     'apt-transport-https',
     'octave',
@@ -185,7 +197,22 @@ desktop_packages = {
     'liblzma5',
     'libxapian30',
     'libcurl4',
-    'libmicrohttpd12'
+    'libmicrohttpd12',
+    'zlib1g',
+    'libicu60',
+    'libpugixml1v5',
+    'liblzma5',
+    'libxapian30',
+    'libcurl4',
+    'libmicrohttpd12',
+    # GNU Octave and friends
+    'gnuplot-qt',
+    'gnuplot-x11',
+    'libopenblas-base',
+    'libatlas3-base'
+    'pstoedit',
+    'epstool',
+    'default-jre-headless',
   ],
   '18.04': [
     'ubuntu-edu-preschool',
@@ -221,8 +248,6 @@ def get_ubuntu_release():
       pass
     pass
   return None
-
-
 
 def get_package_list(package_list, release_version) -> list:
   return package_list.get(None, []) + package_list.get(release_version, [])
@@ -281,8 +306,13 @@ if __name__ == "__main__":
   # install python packages.
   #  Why not use pip3? Ubuntu server is far more stable than pypi server.
   #  Also, the packages on pypi moves too fast and dependencies can be a headache.
-  #
-  for ppkg in get_package_list(python_packages, release_version):
+
+  python_packages = get_package_list(base_python_packages, release_version)
+  if os.environ.get('WCE_DESKTOP') == "true":
+    python_packages = python_packages + get_package_list(desktop_python_packages, release_version)
+    pass
+  
+  for ppkg in :
     subprocess.run([cmd, '-H', 'pip3', 'install', ppkg])
     pass
   pass
