@@ -6,6 +6,7 @@ WCE Triage HTTP server -
 and webscoket server
 
 """
+from asyncio import subprocess
 
 from ..version import TRIAGE_VERSION, TRIAGE_TIMESTAMP
 from ..const import const
@@ -265,6 +266,7 @@ class TriageWeb(object):
     pass
 
   #
+  @staticmethod
   async def _periodic_update():
     global me
     while True:
@@ -469,15 +471,22 @@ class TriageWeb(object):
       pass
 
     music_file = None
-    for asset in os.listdir(me.asset_path):
+    assets = os.listdir(me.asset_path)
+    for asset in assets:
       if asset.endswith(".mp3"):
+        music_file = os.path.join(me.asset_path, asset)
+        break
+      pass
+    for asset in assets:
+      if asset.endswith(".ogg"):
         music_file = os.path.join(me.asset_path, asset)
         break
       pass
 
     if music_file:
       resp = aiohttp.web.FileResponse(music_file)
-      resp.content_type="audio/mpeg"
+      resp.content_type="audio/" + music_file[-3:]
+      tlog.info("music file: {}".format(music_file))
 
       updated = None
       if _sound.detect_sound_device():
@@ -488,7 +497,7 @@ class TriageWeb(object):
                                             overall_changed=me.overall_changed)
         # FIXME: Do something meaningful, like send a wock message.
         if updated:
-          tlog.info("updated")
+          tlog.info("audio updated")
           pass
         pass
       return resp
@@ -609,6 +618,7 @@ class TriageWeb(object):
   @routes.get("/dispatch/network-device-status.json")
   async def route_network_device_status(request):
     """Network status"""
+    subprocess.run("python3 -m wce_triage.bin.start_network", shell=True, check=False, timeout=3)
     global me
     await me.triage()
     computer = me.computer

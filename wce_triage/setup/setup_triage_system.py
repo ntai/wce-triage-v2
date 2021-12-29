@@ -20,8 +20,8 @@ if __name__ == "__main__":
   steps = ['install_packages',
            # Create triage account
            'config_triage_user',
-           # Install Google Chrome
-           'install_chrome',
+           # Install Google Chrome - deprecated in favor of firefox
+           # 'install_chrome',
            # Install triage software and services
            'install_assets',
            'install_wce_triage',

@@ -650,8 +650,9 @@ class task_fsck(op_task_process):
     estimate_size = self.disk.get_byte_size() if self.payload_size is None else self.payload_size
     # The command is just a placeholder. Actuall command is assembled in "setup"
     self.fsck_mode = "-y" if fix_filesytem else "-p"
-
     super().__init__(description, argv=["/sbin/e2fsck", "-f", self.fsck_mode, disk.device_name, partition_id], time_estimate=estimate_size/speed+2, encoding='iso-8859-1', **kwargs)
+    # It's okay to be 0 - success or 1 - corrected
+    self.good_returncode = [0, 1]
     pass
 
   def setup(self):

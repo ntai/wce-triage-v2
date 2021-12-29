@@ -609,6 +609,9 @@ class DiskPortal(Component):
         tlog.info(cmd + ":\n" + err)
         pass
 
+      if not out or len(out) == 0:
+        return
+
       nvme_output = json.loads(out)
 
       for device in nvme_output["Devices"]:

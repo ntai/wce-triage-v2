@@ -63,15 +63,21 @@ base_packages = {
     'firmware-b43legacy-installer',
     'firmware-ath9k-htc',
     'linux-wlan-ng-firmware',   # wlan fw
+    'prism2-usb-firmware',
 
     # audio device firmware
     'alsa-firmware-loaders',
+
+    #
+    'parallel'
   ],
   '18.04': [
     'iwconfig',                 # for seeing wifi device list
   ],
   '20.04': [
     'iw',                       # for seeing wifi device list
+    'nmcli',                    # connect to wifi through nmcli command
+    'firefox',                  # Use firefox
   ],
 }
 
@@ -113,8 +119,7 @@ xorg_packages = {
 # gfxboot - pretty boot screen
 # lighttpd - serving payload. much better than using python.
 #
-# Note that the browser is installed by install_chrome.py
-#
+
 triage_kiosk_packages = {
   None: [
     'openbox',

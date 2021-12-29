@@ -11,29 +11,45 @@ subprocess.run('sudo rm -f /tmp/wce-kiosk.sh /tmp/wce-kiosk.service /tmp/wce-tri
 wce_kiosk_sh = open('/tmp/wce-kiosk.sh', 'w')
 wce_kiosk_sh.write('''#!/bin/bash
 
-BROWSER=/usr/bin/chromium-browser
-if [ ! -x $BROWSER ] ; then
-  BROWSER=/usr/bin/google-chrome
-fi
-sudo -H -u {U} rm -rf /home/{U}/.{{config,cache}}/{{google-chrome,chromium}}/
+LOGFILE=/tmp/kiosk.log
+set > $LOGFILE
+chmod 666 $LOGFILE
+
+export BROWSER=/usr/bin/firefox
 
 xset -dpms
 xset s off
-xhost + localhost SI:localuser:{U}
-sudo -H -u {U} DISPLAY=$DISPLAY openbox-session &
-sudo -H -u {U} DISPLAY=$DISPLAY start-pulseaudio-x11
-sudo -H -u {U} DISPLAY=$DISPLAY xbacklight -set 90
-sudo -H -u {U} DISPLAY=$DISPLAY pactl set-sink-mute 0 false
-sudo -H -u {U} DISPLAY=$DISPLAY pactl set-sink-volume 0 90%
+cp /root/.Xauthority /home/triage/.Xauthority
+chown triage:triage /home/triage/.Xauthority
+export XAUTHORITY=/home/triage/.Xauthority
+xhost + localhost SI:localuser:triage
+
+echo "openbox" >> $LOGFILE
+sudo -H -u triage -g triage openbox-session >> $LOGFILE 2>&1 &
+echo "pulseaudio" >> $LOGFILE
+# sudo -H -u triage -g triage start-pulseaudio-x11 >> $LOGFILE 2>&1
+sudo -H -u triage -g triage pulseaudio --start >> $LOGFILE 2>&1
+echo "xbacklight" >> $LOGFILE
+sudo -H -u triage -g triage xbacklight -set 90 >> $LOGFILE 2>&1
+echo "pactl" >> $LOGFILE
+sudo -H -u triage -g triage pactl set-sink-mute 0 false >> $LOGFILE 2>&1
+sudo -H -u triage -g triage pactl set-sink-volume 0 90% >> $LOGFILE 2>&1
+
+echo "waiting for triage server" >> $LOGFILE
 
 while ! wget -T 1 -O /dev/null -q http://localhost:8312/version.json; do
   sleep 1
 done
 
-while true; do
-  sleep 2
-  sudo -H -u {U} $BROWSER --display=$DISPLAY --kiosk --temp-profile --no-first-run 'http://localhost:8312'
+echo "starting browser" >> $LOGFILE
+sleep 3
+sudo -H -u triage -g triage $BROWSER --display=$DISPLAY --kiosk 'http://localhost:8312' >> $LOGFILE 2>&1
+echo "browser started" >> $LOGFILE
+
+while wget -T 1 -O /dev/null -q http://localhost:8312/version.json; do
+  sleep 1
 done
+
 '''.format(U=TRIAGEUSER))
 wce_kiosk_sh.close()
 

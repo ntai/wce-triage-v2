@@ -25,6 +25,6 @@ if __name__ == "__main__":
   # Install Google Chrome
   #
   # subprocess.run('sudo -H apt install -y --no-install-recommends google-chrome-stable', shell=True)
-  subprocess.run('sudo -H apt install -y --no-install-recommends chromium-browser', shell=True)
+  # subprocess.run('sudo -H apt install -y --no-install-recommends chromium-browser', shell=True)
   pass
 
