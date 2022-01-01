@@ -34,7 +34,7 @@ manifest:
 	echo include Makefile >> MANIFEST.in
 	find wce_triage/setup/patches -type f -print |sort | sed -e 's/^/include /' >> MANIFEST.in
 	find wce_triage/setup/share -type f -print |sort | sed -e 's/^/include /' >> MANIFEST.in
-
+	echo "recursive-include wce_triage/ui" >> MANIFEST.in
 
 netclient:
 	sudo rsync -av --delete /home/ntai/sand/wce-triage-v2/wce_triage/ /var/lib/netclient/wcetriage_amd64/usr/local/lib/python3.6/dist-packages/wce_triage/

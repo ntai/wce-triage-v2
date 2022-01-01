@@ -9,3 +9,5 @@ socketio
 foo*
 py3
 packages.microsoft.gpg
+ui/
+wce_triage/ui/

@@ -30,8 +30,7 @@ setuptools.setup(
             'wce_triage.lib',
             'wce_triage.http',
             'wce_triage.ops',
-            'wce_triage.setup',
-            'test'],
+            'wce_triage.setup'],
   include_package_data=True,
   install_requires=[
     'python-socketio',

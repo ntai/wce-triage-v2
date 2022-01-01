@@ -4,12 +4,13 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="278788cd-c79c-489e-9b8e-182ec09a8be6" name="Default Changelist" comment="">
+    <list default="true" id="278788cd-c79c-489e-9b8e-182ec09a8be6" name="Default Changelist" comment="Remove some nits.">
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LICENSE" beforeDir="false" afterPath="$PROJECT_DIR$/LICENSE" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/MANIFEST.in" beforeDir="false" afterPath="$PROJECT_DIR$/MANIFEST.in" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Makefile" beforeDir="false" afterPath="$PROJECT_DIR$/Makefile" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wce_triage/components/computer.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/components/computer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wce_triage/components/disk.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/components/disk.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wce_triage/lib/cpu_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/lib/cpu_info.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/setup.py" beforeDir="false" afterPath="$PROJECT_DIR$/setup.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/wce_triage/version.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/version.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -48,6 +49,7 @@
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent">
+    <property name="ASKED_ADD_EXTERNAL_FILES" value="true" />
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
@@ -151,8 +153,16 @@
       <workItem from="1640795548928" duration="1213000" />
       <workItem from="1640883559640" duration="6854000" />
       <workItem from="1640971948841" duration="3789000" />
-      <workItem from="1641055567334" duration="3396000" />
+      <workItem from="1641055567334" duration="6220000" />
     </task>
+    <task id="LOCAL-00001" summary="Remove some nits.">
+      <created>1641064686477</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1641064686477</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -168,6 +178,10 @@
         </entry>
       </map>
     </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Remove some nits." />
+    <option name="LAST_COMMIT_MESSAGE" value="Remove some nits." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
