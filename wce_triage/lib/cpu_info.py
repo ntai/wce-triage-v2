@@ -57,7 +57,8 @@ def get_cpu_info():
       bm_columns = bm_result.split('|')
       if first:
         first = False
-        cpu_info['machine'] = bm_columns[1]
+        cpu_info['machine'] = bm_columns[0]
+        # cpu_info['n_cores_for_benchmark'] = bm_columns[1] is not relevant for this.
         cpu_info['board'] = bm_columns[2]
         cpu_info['name'] = bm_columns[3]
         cpu_info['description'] = bm_columns[4]

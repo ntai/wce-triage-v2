@@ -5,31 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="278788cd-c79c-489e-9b8e-182ec09a8be6" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/deployment.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wce_triage/.idea/wce_triage.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wce_triage/backend/app_instance.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wce_triage/backend/dispatch_view.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wce_triage/backend/emitter.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wce_triage/backend/models.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wce_triage/backend/restore_command.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wce_triage/backend/save_command.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wce_triage/backend/server.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wce_triage/backend/threaded_command.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wce_triage/backend/wce_view.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wce_triage/lib/network_manager.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/wce-triage-v2.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/wce-triage-v2.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Makefile" beforeDir="false" afterPath="$PROJECT_DIR$/Makefile" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wce_triage/bin/start_network.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/bin/start_network.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wce_triage/components/computer.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/components/computer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/wce_triage/components/disk.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/components/disk.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wce_triage/http/httpserver.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/http/httpserver.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wce_triage/ops/tasks.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/ops/tasks.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wce_triage/setup/install_chrome.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/setup/install_chrome.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wce_triage/setup/install_packages.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/setup/install_packages.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wce_triage/setup/install_wce_kiosk.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/setup/install_wce_kiosk.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wce_triage/setup/setup_triage_system.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/setup/setup_triage_system.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wce_triage/lib/cpu_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/lib/cpu_info.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/wce_triage/version.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/version.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -167,7 +147,11 @@
       <workItem from="1637862115856" duration="13000" />
       <workItem from="1637862348742" duration="35000" />
       <workItem from="1640625592119" duration="20973000" />
-      <workItem from="1640708813692" duration="17640000" />
+      <workItem from="1640708813692" duration="17649000" />
+      <workItem from="1640795548928" duration="1213000" />
+      <workItem from="1640883559640" duration="6854000" />
+      <workItem from="1640971948841" duration="3789000" />
+      <workItem from="1641055567334" duration="3396000" />
     </task>
     <servers />
   </component>

@@ -37,7 +37,8 @@ manifest:
 
 
 netclient:
-	sudo rsync -av --delete /disk2/home/triage/wce-triage-v2/wce_triage/ /var/lib/netclient/wcetriage/usr/local/lib/python3.6/dist-packages/wce_triage/
+	sudo rsync -av --delete /home/ntai/sand/wce-triage-v2/wce_triage/ /var/lib/netclient/wcetriage_amd64/usr/local/lib/python3.6/dist-packages/wce_triage/
+	sudo rsync -av --delete /home/ntai/sand/wce-triage-v2/wce_triage/ /var/lib/netclient/wcetriage_x32/usr/local/lib/python3.6/dist-packages/wce_triage/
 
 run:
 	. ./py3/bin/activate && PYTHONPATH=${PWD} sudo python3 -m wce_triage.http.httpserver

@@ -694,7 +694,7 @@ class DiskPortal(Component):
         decisions.append( {"component": "Disk",
                            "result": good_disk,
                            "device": disk.device_name,
-                           "message": msg})
+                           "message": msg.strip()})
         pass
       pass
     return decisions

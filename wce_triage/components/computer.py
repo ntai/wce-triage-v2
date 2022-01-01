@@ -129,9 +129,9 @@ A triaging person can decide whether not sound playing. Also, if you plug in Eth
       tlog.debug( "Updating %s with %s" % (matched_decision["component"], str(updates)))
       for key, value in updates.items():
         if key == 'message':
-          matched_decision[key] = value + " " + matched_decision[key]
+          matched_decision[key] = value.strip() + " " + matched_decision[key].strip()
         else:
-          matched_decision[key] = value
+          matched_decision[key] = value.strip()
           pass
         pass
       pass
