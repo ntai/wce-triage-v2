@@ -360,7 +360,26 @@ Network Server for PXE boot and triage/disk imaging
 
 The setup script does the servers set up but there are two important ingredients missing. One is the kernel/initrd for initial boot, and the NFS root directory for the desktop client. For the former, you need "/var/lib/netboot" directory sufficiently stuffed. "setup/install_pxeboot.py" should take care of this part. 
 
-2nd ingredients is the root file system. "/var/lib/netclient/wcetriage" needs to be filled by the "triage disk". With working triage USB stick (or disk) in hand, you need to mount the disk, and rsync everything from the triage disk to the "wcetriage" directory. NFS server serves this directory as NFS root for client to use.
+2nd ingredients is the root file system. ``/var/lib/netclient/wcetriage_x32``, ``/var/lib/netclient/wcetriage_amd64`` need to be filled by the "triage disk". With working triage USB stick (or disk) in hand, you need to mount the disk, and rsync everything from the triage disk to the "wcetriage_amd64" directory. NFS server serves this directory as NFS root for client to use.
+
+There is one thing however, needs to pay attention which is that the NFS mount needs to be mentioned in ``/var/lib/netclient/wcetriage_amd64/etc/fstab``.
+
+::
+
+    # <file system> <mount point>   <type>  <options>       <dump>  <pass>
+    proc            /proc           proc    nodev,noexec,nosuid 0       0
+    # rw and ro
+    #
+    #none            /rw             tmpfs   defaults        0       0
+    #10.0.2.2:/var/lib/netclient/wcetriage.0.1.20  /ro             nfs   soft,rsize=32768,wsize=32768,proto=tcp,nolock   0       0
+    #
+    none            /tmp            tmpfs   defaults        0       0
+    none            /var/run        tmpfs   defaults        0       0
+    none            /var/lock       tmpfs   defaults        0       0
+    none            /var/tmp        tmpfs   defaults        0       0
+    #
+    10.0.2.2:/usr/local/share/wce/wce-disk-images   /usr/local/share/wce/wce-disk-images  nfs   soft,rsize=32768,wsize=32768,proto=tcp,nolock   0       0
+
 
 ONE VERY IMPORTANT INGREDIENTS FOR TRIAGE AND NETWORK BOOT - CUSTOM INITRD
 **************************************************************************

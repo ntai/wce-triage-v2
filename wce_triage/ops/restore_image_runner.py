@@ -114,6 +114,9 @@ class RestoreDiskRunner(PartitionDiskRunner):
       self.tasks.append(task_refresh_partitions("Refresh partition information", disk))
       pass
 
+    # expand partition
+    self.tasks.append(task_expand_partition("Expand the partition back", disk=disk, partition_id=partition_id))
+
     # mount it
     self.tasks.append(task_mount("Mount the target disk", disk=disk, partition_id=partition_id))
 
@@ -139,10 +142,6 @@ class RestoreDiskRunner(PartitionDiskRunner):
     if self.restore_type["id"] != const.clone:
       self.tasks.append(task_unmount("Unmount target", disk=disk, partition_id=partition_id))
       pass
-
-    # fsck/expand partition
-    self.tasks.append(task_fsck("fsck partition", disk=disk, partition_id=partition_id, payload_size=self.source_size/10, fix_filesytem=True))
-    self.tasks.append(task_expand_partition("Expand the partion back", disk=disk, partition_id=partition_id))
 
     if self.efi_source:
       self.tasks.append(task_mount("Mount the EFI parttion", disk=disk, partition_id=EFI_NAME))

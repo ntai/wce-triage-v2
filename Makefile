@@ -1,5 +1,5 @@
 
-.PHONY: setup upload install manifest netclient run
+.PHONY: setup upload install manifest local run
 
 PYPI_USER := $(shell echo $$PYPI_USERNAME)
 PYPI_PASSWORD := $(shell echo $$PYPI_PASSWORD)
@@ -36,7 +36,7 @@ manifest:
 	find wce_triage/setup/share -type f -print |sort | sed -e 's/^/include /' >> MANIFEST.in
 	echo "recursive-include wce_triage/ui" >> MANIFEST.in
 
-netclient:
+local:
 	sudo rsync -av --delete /home/ntai/sand/wce-triage-v2/wce_triage/ /var/lib/netclient/wcetriage_amd64/usr/local/lib/python3.6/dist-packages/wce_triage/
 	sudo rsync -av --delete /home/ntai/sand/wce-triage-v2/wce_triage/ /var/lib/netclient/wcetriage_x32/usr/local/lib/python3.6/dist-packages/wce_triage/
 
