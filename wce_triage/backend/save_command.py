@@ -1,6 +1,7 @@
 from .threaded_command import ThreadedCommandRunner
 from .emitter import Emitter
 from queue import SimpleQueue
+tlog = get_triage_logger()
 #
 #
 class SaveCommandRunner(ThreadedCommandRunner):

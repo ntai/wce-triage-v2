@@ -1,19 +1,18 @@
 """ 
 The MIT License (MIT)
-Copyright (c) 2019 - Naoyuki Tai
+Copyright (c) 2021 - Naoyuki Tai
 
 WCE Triage HTTP server - 
 and webscoket server
-
 """
-from asyncio import subprocess
+
+from flask import Flask
+
+from flask_socketio import SocketIO, send, emit
 
 from ..version import TRIAGE_VERSION, TRIAGE_TIMESTAMP
 from ..const import const
-import aiohttp
-import aiohttp.web
-from aiohttp.web_exceptions import HTTPNotFound, HTTPServiceUnavailable, HTTPBadRequest
-import aiohttp_cors
+
 from argparse import ArgumentParser
 import json
 import os, re, subprocess, datetime, asyncio, traceback, queue
@@ -31,14 +30,10 @@ from ..components import network as _network
 # from ..lib.cpu_info import cpu_info
 
 
+
 tlog = get_triage_logger()
-routes = aiohttp.web.RouteTableDef()
 
-import socketio
-wock = socketio.AsyncServer(async_mode='aiohttp', logger=get_triage_logger(), cors_allowed_origins='*')
-
-
-@routes.get('/version.json')
+@app.routes('/version.json')
 async def route_version(request):
   """Get the version number of backend"""
   # FIXME: Front end version is in manifest.
@@ -108,86 +103,6 @@ def update_runner_status(runner_status, progress):
       pass
     pass
   return runner_status
-
-#
-# WebSocket sender.
-#
-# is a FIFO queue. You put in a message you want to send using _send().
-# http server polls the out side of queue, and send out a packet to
-# the listener.
-#
-# What's in the queue?
-# The element is 3-item length tuple.
-# 1: the sequence number of element.
-# 2: WebSocket's event
-# 3: WebSocket's data
-#
-# The event name here and UI side websocket need to match or else the
-# message is ignored.
-# FIXME: Have some kind of dictionary between the front/back ends.
-#
-# Known event type: message, diskupdate, triageupdate, loadimage, saveimage
-# 
-
-class Emitter:
-  queue = None
-  item_count = 0
-
-  # noinspection PyMethodParameters
-  def register(loop):
-    Emitter.queue = queue.Queue()
-    asyncio.ensure_future(Emitter._task(), loop=loop)
-    pass
-
-  # noinspection PyMethodParameters
-  async def _task():
-    while True:
-      await Emitter.flush()
-      await asyncio.sleep(0.1)
-      pass
-    pass
-
-  # noinspection PyMethodParameters
-  async def flush():
-    global me
-    running = True
-    while running:
-      try:
-        elem = Emitter.queue.get(block=False)
-        tlog.debug("EMITTER: sending %d: '%s' '%s'" % (elem[0], elem[1], elem[2]))
-        message = elem[2]
-        message['_sequence_'] = elem[0]
-        await wock.emit(elem[1], message)
-        me.peek_message(elem[1], message)
-        pass
-      except queue.Empty:
-        running = False
-        pass
-      pass
-    pass
-
-  # noinspection PyMethodParameters
-  def _send(event, data):
-    tlog.debug("EMITTER: queueing %d  %s" % (Emitter.item_count, event))
-    Emitter.queue.put((Emitter.item_count, event, data))
-    Emitter.item_count += 1
-    pass
-
-  # This is to send message
-  # noinspection PyMethodParameters
-  def note(message):
-    Emitter._send('message', {"message": message,
-                              "severity": 1})
-    pass
-
-  # This is to send alert message (aka popping up a dialog
-  # noinspection PyMethodParameters
-  def alert(message):
-    tlog.info("ALERT: " + message)
-    Emitter._send('message', {"message": message,
-                              "severity": 2})
-    pass
-  pass
 
 #
 # id: ID used for front/back communication
@@ -267,8 +182,9 @@ class TriageWeb(object):
     pass
 
   #
-  @staticmethod
-  async def _periodic_update():
+  # This should be in its own thread
+  # 
+  def _periodic_update():
     global me
     while True:
       await asyncio.sleep(2)
@@ -472,22 +388,15 @@ class TriageWeb(object):
       pass
 
     music_file = None
-    assets = os.listdir(me.asset_path)
-    for asset in assets:
+    for asset in os.listdir(me.asset_path):
       if asset.endswith(".mp3"):
-        music_file = os.path.join(me.asset_path, asset)
-        break
-      pass
-    for asset in assets:
-      if asset.endswith(".ogg"):
         music_file = os.path.join(me.asset_path, asset)
         break
       pass
 
     if music_file:
       resp = aiohttp.web.FileResponse(music_file)
-      resp.content_type="audio/" + music_file[-3:]
-      tlog.info("music file: {}".format(music_file))
+      resp.content_type="audio/mpeg"
 
       updated = None
       if _sound.detect_sound_device():
@@ -498,7 +407,7 @@ class TriageWeb(object):
                                             overall_changed=me.overall_changed)
         # FIXME: Do something meaningful, like send a wock message.
         if updated:
-          tlog.info("audio updated")
+          tlog.info("updated")
           pass
         pass
       return resp
@@ -619,7 +528,6 @@ class TriageWeb(object):
   @routes.get("/dispatch/network-device-status.json")
   async def route_network_device_status(request):
     """Network status"""
-    subprocess.run("python3 -m wce_triage.bin.start_network", shell=True, check=False, timeout=3)
     global me
     await me.triage()
     computer = me.computer
@@ -779,7 +687,7 @@ class TriageWeb(object):
       process.poll()
       if process.returncode is not None:
         returncode = process.returncode
-        if returncode != 0:
+        if returncode is not 0:
           Emitter.note("Restore failed with error code %d" % returncode)
           pass
         # hack to reset the runner state - no runner id.
@@ -1333,7 +1241,7 @@ cli.add_argument("--live-triage", dest="live_triage", action='store_true')
 arguments = cli.parse_args()
 
 # If the module is invoked directly, initialize the application
-def my_main():
+if __name__ == '__main__':
   tlog = init_triage_logger(log_level=logging.DEBUG)
   
   # Create and configure the HTTP server instance
@@ -1394,28 +1302,20 @@ def my_main():
       pass
     pass
 
-  loop = asyncio.get_event_loop()
-  # loop.set_debug(True)
-
   # Accept connection from everywhere
   tlog.info("Starting app.")
-  app = aiohttp.web.Application(debug=True, loop=loop)
-  cors = aiohttp_cors.setup(app)
-  wock.attach(app)
+
   global me
   wcedir = arguments.wcedir
   rootdir = arguments.rootdir
   if rootdir is None:
     rootdir = os.path.join(wcedir, "wce-triage-ui")
     pass
-  me = TriageWeb(app, wce_share_url, rootdir, wcedir, cors, loop, arguments.live_triage, load_disk_options)
+  # me = TriageWeb(app, wce_share_url, rootdir, wcedir, cors, loop, arguments.live_triage, load_disk_options)
 
-  tlog.info(u"Open {0}{1} in a web browser. WCE share is {2}".format(the_root_url, "/index.html", wce_share_url))
-  Emitter.register(loop)
+  tlog.info(u"Open {0}{1} in a web browser. WCE share is {2}".format(the_root_url, "/<index.html", wce_share_url))
+  # Emitter.register(loop)
 
-  aiohttp.web.run_app(app, host="0.0.0.0", port=arguments.port, access_log=get_triage_logger())
-  pass
+  # aiohttp.web.run_app(app, host="0.0.0.0", port=arguments.port, access_log=get_triage_logger())
 
-if __name__ == '__main__':
-  my_main()
-  pass
+  socketio.run(app)

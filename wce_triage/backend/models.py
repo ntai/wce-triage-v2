@@ -1,21 +1,32 @@
 from wce_triage.components.disk import DiskPortal
-
+from .view import View
+from typing import Optional
 
 class Model(object):
-  model: dict
+  _model: dict
+  model_state: Optional[bool]
+  view: View
+  
 
   def __init__(self):
-    self.model = {}
-    pass
-
-  def set_model_data(self, new_data):
-    point_a = set(self.model.items())
-    point_b = set(self.new_data.items())
-    self.model = new_data
-    self.view.update(point_a - point_b, point_b - point_a)
+    self._model = {}
     pass
 
 
+  def set_view(self, view):
+    self.view = view
+    pass
+
+  
+  def set_model_data(self, updates):
+    self.view.update(self._model, updates)
+    self._model = updates
+    pass
+
+  @property
+  def data(self):
+    return self._model
+  
   pass
 
 
@@ -23,6 +34,7 @@ class DiskModel(Model):
   disk_portal: DiskPortal
 
   def __init__(self):
+    super().__init__()
     self.disk_portal = {}
     pass
 
@@ -30,3 +42,5 @@ class DiskModel(Model):
     self.set_model_data(DiskPortal())
 
   pass
+
+
