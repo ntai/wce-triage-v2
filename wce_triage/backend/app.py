@@ -6,12 +6,14 @@ WCE Triage HTTP server -
 and webscoket server
 
 """
+import logging
+
 from ..lib.util import get_triage_logger, init_triage_logger
 from flask import Flask, send_file
 from .emitter import init_socketio
 from flask_cors import CORS
 from flask_socketio import SocketIO
-init_triage_logger(filename="/tmp/server.log")
+init_triage_logger(filename="/tmp/server.log", log_level=logging.DEBUG)
 tlog = get_triage_logger()
 import os
 

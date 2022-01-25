@@ -10,7 +10,7 @@ WIPE_TYPES = [{"id": "nowipe", "name": "No Wipe", "arg": ""},
               {"id": "wipe", "name": "Full wipe", "arg": "-w"},
               {"id": "shortwipe", "name": "Wipe first 1Mb", "arg": "--quickwipe"}]
 
-dispatch_bp = Blueprint('dispatch', __name__, url_prefix='/didpatch')
+dispatch_bp = Blueprint('dispatch', __name__, url_prefix='/dispatch')
 
 # id: ID used for front/back communication
 # name: displayed on web
@@ -79,8 +79,8 @@ def ulswce(path):  # /usr/local/share/wce
 # get_cpu_info is potentially ver slow for older computers as this runs a
 # cpu benchmark.
 
-@dispatch_bp.route("/dispatch/cpu_info.json")
+@dispatch_bp.route("/cpu_info.json")
 def route_cpu_info():
     """Handles getting CPU rating """
-    return jsonify()
+    return jsonify(server.cpu_info.data)
 

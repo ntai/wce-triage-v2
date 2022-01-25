@@ -42,6 +42,7 @@ def get_cpu_info():
 
   hardinfo = subprocess.run(["hardinfo", "-r", "-f", "text"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   output = hardinfo.stdout.decode('iso-8859-1')
+  tlog.debug(output)
   bm_results = output.splitlines()[:15]
   
   benchmarks = cpu_info['benchmarks']
@@ -85,6 +86,10 @@ def get_cpu_info():
         scores.append(normalized_score)
         pass
       pass
+    pass
+
+  if len(scores) == 0:
+    tlog.debug(output)
     pass
 
   cpu_info['rating'] = str(round(sum(scores) / len(scores), 2))

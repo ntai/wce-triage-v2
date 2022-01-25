@@ -25,7 +25,6 @@ wce_payload_re = re.compile(const.wce_payload + '=([\w\.+\-_\:\?\=@#\*&\\%]+)')
 tlog = get_triage_logger()
 
 class TriageServer(object):
-  _benchmark: Model
   _triage: Model
   _disks: DiskModel
   _loading: Model
@@ -37,7 +36,6 @@ class TriageServer(object):
     from .cli import arguments
 
     self.tlog = get_triage_logger()
-    self._benchmark = Model()
     self._triage = Model()
     self._disks = DiskModel()
     self._loading = Model()
@@ -113,6 +111,10 @@ class TriageServer(object):
     self.app = app
     self.socketio = socketio
     pass
+
+  @property
+  def cpu_info(self):
+    return self._cpu_info
 
   pass
 

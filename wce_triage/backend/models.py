@@ -5,11 +5,13 @@ from typing import Optional
 class Model(object):
   _model: dict
   model_state: Optional[bool]
-  view: View
+  view: Optional[View]
   
 
   def __init__(self):
     self._model = {}
+    self.model_state = None
+    self.view = None
     pass
 
 
@@ -19,7 +21,8 @@ class Model(object):
 
   
   def set_model_data(self, updates):
-    self.view.update(self._model, updates)
+    if self.view:
+      self.view.update(self._model, updates)
     self._model = updates
     pass
 
