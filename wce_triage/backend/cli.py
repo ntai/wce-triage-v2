@@ -1,3 +1,11 @@
+"""
+The MIT License (MIT) Copyright (c) 2022 - Naoyuki Tai
+
+cli.py: WCE http server command line interface
+"""
+#
+#
+#
 import sys
 import socket
 from argparse import ArgumentParser

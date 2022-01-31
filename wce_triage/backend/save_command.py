@@ -1,26 +1,27 @@
-from .threaded_command import ThreadedCommandRunner
+from .process_runner import ThreadedCommandRunner, ProcessRunner
 from .emitter import Emitter
 from queue import SimpleQueue
 tlog = get_triage_logger()
 #
 #
-class SaveCommandRunner(ThreadedCommandRunner):
-    queue: SimpleQueue
+#
+class SaveCommandRunner(ProcessRunner):
+  queue: SimpleQueue
 
-    def __init__(self, tag, end_unc, *args):
-        self.queue = SimpleQueue()
-        super().__init__("saveimage", None, *args)
-        pass
+  def __init__(self, tag, end_unc, *args):
+    self.queue = SimpleQueue()
+    super().__init__("saveimage", None, *args)
+    pass
 
-    def run(self):
-        while True:
-            devname, saveType, destdir, partid = self.queue.get()
+  def run(self):
+    while True:
+      devname, saveType, destdir, partid = self.queue.get()
 
-            if saveType is None:
-                tlog.info("saveimage - image type is not given.")
-                return json_response({}, status=HTTP_SERVICE_UNAVAILABLE)
+      if saveType is None:
+        tlog.info("saveimage - image type is not given.")
+        return json_response({}, status=HTTP_SERVICE_UNAVAILABLE)
 
-            emit("saveimage", {"device": devname, "runStatus": "", "totalEstimate": 0, "tasks": []})
+        emit("saveimage", {"device": devname, "runStatus": "", "totalEstimate": 0, "tasks": []})
 
         target = None
         for disk in self.disk_portal.disks:
