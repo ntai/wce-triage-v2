@@ -5,13 +5,9 @@ from queue import SimpleQueue, Queue
 from typing import Optional
 import subprocess
 import logging
-import sys
-
 from wce_triage.backend.view import ConsoleView
 from .process_pipe_reader import ProcessPipeReader
-from .models import ModelDispatch, StringsDispatch, StringsModel
-# import multiprocessing as mp
-import os
+from .models import ModelDispatch
 from .messages import UserMessages
 from ..lib.util import get_triage_logger
 
@@ -21,7 +17,7 @@ class ProcessRunner(threading.Thread):
   stdout_dispatch: Optional[ModelDispatch]
   stderr_dispatch: Optional[ModelDispatch]
   meta: dict
-  queue: SimpleQueue
+  _queue: SimpleQueue
   logger: logging.Logger
   stdout: ProcessPipeReader
   stderr: ProcessPipeReader
@@ -34,16 +30,25 @@ class ProcessRunner(threading.Thread):
     self.stdout_dispatch = stdout_dispatch
     self.stderr_dispatch = stderr_dispatch
     self.meta = meta
-    self.queue = SimpleQueue()
+    self._queue = SimpleQueue()
     self.logger = get_triage_logger()
     pass
 
+
+  def queue(self, args: list, context: dict):
+    self._queue.put((args, context))
+    pass
+
+  def dequeue(self):
+    return self._queue.get()
+
+
   def run(self):
     while True:
-      args = self.queue.get()
+      args, context = self.dequeue()
       if not args:
         break
-      self.run_process(self.meta.get("tag", "process"), args)
+      self.run_process(self.meta.get("tag", "process"), args, context)
       pass
     pass
 
@@ -52,7 +57,7 @@ class ProcessRunner(threading.Thread):
     UserMessages.note(message)
     pass
 
-  def run_process(self, tag, args):
+  def run_process(self, tag, args, context):
     try:
       self.process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except FileNotFoundError as exc:
@@ -62,8 +67,8 @@ class ProcessRunner(threading.Thread):
       self.error_message("%s is not found." % args[0])
       return
 
-    self.stdout_dispatch.start()
-    self.stderr_dispatch.start()
+    self.stdout_dispatch.start(tag, context)
+    self.stderr_dispatch.start(tag, context)
 
     self.stdout = ProcessPipeReader(self.process, self.process.stdout, dispatch=self.stdout_dispatch)
     self.stderr = ProcessPipeReader(self.process, self.process.stderr, dispatch=self.stderr_dispatch)
@@ -88,8 +93,8 @@ class ProcessRunner(threading.Thread):
     self.stdout.join()
     self.stderr.join()
 
-    self.stdout_dispatch.end()
-    self.stderr_dispatch.end()
+    self.stdout_dispatch.end(tag, context)
+    self.stderr_dispatch.end(tag, context)
     self.process = None
     pass
 
@@ -107,10 +112,21 @@ class ProcessRunner(threading.Thread):
 
   pass
 
+
+class SimpleProcessRunner(ProcessRunner):
+  def __init__(self,
+               stdout_dispatch: Optional[ModelDispatch] = None,
+               stderr_dispatch: Optional[ModelDispatch] = UserMessages,
+               meta={}):
+    super().__init__(stdout, stderr, meta)
+    pass
+  pass
+
+
 if __name__ == "__main__":
   view = ConsoleView()
-  stdout = StringsDispatch(StringsModel())
-  stderr = StringsDispatch(StringsModel())
+  stdout = UserMessages
+  stderr = MessageDispatch(MessagesModel())
   stdout.set_view(view)
   stderr.set_view(view)
   pr = ProcessRunner(stdout, stderr, {"tag": "test"})

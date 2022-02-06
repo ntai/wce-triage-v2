@@ -27,93 +27,8 @@ from ..lib.pipereader import PipeReader
 from ..components import sound as _sound
 from ..lib.disk_images import get_disk_images, read_disk_image_types
 from ..components import network as _network
-# from ..lib.cpu_info import cpu_info
 
 
-
-tlog = get_triage_logger()
-
-@app.routes('/version.json')
-async def route_version(request):
-  """Get the version number of backend"""
-  # FIXME: Front end version is in manifest.
-  fversion = "1.0.0"
-  try:
-    with open('/usr/local/share/wce/wce-triage-ui/manifest.json') as frontend_manifest:
-      manifest = json.load(frontend_manifest)
-      fversion = manifest.get('version', "1.0.0")
-      pass
-    pass
-  except Exception as exc:
-    tlog.info('Reading /usr/local/share/wce/wce-triage-ui/manifest.json failed with exception. ' + traceback.format_exc())
-    pass
-
-  jsonified = { "version": {"backend": TRIAGE_VERSION + "-" + TRIAGE_TIMESTAMP, "frontend": fversion }}
-  return aiohttp.web.json_response(jsonified)
-
-#
-#
-#
-def jsoned_disk(disk):
-  return {"target": 0,
-          "deviceName": disk.device_name,
-          "runTime": 0,
-          "runEstimate": 0,
-          "mounted": disk.mounted,
-          "size": round(disk.get_byte_size() / 1000000), # in MB (not MiB)
-          "bus": "usb" if disk.is_usb else "ata",
-          "model": disk.model_name,
-          "vendor": disk.vendor,
-          "serial_no": disk.serial_no,
-          "smart": disk.smart,
-          "smart_enabled": disk.smart_enabled,
-  }
-
-def jsoned_optical(optical):
-  return {"deviceName": optical.device_name,
-          "model": optical.vendor + " " + optical.model_name }
-
-
-#
-# This is ugly as hell. json_ui needs a better design.
-#
-def update_runner_status(runner_status, progress):
-  # load image event has two types, one from report_task_progress and other from report_tasks
-  # report_tasks contains the tasks, and task progress only updates the small part.
-
-  # If it includes all of tasks, use it.
-  if progress.get("tasks"):
-    runner_status = {"tasks": progress["tasks"]}
-    pass
-
-  # If it includes the task and it's step number,
-  # update the task.
-  # FIXME: Probalby it's better to replace the task
-  if progress.get("task") and progress.get("step"):
-    step = progress["step"]
-    task = progress["task"]
-    tasks = runner_status.get("tasks")
-    if tasks and step < len(tasks):
-      runner_status["tasks"][step]["taskProgress"] = task["taskProgress"]
-      runner_status["tasks"][step]["taskElapse"] = task["taskElapse"]
-      if task["taskMessage"]:
-        runner_status["tasks"][step]["taskMessage"] = task["taskMessage"]
-        pass
-      runner_status["tasks"][step]["taskStatus"] = task["taskStatus"]
-      pass
-    pass
-  return runner_status
-
-#
-# id: ID used for front/back communication
-# name: displayed on web
-# arg: arg used for restore image runner.
-#
-WIPE_TYPES = [ {"id": "nowipe", "name": "No Wipe", "arg": ""},
-               {"id": "wipe", "name": "Full wipe", "arg": "-w" },
-               {"id": "shortwipe", "name": "Wipe first 1Mb", "arg": "--quickwipe" } ];
-
-#
 # TriageWeb
 #
 # NOTE: Unfortunately, aiohttp dispatch doesn't give me "self", so only alternative
@@ -187,52 +102,6 @@ class TriageWeb(object):
   def _periodic_update():
     global me
     while True:
-      await asyncio.sleep(2)
-      if me.triage_timestamp is None:
-        continue
-
-      computer = me.computer
-      (added, changed, removed) = me.disk_portal.detect_disks()
-      
-      if added or changed or removed:
-        disks = {"disks": [ jsoned_disk(disk) for disk in me.disk_portal.disks ]}
-        Emitter._send('diskupdate', disks)
-        pass
-
-      for component in computer.components:
-        for update_key, update_value in component.detect_changes():
-          updated = computer.update_decision( update_key,
-                                              update_value,
-                                              overall_changed=me.overall_changed)
-          if updated:
-            # join the key and value and send it
-            update_value.update(update_key)
-            Emitter._send('triageupdate', update_value)
-          pass
-        pass
-
-      # Kick off the content loading if all of criterias look good
-      if me.autoload:
-        me.autoload = False
-        me.target_disks = []
-
-        for disk in me.disk_portal.disks:
-          disk_gb = disk.get_byte_size() / 1000000000
-          if (not disk.mounted) and (disk_gb >= 80):
-            me.target_disks.append(disk.device_name)
-            pass
-          pass
-
-        # If the machine has only one disk and not mounted, autload can start
-        # otherwise, don't start.
-        if len(me.target_disks) == 1:
-          me.start_load_disks("AUTOLOAD:")
-          pass
-        else:
-          me.target_disks = []
-          pass
-        pass
-      pass
     #
     pass
 

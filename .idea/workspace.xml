@@ -1,22 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="AnalysisUIOptions">
+    <option name="SCOPE_TYPE" value="8" />
+    <option name="CUSTOM_SCOPE_NAME" value="All Places" />
+  </component>
   <component name="AutoImportSettings">
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
     <list default="true" id="278788cd-c79c-489e-9b8e-182ec09a8be6" name="Default Changelist" comment="Include the UI, and change the version to 4.0.6.">
-      <change afterPath="$PROJECT_DIR$/fixture/slow.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wce_triage/backend/messages.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wce_triage/backend/process_pipe_reader.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wce_triage/backend/process_runner.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wce_triage/backend/procrun.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/wce_triage/backend/disk_portal_instance.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/wce_triage/backend/formatters.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wce_triage/backend/cli.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/backend/cli.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wce_triage/backend/load_command.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/backend/load_command.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wce_triage/backend/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/backend/app.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wce_triage/backend/backend.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/backend/backend.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wce_triage/backend/dispatch_bp.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/backend/dispatch_bp.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wce_triage/backend/emitter.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/backend/emitter.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wce_triage/backend/messages.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/backend/messages.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/wce_triage/backend/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/backend/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wce_triage/backend/process_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/backend/process_runner.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/wce_triage/backend/save_command.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/backend/save_command.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wce_triage/backend/threaded_command.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/wce_triage/backend/server.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/backend/server.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/wce_triage/backend/view.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/backend/view.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wce_triage/config/config_pxeboot.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/config/config_pxeboot.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wce_triage/ops/json_ui.py" beforeDir="false" afterPath="$PROJECT_DIR$/wce_triage/ops/json_ui.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -64,7 +72,8 @@
     <property name="node.js.detected.package.tslint" value="true" />
     <property name="node.js.selected.package.eslint" value="(autodetect)" />
     <property name="node.js.selected.package.tslint" value="(autodetect)" />
-    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyIntegratedToolsModulesConfigurable" />
+    <property name="run.code.analysis.last.selected.profile" value="aDefault" />
+    <property name="settings.editor.selected.configurable" value="preferences.pluginManager" />
     <property name="vue.rearranger.settings.migration" value="true" />
   </component>
   <component name="RecentsManager">
@@ -72,7 +81,7 @@
       <recent name="$PROJECT_DIR$/wce_triage/backend" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.wce_triage.backend.process_runner">
+  <component name="RunManager" selected="Python.wce_triage.backend.messages">
     <configuration name="Run" type="PythonConfigurationType" factoryName="Python">
       <module name="wce-triage-v2" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -113,6 +122,28 @@
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="wce_triage.backend.messages" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="wce-triage-v2" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/wce_triage/backend" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="wce_triage.backend.messages" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="true" />
       <option name="REDIRECT_INPUT" value="false" />
       <option name="INPUT_FILE" value="" />
       <method v="2" />
@@ -162,9 +193,11 @@
       <item itemvalue="Python.Run" />
       <item itemvalue="Python.network_manager" />
       <item itemvalue="Python.wce_triage.backend.process_runner" />
+      <item itemvalue="Python.wce_triage.backend.messages" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.wce_triage.backend.messages" />
         <item itemvalue="Python.wce_triage.backend.process_runner" />
       </list>
     </recent_temporary>
@@ -197,6 +230,10 @@
       <workItem from="1643069501896" duration="1433000" />
       <workItem from="1643085810075" duration="1931000" />
       <workItem from="1643566883750" duration="18601000" />
+      <workItem from="1643679172181" duration="79000" />
+      <workItem from="1643679264014" duration="1068000" />
+      <workItem from="1643860580184" duration="3872000" />
+      <workItem from="1644084073278" duration="23871000" />
     </task>
     <task id="LOCAL-00001" summary="Remove some nits.">
       <created>1641064686477</created>
@@ -239,7 +276,7 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/wce_triage/backend/emitter.py</url>
-          <line>95</line>
+          <line>39</line>
           <option name="timeStamp" value="24" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -262,26 +299,31 @@
           <line>7</line>
           <option name="timeStamp" value="36" />
         </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/wce_triage/backend/dispatch_bp.py</url>
+          <line>31</line>
+          <option name="timeStamp" value="37" />
+        </line-breakpoint>
       </breakpoints>
-      <default-breakpoints>
-        <breakpoint type="python-exception">
-          <properties notifyOnTerminate="true" exception="BaseException">
-            <option name="notifyOnTerminate" value="true" />
-          </properties>
-        </breakpoint>
-      </default-breakpoints>
     </breakpoint-manager>
+    <watches-manager>
+      <configuration name="Python.FlaskServer">
+        <watch expression="server" language="Python" />
+      </configuration>
+    </watches-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/wce_triage_v2$Flask__wce_triage_backend_server_TriageServer_.coverage" NAME="Flask (wce_triage.backend.server:app) Coverage Results" MODIFIED="1640752609785" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/wce_triage_v2$wce_triage_backend_process_runner.coverage" NAME="wce_triage.backend.process_runner Coverage Results" MODIFIED="1644086467160" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/wce_triage_v2$network_manager.coverage" NAME="network_manager Coverage Results" MODIFIED="1640627698080" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/wce_triage/lib" />
     <SUITE FILE_PATH="coverage/wce_triage_v2$Flask__wce_triage_backend_server_.coverage" NAME="Flask (wce_triage.backend.server) Coverage Results" MODIFIED="1640637914757" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
     <SUITE FILE_PATH="coverage/wce_triage_v2$process_runner.coverage" NAME="wce_triage.backend.process_runner Coverage Results" MODIFIED="1643602115844" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/wce_triage_v2$Flask__wce_triage_backend_app_app_.coverage" NAME="Flask (wce_triage.backend.app:app) Coverage Results" MODIFIED="1643497215898" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/wce_triage_v2$Flask__wce_triage_backend_app_app_.coverage" NAME="Flask (wce_triage.backend.app:app) Coverage Results" MODIFIED="1644103337173" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/wce_triage_v2$Run.coverage" NAME="Run Coverage Results" MODIFIED="1640625631860" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
     <SUITE FILE_PATH="coverage/wce_triage_v2$wce_triage_backend_server.coverage" NAME="wce_triage.backend.server Coverage Results" MODIFIED="1640735589338" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/wce_triage/backend" />
     <SUITE FILE_PATH="coverage/wce_triage_v2$Flask__wce_triage_backend_server_app_.coverage" NAME="Flask (wce_triage.backend.server:app) Coverage Results" MODIFIED="1641537518816" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
     <SUITE FILE_PATH="coverage/wce_triage_v2$Flask__wce_triage_app_app_.coverage" NAME="Flask (wce_triage.backend.app:app) Coverage Results" MODIFIED="1643006463690" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/wce_triage_v2$messages.coverage" NAME="wce_triage.backend.messages Coverage Results" MODIFIED="1644120221331" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/wce_triage/backend" />
     <SUITE FILE_PATH="coverage/wce_triage_v2$server.coverage" NAME="wce_triage.backend.server Coverage Results" MODIFIED="1640645339423" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/wce_triage/backend" />
   </component>
 </project>

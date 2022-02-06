@@ -1,23 +1,41 @@
-from wce_triage.components.disk import DiskPortal
 from .view import View
 from typing import Optional
 
 class Model(object):
   _model: dict
+  _meta: dict
   model_state: Optional[bool]
+  cumulative: bool
+  key: str
 
-  def __init__(self):
-    self._model = {}
+  def __init__(self, cumulative=False, key="message", meta={}):
+    self._meta = meta
+    self.key = key
+    self.cumulative = cumulative
     self.model_state = None
+    self.clear()
     pass
 
-  def set_model_data(self, updates):
-    self._model = updates
+  def set_model_data(self, data):
+    if self.cumulative:
+      self._model[self.key].append(data)
+    else:
+      self._model = data
+      pass
+    pass
+
+  def clear(self):
+    self._model = {self.key: []} if self.cumulative else {}
     pass
 
   @property
   def data(self):
     return self._model
+
+  @property
+  def meta(self):
+    return self._meta
+
   pass
 
 
@@ -35,64 +53,31 @@ class ModelDispatch(object):
     self.view = view
     pass
 
-  def start(self):
+  def start(self, tag, args):
     pass
 
   def dispatch(self, update):
+    """dispatches an update to the view and model.
+    :param update:
+    :return: update
+    """
     if self.view:
-      self.view.updating(self.model.data, update)
+      self.view.updating(self.model.data, update, self.model.meta)
       pass
     self.update_model_data(update)
     if self.view:
       # Give view a chance to see both old and new model data
-      self.view.updated(self.model.data)
+      self.view.updated(self.model.data, self.model.meta)
       pass
-    pass
+    return update
 
   def update_model_data(self, update):
+    """update the model data.
+    may override
+    """
     self.model.set_model_data(update)
+    return update
+
+  def end(self, tag, args):
     pass
 
-  def end(self):
-    pass
-
-#
-# messages is like a logging but it's for the user from the triage.
-#
-
-class StringsModel(Model):
-  def __init__(self):
-    super().__init__()
-    self._model = {"lines": []}
-    pass
-
-  def append_line(self, message):
-    self._model["lines"].append(message)
-    pass
-
-
-class StringsDispatch(ModelDispatch):
-
-  def __init__(self, model: StringsModel, view=None):
-    super().__init__(model=model, view=view)
-    self.model_state = False # Model state is never done for the message, and the initial state not None either.
-    pass
-
-  def update_model_data(self, update):
-    self.model.append_line(update)
-    pass
-
-
-class DiskModel(Model):
-  disk_portal: DiskPortal
-
-  def __init__(self):
-    super().__init__()
-    self.disk_portal = DiskPortal()
-    pass
-
-  def refresh_disks(self):
-    self.set_model_data(self.disk_portal.decision())
-    pass
-
-  pass
