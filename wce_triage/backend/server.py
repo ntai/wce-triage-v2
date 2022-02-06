@@ -67,8 +67,6 @@ class TriageServer(threading.Thread):
     super().__init__()
     from .cli import arguments
 
-    self._socketio_view = SocketIOView()
-
     self.tlog = get_triage_logger()
 
     self._disks = ModelDispatch(DiskModel(), view=self._socketio_view)
@@ -85,6 +83,7 @@ class TriageServer(threading.Thread):
     self._runners = {}
     self._computer = None
     self.triage_timestamp = None
+    self._socketio_view = SocketIOView()
 
     # static files are here
     self.rootdir = arguments.rootdir
@@ -150,7 +149,7 @@ class TriageServer(threading.Thread):
   def set_app(self, app: Flask, socketio: SocketIO):
     self.app = app
     self.socketio = socketio
-    UserMessages.set_view()
+    UserMessages.set_view(MessageSocketIOView())
     self.start()
     pass
 
@@ -243,6 +242,8 @@ class TriageServer(threading.Thread):
     return self._runners.get(name)
 
   def send_to_ui(self, event: str, message: dict):
+    if not isinstance(message, dict):
+      raise Exception("message is not dict.")
     message['_sequence_'] = self.emit_count
     self.socketio.emit(event, message)
     pass
@@ -263,17 +264,16 @@ class TriageServer(threading.Thread):
 
 
 class SocketIOView(View):
-  event: str
   def __init__(self):
     pass
 
-  def updating(self, t0: dict, update: typing.Optional[any], event=None):
-    server.send_to_ui(event, update)
+  def updating(self, t0: dict, update: typing.Optional[any], meta):
+    server.send_to_ui(meta.get("tag", "message"), update)
     pass
   pass
 
 
-class SimpleSocketIOView(View):
+class MessageSocketIOView(View):
   event: str
   def __init__(self, event):
     self.event = event
