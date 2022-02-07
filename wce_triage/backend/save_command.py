@@ -4,7 +4,7 @@ from .process_runner import SimpleProcessRunner
 from ..lib.disk_images import read_disk_image_types
 from ..lib.util import get_triage_logger
 from ..components.disk import PartitionLister
-from .server import server, SimpleSocketIOView
+from .server import server
 from http import HTTPStatus
 
 
@@ -12,19 +12,6 @@ tlog = get_triage_logger()
 #
 #
 #
-class SaveModelDispatch(ModelDispatch):
-
-  def start(self, tag, context):
-    self.set_model_data({"device": context["devname"], "runStatus": "", "totalEstimate": 0, "tasks": []})
-    pass
-
-  def end(self, tag, context):
-    self.set_model_data({"device": ""})
-    pass
-
-  pass
-
-
 class SaveCommandRunner(SimpleProcessRunner):
 
   # Since ProcessRunner is generic, there is not much reason to make this "Save" only but by limiting one thread

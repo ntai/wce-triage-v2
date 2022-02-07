@@ -1,5 +1,6 @@
 import os
 
+from .formatters import jsoned_disk
 from .save_command import SaveCommandRunner
 from ..lib.disk_images import read_disk_image_types
 from ..lib.util import get_triage_logger
@@ -29,7 +30,7 @@ def route_wipe_types():
 @dispatch_bp.route("/triage.json")
 def route_triage():
   """Handles requesting triage result"""
-  return jsonify({"components": server.triage})
+  return {"components": server.triage}
 
 
 @dispatch_bp.route("/music")
@@ -81,11 +82,10 @@ def ulswce(path):  # /usr/local/share/wce
 
 # get_cpu_info is potentially ver slow for older computers as this runs a
 # cpu benchmark.
-
-@dispatch_bp.route("/cpu_info.json")
+@dispatch_bp.get("/cpu_info.json")
 def route_cpu_info():
   """Handles getting CPU rating """
-  return jsonify(server.cpu_info.data)
+  return { "cpu_info": server.cpu_info }
 
 
 @dispatch_bp.route("/save", methods=["POST"])
@@ -116,10 +116,76 @@ def stop_save():
 
 @dispatch_bp.get("/disk-save-status.json")
 def disk_save_status():
-  return jsonify(server.save_model)
+  return server._save_image.model.data
+
+@dispatch_bp.get("/disk-load-status.json")
+def disk_load_status():
+  return server._load_image.model.data
+
 
 @dispatch_bp.get("/restore-types.json")
 def route_restore_types():
   """Returning supported restore types."""
   # disk image type is in lib/disk_images
-  return jsonify({ "restoreTypes": read_disk_image_types() })
+  return { "restoreTypes": read_disk_image_types() }
+
+
+@dispatch_bp.get("/disks.json")
+def route_disks():
+  """Handles getting the list of disks"""
+  server.disk_portal.detect_disks()
+  disks = [jsoned_disk(disk) for disk in server.disk_portal.disks]
+  tlog.debug(str(disks))
+  return {"diskPages": 1, "disks": disks}
+
+
+@dispatch_bp.get("/disk-images.json")
+def route_disk_images():
+  """Handles getting the list of disk images on local media"""
+  # Loading doesn't have to come from http server, but this is a good test for now.
+  disk_images = server.disk_image_file_path
+  if os.path.exists(disk_images):
+    return send_file(disk_images, "application/json")
+  return {"sources": server.disk_images }
+
+
+@dispatch_bp.post("/load")
+def route_load_image():
+  # Disk image
+  if not request.args.get('source'):
+    return "No disk image selected", HTTPStatus.BAD_REQUEST
+
+  # server.load_disk_options = request.args
+
+  devname = request.args.get("deviceName")
+  devnames = request.args.get("deviceNames")
+
+  if devnames is not None:
+    target_disks = devnames.split(',')
+    pass
+  elif devname and devnames is None:
+    target_disks = [devname]
+  else:
+    target_disks = None
+    pass
+
+  if not target_disks:
+    return "No disk selected", HTTPStatus.BAD_REQUEST
+
+  newhostname = request.args.get("newhostname")
+
+  imagefile = request.args.get("source")
+  imagefile_size = request.args.get("size") # This comes back in bytes from sending sources with size. value in query is always string.
+  restore_type = request.args.get("restoretype")
+
+  runner_name = "load"
+  load_command_runner = server.get_runner(runner_name)
+  if load_command_runner is None:
+    load_command_runner = LoadCommandRunner()
+    server.set_runner(runner_name, load_command_runner)
+    pass
+
+  for devname in target_disks:
+    load_command_runner.queue_load(devname, imagefile, restore_type, imagefile_size, newhostname)
+    pass
+  return {}, HTTPStatus.OK

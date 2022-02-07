@@ -381,10 +381,10 @@ class Disk:
             self.is_usb = True
             pass
           elif tag == "ID_ATA_FEATURE_SET_SMART":
-            self.smart = (value is '1')
+            self.smart = (value == '1')
             pass
           elif tag == "ID_ATA_FEATURE_SET_SMART_ENABLED":
-            self.smart_enabled = (value is '1')
+            self.smart_enabled = (value == '1')
             pass
           pass
         except:
@@ -610,9 +610,10 @@ class DiskPortal(Component):
         pass
 
       if not out or len(out) == 0:
-        return
-
-      nvme_output = json.loads(out)
+        nvme_output = {"Devices": []}
+      else:
+        nvme_output = json.loads(out)
+        pass
 
       for device in nvme_output["Devices"]:
         # "DevicePath" : "/dev/nvme0n1",

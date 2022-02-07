@@ -11,11 +11,11 @@ from typing import Optional
 from flask import Flask
 from flask_socketio import SocketIO
 
+from .formatters import jsoned_disk
 from .messages import UserMessages
 from .models import Model, ModelDispatch
 from .cpu_info import CpuInfoModel
 from .process_runner import ProcessRunner
-from .save_command import SaveModelDispatch
 from .view import View
 from ..components.disk import DiskPortal
 from ..components.computer import Computer
@@ -26,42 +26,33 @@ import itertools
 import datetime
 import threading
 import typing
+import subprocess
+import json
+import traceback
 
 wce_share_re = re.compile(const.wce_share + '=([\w/.+\-_:?=@#*&\\%]+)')
 wce_payload_re = re.compile(const.wce_payload + '=([\w.+\-_:?=@#*&\\%]+)')
 
 tlog = get_triage_logger()
 
-
-class DiskModel(Model):
-  disk_portal: DiskPortal
-
-  def __init__(self):
-    super().__init__(meta={"tag": "disks"})
-    self.disk_portal = DiskPortal()
-    pass
-
-  def refresh_disks(self):
-    self.set_model_data(self.disk_portal.decision())
-    pass
-
-  pass
-
-
 class TriageServer(threading.Thread):
   app: Flask
   socketio: SocketIO
   _disks: ModelDispatch
   _loading: ModelDispatch
-  _save_model: ModelDispatch
-  _cpu_info: CpuInfoModel
+  _save_image: ModelDispatch
+  _load_image: ModelDispatch
+  _wipe_disk: ModelDispatch
+  _cpu_info: ModelDispatch
   _disk_portal: Optional[DiskPortal]
   _emit_counter: itertools.count
   _runners: dict
   _computer: Optional[Computer]
+  _triage: ModelDispatch
   triage_timestamp: Optional[datetime.datetime]
   live_triage: bool
   overall_decision: list
+  target_disks: list
 
   def __init__(self):
     super().__init__()
@@ -69,12 +60,14 @@ class TriageServer(threading.Thread):
 
     self.tlog = get_triage_logger()
 
-    self._disks = ModelDispatch(DiskModel(), view=self._socketio_view)
-    self._load_image = ModelDispatch(Model(meta={"tag": "loadimage"}), view=self._socketio_view)
-    self._save_image = SaveModelDispatch(Model(meta={"tag": "saveimage"}), view=self._socketio_view)
-    self._wipe_disk = ModelDispatch(Model(meta={"tag": "wipe"}), view=self._socketio_view)
+    self._socketio_view = SocketIOView()
 
-    self._cpu_info = CpuInfoModel()
+    self._disks = ModelDispatch(DiskModel(default = {"disks": []}), view=self._socketio_view)
+    self._load_image = ModelDispatch(Model(default={ "pages": 1, "tasks": [], "diskRestroing": False, "device": ""}, meta={"tag": "loadimage"}), view=self._socketio_view)
+    self._save_image = SaveModelDispatch(Model(default={ "pages": 1, "tasks": [], "diskSaving": False, "device": ""}, meta={"tag": "saveimage"}), view=self._socketio_view)
+    self._wipe_disk = ModelDispatch(Model(default={ "pages": 1, "tasks": [], "diskWiping": False, "device": "" }, meta={"tag": "wipe"}), view=self._socketio_view)
+
+    self._cpu_info = ModelDispatch(CpuInfoModel())
     self._disk_portal = None
     self.autoload = False
     self.load_disk_options = None
@@ -82,8 +75,9 @@ class TriageServer(threading.Thread):
     self._emit_counter = itertools.count()
     self._runners = {}
     self._computer = None
+    self._triage = ModelDispatch(Model(meta={"tag": "triage"}), view=self._socketio_view)
     self.triage_timestamp = None
-    self._socketio_view = SocketIOView()
+    self.target_disks = []
 
     # static files are here
     self.rootdir = arguments.rootdir
@@ -149,82 +143,90 @@ class TriageServer(threading.Thread):
   def set_app(self, app: Flask, socketio: SocketIO):
     self.app = app
     self.socketio = socketio
-    UserMessages.set_view(MessageSocketIOView())
+    UserMessages.set_view(MessageSocketIOView("message"))
     self.start()
     pass
 
   def run(self):
-    count = 0
     while True:
-      time.sleep(1)
-      self.priodic_taks()
-
-      count += 1
-      if count % 10 == 0:
-        UserMessages.note("Hello {}".format(count))
-        pass
+      time.sleep(2)
+      self.periodic_taks()
       pass
     pass
 
-  def priodic_taks(self):
+  def periodic_taks(self):
     if self.triage_timestamp is None:
+      self._triage.dispatch(self.triage_decisions)
       return
 
     computer = self._computer
     (added, changed, removed) = self.disk_portal.detect_disks()
 
-    if added or changed or removed:
-      disks = {"disks": [jsoned_disk(disk) for disk in me.disk_portal.disks]}
-      self._disks.set_model_data(disks)
-      # Emitter._send('diskupdate', disks)
+    disks = {"disks": [jsoned_disk(disk) for disk in self.disk_portal.disks]}
+    if len(self._disks.model.data["disks"]) != len(disks["disks"]) or max([0 if t0 == t1 else 1 for t0, t1 in zip(disks["disks"], self._disks.model.data["disks"])]) == 1:
+      self._disks.dispatch(disks)
       pass
 
     for component in computer.components:
       for update_key, update_value in component.detect_changes():
         updated = computer.update_decision(update_key,
                                            update_value,
-                                           overall_changed=me.overall_changed)
+                                           overall_changed=self.overall_changed)
         if updated:
           # join the key and value and send it
           update_value.update(update_key)
-          Emitter._send('triageupdate', update_value)
+          self._triage.dispatch(update_value)
         pass
       pass
 
     # Kick off the content loading if all of criterias look good
-    if me.autoload:
-      me.autoload = False
-      me.target_disks = []
+    if self.autoload:
+      self.autoload = False
+      self.target_disks = []
 
-      for disk in me.disk_portal.disks:
+      for disk in self.disk_portal.disks:
         disk_gb = disk.get_byte_size() / 1000000000
         if (not disk.mounted) and (disk_gb >= 80):
-          me.target_disks.append(disk.device_name)
+          self.target_disks.append(disk.device_name)
           pass
         pass
 
       # If the machine has only one disk and not mounted, autload can start
       # otherwise, don't start.
-      if len(me.target_disks) == 1:
-        me.start_load_disks("AUTOLOAD:")
+      if len(self.target_disks) == 1:
+        self.start_load_disks("AUTOLOAD:")
         pass
       else:
-        me.target_disks = []
+        self.target_disks = []
         pass
       pass
     pass
 
   @property
   def cpu_info(self):
-    return self._cpu_info
+    if self._cpu_info.model.model_state is None:
+      tlog.debug("get_cpu_info: starting")
+      cpu_info = subprocess.Popen("python3 -m wce_triage.lib.cpu_info", shell=True, stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE)
+      tlog.debug("get_cpu_info: started")
+      (out, err) = cpu_info.communicate()
+      tlog.debug("get_cpu_info: done")
+      try:
+        self._cpu_info.dispatch(json.loads(out))
+      except Exception as exc:
+        tlog.info("get_cpu_info - json.loads: '%s'\n%s" % (out, traceback.format_exc()))
+        self._cpu_info.model.set_model_state(False)
+        pass
+      pass
+    return self._cpu_info.model.data
 
   @property
   def save_model(self) -> Model:
-    return self._save_model
+    return server._save_model.model
 
   @property
   def disk_portal(self) -> DiskPortal:
-    if self._disk_portal:
+    if self._disk_portal is None:
       self._disk_portal = DiskPortal()
       pass
     return self._disk_portal
@@ -242,14 +244,14 @@ class TriageServer(threading.Thread):
     return self._runners.get(name)
 
   def send_to_ui(self, event: str, message: dict):
-    if not isinstance(message, dict):
-      raise Exception("message is not dict.")
-    message['_sequence_'] = self.emit_count
+    if isinstance(message, dict):
+      message['_sequence_'] = self.emit_count
+      pass
     self.socketio.emit(event, message)
     pass
 
   @property
-  def triage(self) -> list:
+  def triage_decisions(self) -> list:
     if self.triage_timestamp is None:
       self.triage_timestamp = datetime.datetime.now()
       if self._computer is None:
@@ -259,6 +261,21 @@ class TriageServer(threading.Thread):
       pass
     decisions = [ { "component": "Overall", "result": self.overall_decision } ] + self._computer.decisions
     return decisions
+
+  @property
+  def triage(self) -> list:
+    return self._triage.model.data
+
+  @property
+  def disk_images(self) -> list:
+    return get_disk_images(wce_share_url=self.wce_share_url)
+
+  @property
+  def disk_image_file_path(self) -> str:
+      return os.path.join(self.wcedir, "wce-disk-images", "wce-disk-images.json")
+
+  def start_load_disks(self, reason):
+    pass
 
   pass
 
@@ -279,10 +296,33 @@ class MessageSocketIOView(View):
     self.event = event
     pass
 
-  def updating(self, t0: dict, update: typing.Optional[any]):
+  def updating(self, t0: dict, update: typing.Optional[any], meta):
     server.send_to_ui(self.event, update)
     pass
   pass
 
+
+class DiskModel(Model):
+  def __init__(self, **kwargs):
+    super().__init__(meta={"tag": "disks"}, **kwargs)
+    pass
+
+  def refresh_disks(self):
+    self.set_model_data(server.disk_portal.decision())
+    pass
+
+  pass
+
+class SaveModelDispatch(ModelDispatch):
+
+  def start(self, tag, context):
+    self.set_model_data({"device": context["devname"], "runStatus": "", "totalEstimate": 0, "tasks": []})
+    pass
+
+  def end(self, tag, context):
+    self.set_model_data({"device": ""})
+    pass
+
+  pass
 
 server = TriageServer()

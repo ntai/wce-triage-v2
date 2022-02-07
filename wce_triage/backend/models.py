@@ -8,15 +8,16 @@ class Model(object):
   cumulative: bool
   key: str
 
-  def __init__(self, cumulative=False, key="message", meta={}):
+  def __init__(self, cumulative=False, key="message", meta={}, default=None):
     self._meta = meta
     self.key = key
     self.cumulative = cumulative
     self.model_state = None
-    self.clear()
+    self.clear(default=default)
     pass
 
   def set_model_data(self, data):
+    self.model_state = True
     if self.cumulative:
       self._model[self.key].append(data)
     else:
@@ -24,8 +25,13 @@ class Model(object):
       pass
     pass
 
-  def clear(self):
-    self._model = {self.key: []} if self.cumulative else {}
+  def clear(self, default=None):
+    self.model_state = None
+    if default:
+      self._model = {self.key: [default]} if self.cumulative else default
+    else:
+      self._model = {self.key: []} if self.cumulative else {}
+      pass
     pass
 
   @property
@@ -35,6 +41,10 @@ class Model(object):
   @property
   def meta(self):
     return self._meta
+
+  def set_model_state(self, state: bool):
+    self.model_state = state
+    pass
 
   pass
 
