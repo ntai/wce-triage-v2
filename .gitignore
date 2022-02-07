@@ -12,3 +12,4 @@ venv/
 packages.microsoft.gpg
 ui/
 wce_triage/ui/
+.idea/

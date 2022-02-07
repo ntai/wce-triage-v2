@@ -8,12 +8,9 @@ from flask import jsonify, send_file, send_from_directory, Blueprint, request
 from ..components import sound as _sound
 from .server import server
 from http import HTTPStatus
+from .operations import WIPE_TYPES
 
 tlog = get_triage_logger()
-
-WIPE_TYPES = [{"id": "nowipe", "name": "No Wipe", "arg": ""},
-              {"id": "wipe", "name": "Full wipe", "arg": "-w"},
-              {"id": "shortwipe", "name": "Wipe first 1Mb", "arg": "--quickwipe"}]
 
 dispatch_bp = Blueprint('dispatch', __name__, url_prefix='/dispatch')
 
@@ -155,11 +152,15 @@ def route_load_image():
   if not request.args.get('source'):
     return "No disk image selected", HTTPStatus.BAD_REQUEST
 
-  # server.load_disk_options = request.args
-
+  newhostname = request.args.get("newhostname")
+  imagefile = request.args.get("source")
+  image_size = request.args.get("size") # This comes back in bytes from sending sources with size. value in query is always string.
+  restore_type = request.args.get("restoretype")
+  wipe_request = self._get_load_option("wipe")
   devname = request.args.get("deviceName")
   devnames = request.args.get("deviceNames")
 
+  # devices to load
   if devnames is not None:
     target_disks = devnames.split(',')
     pass
@@ -172,12 +173,6 @@ def route_load_image():
   if not target_disks:
     return "No disk selected", HTTPStatus.BAD_REQUEST
 
-  newhostname = request.args.get("newhostname")
-
-  imagefile = request.args.get("source")
-  imagefile_size = request.args.get("size") # This comes back in bytes from sending sources with size. value in query is always string.
-  restore_type = request.args.get("restoretype")
-
   runner_name = "load"
   load_command_runner = server.get_runner(runner_name)
   if load_command_runner is None:
@@ -186,6 +181,6 @@ def route_load_image():
     pass
 
   for devname in target_disks:
-    load_command_runner.queue_load(devname, imagefile, restore_type, imagefile_size, newhostname)
+    load_command_runner.queue_load(devname, restore_type, imagefile, image_size, wipe_request, newhostname)
     pass
   return {}, HTTPStatus.OK
