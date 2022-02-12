@@ -18,10 +18,11 @@ from argparse import ArgumentParser
 import json
 import os, re, subprocess, datetime, asyncio, traceback, queue
 import logging, logging.handlers
+from ..lib.util import get_triage_logger, init_triage_logger
+tlog = init_triage_logger(log_level=logging.DEBUG)
 
 from ..components.computer import Computer
 from ..components.disk import DiskPortal, PartitionLister
-from ..lib.util import get_triage_logger, init_triage_logger
 # from ..lib.timeutil import in_seconds
 from ..lib.pipereader import PipeReader
 # from ..components import optical_drive as _optical_drive
@@ -30,8 +31,6 @@ from ..lib.disk_images import get_disk_images, read_disk_image_types
 from ..components import network as _network
 # from ..lib.cpu_info import cpu_info
 
-
-tlog = get_triage_logger()
 routes = aiohttp.web.RouteTableDef()
 
 import socketio
