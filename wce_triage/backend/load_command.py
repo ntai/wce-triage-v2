@@ -8,7 +8,6 @@ from .server import server
 from http import HTTPStatus
 from .operations import WIPE_TYPES
 
-tlog = get_triage_logger()
 #
 #
 #
@@ -17,12 +16,17 @@ class LoadCommandRunner(SimpleProcessRunner):
   # Since ProcessRunner is generic, there is not much reason to make this "Load" only but by limiting one thread
   # to run particular command, it's serializied.
 
+  @classmethod
+  def class_name(cls):
+    return "load"
+
   def __init__(self, dispatch: ModelDispatch):
     super().__init__(stdout_dispatch=dispatch, meta = {"tag": "loadimage"})
     pass
 
   def queue_load(self, devname, load_type, imagefile, image_size, wipe_request, newhostname):
     args = ['python3', '-m', 'wce_triage.ops.restore_image_runner', devname]
+    tlog = get_triage_logger()
 
     if newhostname:
       args.append('-m')

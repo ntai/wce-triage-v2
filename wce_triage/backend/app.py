@@ -8,33 +8,29 @@ and webscoket server
 """
 import logging
 
-from ..lib.util import get_triage_logger, init_triage_logger
 from flask import Flask, send_file
 from flask_cors import CORS
 from flask_socketio import SocketIO
-init_triage_logger(filename="/tmp/server.log", log_level=logging.DEBUG)
-tlog = get_triage_logger()
 import os
-
 
 def init_socketio(socketio: SocketIO):
     @socketio.on('connect')
     def connect(auth):
         wockid = "foo"
         #me.channels[wockid] = environ
-        tlog.debug("WOCK: %s connected" % wockid)
+        app.logger.debug("WOCK: %s connected" % wockid)
         return None
 
     @socketio.on('message')
     def message(data):
         wockid = "foo"
-        tlog.debug("WOCK: %s incoming %s" % (wockid, data))
+        app.logger.debug("WOCK: %s incoming %s" % (wockid, data))
         return None
 
     @socketio.on('disconnect')
     def disconnect():
         wockid = "foo"
-        tlog.debug("WOCK: %s disconnect" % (wockid))
+        app.logger.debug("WOCK: %s disconnect" % (wockid))
         return None
 
     pass
@@ -42,10 +38,12 @@ def init_socketio(socketio: SocketIO):
 
 # Define and parse the command line arguments
 def init_app():
-  from .server import server
+  from ..lib.util import set_triage_logger
   ui_dir = os.path.join(os.path.split((os.path.split(__file__)[0]))[0], "ui")
   app = Flask(__name__, root_path=ui_dir)
+  set_triage_logger(app.logger, filename="/tmp/server.log", log_level=logging.DEBUG)
   app.config['SECRET_KEY'] = 'notsecret'
+  app.config['PROPAGATE_EXCEPTIONS'] = False
   CORS(app)
   socketio = SocketIO(app, cors_allowed_origins="*")
   init_socketio(socketio)
@@ -55,6 +53,7 @@ def init_app():
   from .dispatch_bp import dispatch_bp
   app.register_blueprint(dispatch_bp)
 
+  from .server import server
   server.set_app(app, socketio)
   return app
 

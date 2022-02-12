@@ -33,8 +33,6 @@ import traceback
 wce_share_re = re.compile(const.wce_share + '=([\w/.+\-_:?=@#*&\\%]+)')
 wce_payload_re = re.compile(const.wce_payload + '=([\w.+\-_:?=@#*&\\%]+)')
 
-tlog = get_triage_logger()
-
 class TriageServer(threading.Thread):
   app: Flask
   socketio: SocketIO
@@ -131,12 +129,12 @@ class TriageServer(threading.Thread):
         self.load_disk_options['size'] = str(disk_image['size'])
         pass
       else:
-        tlog.info("Payload {0} is requested but not autoloading as matching disk image does not exist.".format(
+        self.tlog.info("Payload {0} is requested but not autoloading as matching disk image does not exist.".format(
           self.wce_payload))
         self.wce_payload = None
         pass
       pass
-    tlog.info(u"Open {0}{1} in a web browser. WCE share is {2}".format(self.the_root_url, "/index.html", self.wce_share_url))
+    self.tlog.info(u"Open {0}{1} in a web browser. WCE share is {2}".format(self.the_root_url, "/index.html", self.wce_share_url))
     pass
 
 
@@ -205,16 +203,16 @@ class TriageServer(threading.Thread):
   @property
   def cpu_info(self):
     if self._cpu_info.model.model_state is None:
-      tlog.debug("get_cpu_info: starting")
+      self.tlog.debug("get_cpu_info: starting")
       cpu_info = subprocess.Popen("python3 -m wce_triage.lib.cpu_info", shell=True, stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
-      tlog.debug("get_cpu_info: started")
+      self.tlog.debug("get_cpu_info: started")
       (out, err) = cpu_info.communicate()
-      tlog.debug("get_cpu_info: done")
+      self.tlog.debug("get_cpu_info: done")
       try:
         self._cpu_info.dispatch(json.loads(out))
       except Exception as exc:
-        tlog.info("get_cpu_info - json.loads: '%s'\n%s" % (out, traceback.format_exc()))
+        self.tlog.info("get_cpu_info - json.loads: '%s'\n%s" % (out, traceback.format_exc()))
         self._cpu_info.model.set_model_state(False)
         pass
       pass
@@ -240,8 +238,15 @@ class TriageServer(threading.Thread):
     self._runners[name] = runner
     pass
 
-  def get_runner(self, name: str) -> Optional[ProcessRunner]:
-    return self._runners.get(name)
+  def get_runner(self, runner_class=ProcessRunner) -> Optional[ProcessRunner]:
+    name = runner_class.class_name()
+    runner = self._runners.get(name)
+    if runner is None:
+      runner = runner_class()
+      self._runners[name] = runner
+      runner.start()
+      pass
+    return runner
 
   def send_to_ui(self, event: str, message: dict):
     if isinstance(message, dict):

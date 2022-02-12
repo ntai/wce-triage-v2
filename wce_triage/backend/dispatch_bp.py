@@ -9,8 +9,7 @@ from ..components import sound as _sound
 from .server import server
 from http import HTTPStatus
 from .operations import WIPE_TYPES
-
-tlog = get_triage_logger()
+from .load_command import LoadCommandRunner
 
 dispatch_bp = Blueprint('dispatch', __name__, url_prefix='/dispatch')
 
@@ -35,6 +34,7 @@ def route_music():
   """Send mp3 stream to chrome"""
   # For now, return the first mp3 file. Triage usually has only one
   # mp3 file for space reason.
+  tlog = get_triage_logger()
   if server.computer is None:
     server.triage()
     pass
@@ -132,6 +132,7 @@ def route_disks():
   """Handles getting the list of disks"""
   server.disk_portal.detect_disks()
   disks = [jsoned_disk(disk) for disk in server.disk_portal.disks]
+  tlog = get_triage_logger()
   tlog.debug(str(disks))
   return {"diskPages": 1, "disks": disks}
 
@@ -156,7 +157,7 @@ def route_load_image():
   imagefile = request.args.get("source")
   image_size = request.args.get("size") # This comes back in bytes from sending sources with size. value in query is always string.
   restore_type = request.args.get("restoretype")
-  wipe_request = self._get_load_option("wipe")
+  wipe_request = request.args.get("wipe")
   devname = request.args.get("deviceName")
   devnames = request.args.get("deviceNames")
 
@@ -173,12 +174,7 @@ def route_load_image():
   if not target_disks:
     return "No disk selected", HTTPStatus.BAD_REQUEST
 
-  runner_name = "load"
-  load_command_runner = server.get_runner(runner_name)
-  if load_command_runner is None:
-    load_command_runner = LoadCommandRunner()
-    server.set_runner(runner_name, load_command_runner)
-    pass
+  load_command_runner = server.get_runner(runner_class=LoadCommandRunner)
 
   for devname in target_disks:
     load_command_runner.queue_load(devname, restore_type, imagefile, image_size, wipe_request, newhostname)

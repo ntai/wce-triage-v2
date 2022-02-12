@@ -22,6 +22,10 @@ class ProcessRunner(threading.Thread):
   stdout: ProcessPipeReader
   stderr: ProcessPipeReader
 
+  @classmethod
+  def class_name(cls):
+    return "process_runner"
+
   def __init__(self,
                stdout_dispatch: Optional[ModelDispatch],
                stderr_dispatch: Optional[ModelDispatch],

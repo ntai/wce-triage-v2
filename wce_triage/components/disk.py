@@ -606,7 +606,9 @@ class DiskPortal(Component):
         pass
 
       if err:
-        tlog.info(cmd + ":\n" + err)
+        if not err.find("Permission denied") >= 0:
+          tlog.info(cmd + ":\n" + err)
+          pass
         pass
 
       if not out or len(out) == 0:

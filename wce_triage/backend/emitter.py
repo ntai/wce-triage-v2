@@ -3,8 +3,6 @@ import queue
 from ..lib.util import get_triage_logger
 from flask_socketio import emit, SocketIO
 
-tlog = get_triage_logger()
-
 #
 # WebSocket sender.
 #
@@ -25,26 +23,24 @@ tlog = get_triage_logger()
 # Known event type: message, diskupdate, triageupdate, loadimage, saveimage
 #
 
-
-
 def init_socketio(socketio: SocketIO):
     @socketio.on('connect')
     def connect(auth):
         wockid = "foo"
         #me.channels[wockid] = environ
-        tlog.debug("WOCK: %s connected" % wockid)
+        get_triage_logger().debug("WOCK: %s connected" % wockid)
         return None
 
     @socketio.on('message')
     async def message(data):
         wockid = "foo"
-        tlog.debug("WOCK: %s incoming %s" % (wockid, data))
+        get_triage_logger().debug("WOCK: %s incoming %s" % (wockid, data))
         return None
 
     @socketio.on('disconnect')
     def disconnect():
         wockid = "foo"
-        tlog.debug("WOCK: %s disconnect" % (wockid))
+        get_triage_logger().debug("WOCK: %s disconnect" % (wockid))
         return None
 
     pass

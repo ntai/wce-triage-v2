@@ -8,7 +8,6 @@ from .server import server
 from http import HTTPStatus
 
 
-tlog = get_triage_logger()
 #
 #
 #
@@ -17,11 +16,16 @@ class SaveCommandRunner(SimpleProcessRunner):
   # Since ProcessRunner is generic, there is not much reason to make this "Save" only but by limiting one thread
   # to run particular command, it's serializied.
 
+  @classmethod
+  def class_name(cls):
+    return "save"
+
   def __init__(self, dispatch: ModelDispatch):
     super().__init__(stdout_dispatch=dispatch, meta = {"tag": "saveimage"})
     pass
 
   def queue_save(self, devname, saveType, destdir, partid):
+    tlog = get_triage_logger()
     target = None
     for disk in server.disk_portal.disks:
       if disk.device_name == devname:
