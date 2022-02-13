@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-
+import io
 import os, sys, datetime, json, traceback, signal, stat
 import threading
 from ..lib.util import init_triage_logger
@@ -7,6 +7,8 @@ from ..lib.timeutil import in_seconds
 from ..ops.run_state import RunState, RUN_STATE
 import queue
 import time
+import multiprocessing as mp
+import typing
 
 start_time = datetime.datetime.now()
 tlog = init_triage_logger()
@@ -24,20 +26,51 @@ def debuglog(msg):
     pass
   pass
 
+#
+# Write aka consumer process
+#
+def writer(key, filename, pipe):
+  debuglog("start {}\n".format(filename))
+  try:
+    os.unlink(filename)
+  except:
+    pass
+
+  with open(filename, "wb") as out:
+    size_written = 0
+    while True:
+      try:
+        data = pipe.recv()
+      except EOFError:
+        pipe.send(None)
+        break
+
+      try:
+        out.write(data)
+        size_written += len(data)
+        pipe.send(size_written)
+        pass
+      except:
+        pipe.send(None)
+        pipe.close()
+        break
+      pass
+    pass
+  pass
 
 
 class fanout_copy:
   '''Copy a file to multiple locations. (aka duplication)
 '''
-  running = True
-
+  # downstreams: typing.List[ typing.Tuple(Optional[str], str, mp.connection.Connection, mp.Process) ]
 
   def __init__(self, source_file, destinations, output=sys.stderr):
     self.source_file_size = None
     self.source_file = source_file
     self.destination_specs = destinations
-    self.destinations = []
     self.output=sys.stderr
+    self.downstreams = []
+    self.running = True
 
     try:
       src_stat = os.stat(source_file)
@@ -45,7 +78,7 @@ class fanout_copy:
         print("Source file '%s' is not a regular file." % source_file, file=output)
         sys.exit(1)
         pass
-      source_file_size = src_stat.st_size;
+      source_file_size = src_stat.st_size
       pass
     except Exception as exc:
       print(traceback.format_exc())
@@ -53,9 +86,6 @@ class fanout_copy:
       pass
 
     self.source_file_size = source_file_size
-
-    self.destinations = []
-
     self.copybuf_size = 32 * 1024 * 1024
     self.readbufs = queue.Queue()
 
@@ -69,7 +99,7 @@ class fanout_copy:
     self.progress = 0
     self.report_time = None
 
-    self.invalid_fds = {}
+    self.dead_child = {}
     pass
 
 
@@ -91,29 +121,16 @@ class fanout_copy:
     pass
 
   def open_destinations(self):
-    destinations = [ (d[0], d[1]) if len(d) == 2 else (None, d[0]) for d in [dest.split(':') for dest in self.destination_specs] ]
-    # This is for cleaning up when something goes wrong.
-    dest_files = []
-
-    for key, dest_path in destinations:
-      try:
-        self.destinations.append((open(dest_path, 'wb', buffering=0), dest_path, key))
-        dest_files.append(dest_path)
-        debuglog("Dest file %s on %s opened" % (dest_path, key))
-      except Exception as exc:
-        # Clean up the mess if I can.
-        for dest_file in dest_files:
-          try:
-            os.unlink(dest_file)
-          except:
-            pass
-          pass
-        tlog.info("Opening desination file %s failed with following error.\%s" (dest_path, traceback.format_exc()))
-        sys.exit(1)
-        pass
+    self.downstreams = []
+    for idx, destination in enumerate(self.destination_specs):
+      dest = destination.split(':')
+      key, filename = (None, dest[0]) if len(dest) == 1 else (dest[0], dest[1])
+      mine, kid = mp.Pipe()
+      child = mp.Process(target=writer, args=(key, filename, kid))
+      child.start()
+      self.downstreams.append((idx, key, filename, mine, child))
       pass
     pass
-
 
   def _report(self, report, current_time = None):
     if current_time is None:
@@ -170,7 +187,7 @@ class fanout_copy:
       except Exception as exc:
         debuglog("Reader got an exception. " + traceback.format_exc())
         self.running = False
-        self.report_read_error()
+        self.report_read_error({"filename": self.source_file})
         continue
       pass
     self.writebufs.put(None)
@@ -188,35 +205,67 @@ class fanout_copy:
       if buf is None:
         break
 
-      for dest_fd, dest_path, key in self.destinations:
-        if dest_fd in self.invalid_fds:
+      n_alive = 0
+
+      for idx, key, filename, pipe, child in self.downstreams:
+        if self.dead_child.get(idx):
+          debuglog("1: child %d dead" % idx)
+          continue
+        if not child.is_alive():
+          debuglog("2: child %d dead" % idx)
           continue
 
         try:
-          dest_fd.write(buf)
-        except Exception as exc:
+          pipe.send(buf)
+          n_alive += 1
+        except:
           debuglog("Writer got an exception. " + traceback.format_exc())
-          self.invalid_fds[dest_fd] = (exc.format_exc(), self.sofar)
-          self.report_write_error(dest_fd)
-          dest_fd.close()
-          pass
-        finally:
+          try:
+            debuglog("killing %d" % idx)
+            child.kill()
+          except:
+            debuglog("killing %d failed" % idx)
+            pass
+          self.dead_child[idx] = (exc.format_exc(), self.sofar)
+          self.report_write_error({"filename": filename})
           pass
         pass
 
       self.sofar += len(buf)
 
+      for idx, key, filename, pipe, child in self.downstreams:
+        if self.dead_child.get(idx):
+          continue
+        if not child.is_alive():
+          continue
+
+        try:
+          child_sofar = pipe.recv()
+          debuglog("{} ack {}".format(idx, child_sofar))
+          pass
+        except Exception as exc:
+          self.dead_child[idx] = (traceback.format_exc(), self.sofar)
+          debuglog("Writer got an exception. " + traceback.format_exc())
+          debuglog(self.dead_child)
+          try:
+            debuglog("killing %d" % idx)
+            child.kill()
+          except:
+            debuglog("killing %d failed" % idx)
+            pass
+          self.report_write_error({"filename": filename})
+          pass
+        pass
+
       if len(buf) == self.copybuf_size:
         # If this is a real buffer, return this to the queue.
         self.readbufs.put(buf)
         pass
+
+      self.running = (n_alive > 0)
       pass
 
-    for dest_fd, dest_path, key in self.destinations:
-      if dest_fd in self.invalid_fds:
-        continue
-      dest_fd.close()
-      pass
+    self._kill_all()
     pass
 
 
@@ -226,16 +275,15 @@ class fanout_copy:
       pass
     dt_elapsed = in_seconds(current_time - start_time)
 
-    dest_fd, dest_path, key = dest
+    idx, key, dest_path, pipe, child = dest
 
-    run_state = RunState.Failed if dest_fd in self.invalid_fds else (RunState.Running if self.running else RunState.Success)
+    run_state = RunState.Failed if idx in self.dead_child else (RunState.Running if self.running else RunState.Success)
+    debuglog("{} {}".format(idx, run_state))
 
     speed = self.sofar / dt_elapsed
     if speed == 0:
       speed = 2 ** 24
       pass
-
-
     bytesCopied = 0
 
     if run_state is RunState.Running:
@@ -252,7 +300,7 @@ class fanout_copy:
       remaining_bytes = 0
       time_remaining = 0
     else:
-      msg, size_failed = self.invalid_fds[dest_fd]
+      msg, size_failed = self.dead_child.get(idx, ("FOO", "-1"))
       bytesCopied = size_failed
       run_message = "Copying failed at %d." % size_failed
       progress = 999
@@ -274,8 +322,8 @@ class fanout_copy:
     
   def reporter(self):
     while self.running:
-      for destination in self.destinations:
-        report = self.make_running_report(destination)
+      for downstream in self.downstreams:
+        report = self.make_running_report(downstream)
         self._report(report)
         pass
       time.sleep(1)
@@ -310,22 +358,34 @@ class fanout_copy:
     self.reporter.join()
     pass
   
-  def teardown(self):
-    current_time = datetime.datetime.now()
-
-    for destination in self.destinations:
-      dest_fd, dest_path, key = destination
+  def _kill_all(self):
+    for downstream in self.downstreams:
+      idx, key, filename, pipe, child = downstream
       try:
-        dest_fd.close()
+        pipe.close()
         pass
       except Exception as exc:
         pass
       pass
 
-      report = self.make_running_report(destination)
-      if dest_fd in self.invalid_fds:
-        verdict, size_copied = self.invalid_fds[dest_fd]
-      
+      try:
+        child.kill()
+        pass
+      except Exception as exc:
+        pass
+      pass
+    pass
+
+  def teardown(self):
+    current_time = datetime.datetime.now()
+    self._kill_all()
+
+    for downstream in self.downstreams:
+      report = self.make_running_report(downstream)
+      idx, key, filename, pipe, child = downstream
+      if idx in self.dead_child:
+        verdict, size_copied = self.dead_child[idx]
+        pass
       self._report(report, current_time=current_time)
       pass
     pass
@@ -342,9 +402,13 @@ if __name__ == "__main__":
     sys.exit(1)
     pass
     
+
   source = sys.argv[1]
   dests = sys.argv[2:]
   copier = fanout_copy(source, dests)
+
+  mp.set_start_method('fork')
+
   try:
     copier.run()
   except Exception as exc:
