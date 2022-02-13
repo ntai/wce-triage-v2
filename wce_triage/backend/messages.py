@@ -16,7 +16,17 @@ class MessageDispatch(ModelDispatch):
   def error(self, message):
     return self.dispatch({"message": message, "severity": 2})
 
-UserMessages = MessageDispatch(MessagesModel())
+
+class ErrorDispatch(ModelDispatch):
+  def dispatch(self, update):
+    return super().dispatch({"message": update, "severity": 2})
+  pass
+
+
+message_model = MessagesModel()
+UserMessages = MessageDispatch(message_model)
+ErrorMessages = ErrorDispatch(message_model)
+
 
 if __name__ == "__main__":
   from .view import ConsoleView

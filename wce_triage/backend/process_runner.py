@@ -1,3 +1,4 @@
+import shlex
 import threading
 import time
 import traceback
@@ -8,7 +9,7 @@ import logging
 from wce_triage.backend.view import ConsoleView
 from .process_pipe_reader import ProcessPipeReader
 from .models import ModelDispatch
-from .messages import UserMessages
+from .messages import UserMessages, ErrorMessages
 from ..lib.util import get_triage_logger
 
 
@@ -62,6 +63,7 @@ class ProcessRunner(threading.Thread):
     pass
 
   def run_process(self, tag, args, context):
+    self.logger.info("Start process: " + shlex.join(args))
     try:
       self.process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except FileNotFoundError as exc:
@@ -120,9 +122,9 @@ class ProcessRunner(threading.Thread):
 class SimpleProcessRunner(ProcessRunner):
   def __init__(self,
                stdout_dispatch: Optional[ModelDispatch] = None,
-               stderr_dispatch: Optional[ModelDispatch] = UserMessages,
+               stderr_dispatch: Optional[ModelDispatch] = ErrorMessages,
                meta={}):
-    super().__init__(stdout, stderr, meta)
+    super().__init__(stdout_dispatch, stderr_dispatch, meta)
     pass
   pass
 
@@ -130,7 +132,7 @@ class SimpleProcessRunner(ProcessRunner):
 if __name__ == "__main__":
   view = ConsoleView()
   stdout = UserMessages
-  stderr = MessageDispatch(MessagesModel())
+  stderr = ErrorMessages
   stdout.set_view(view)
   stderr.set_view(view)
   pr = ProcessRunner(stdout, stderr, {"tag": "test"})

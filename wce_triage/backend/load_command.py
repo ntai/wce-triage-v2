@@ -25,7 +25,7 @@ class LoadCommandRunner(SimpleProcessRunner):
     pass
 
   def queue_load(self, devname, load_type, imagefile, image_size, wipe_request, newhostname):
-    args = ['python3', '-m', 'wce_triage.ops.restore_image_runner', devname]
+    args = ['python3', '-m', 'wce_triage.ops.restore_image_runner', devname, imagefile, image_size, load_type]
     tlog = get_triage_logger()
 
     if newhostname:
@@ -36,7 +36,10 @@ class LoadCommandRunner(SimpleProcessRunner):
     wipe = None
     for wipe_type in WIPE_TYPES:
       if wipe_type.get("id") == wipe_request:
-        args.append(wipe_type.get("arg"))
+        wipe_option = wipe_type.get("arg")
+        if wipe_option:
+          args.append(wipe_option)
+          pass
         break
       pass
 

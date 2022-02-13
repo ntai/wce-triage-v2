@@ -1,5 +1,6 @@
 from .view import View
 from typing import Optional
+import threading
 
 class Model(object):
   _model: dict
@@ -7,9 +8,11 @@ class Model(object):
   model_state: Optional[bool]
   cumulative: bool
   key: str
+  lock: threading.Lock
 
-  def __init__(self, cumulative=False, key="message", meta={}, default=None):
-    self._meta = meta
+  def __init__(self, cumulative=False, key="message", meta=None, default=None):
+    self.lock = threading.Lock()
+    self._meta = {} if meta is None else meta
     self.key = key
     self.cumulative = cumulative
     self.model_state = None
@@ -17,20 +20,32 @@ class Model(object):
     pass
 
   def set_model_data(self, data):
-    self.model_state = True
-    if self.cumulative:
-      self._model[self.key].append(data)
-    else:
-      self._model = data
+    self.lock.acquire()
+    try:
+      self.model_state = True
+      if self.cumulative:
+        self._model[self.key].append(data)
+      else:
+        self._model = data
+        pass
+      pass
+    finally:
+      self.lock.release()
       pass
     pass
 
   def clear(self, default=None):
-    self.model_state = None
-    if default:
-      self._model = {self.key: [default]} if self.cumulative else default
-    else:
-      self._model = {self.key: []} if self.cumulative else {}
+    self.lock.acquire()
+    try:
+      self.model_state = None
+      if default:
+        self._model = {self.key: [default]} if self.cumulative else default
+      else:
+        self._model = {self.key: []} if self.cumulative else {}
+        pass
+      pass
+    finally:
+      self.lock.release()
       pass
     pass
 
@@ -45,7 +60,6 @@ class Model(object):
   def set_model_state(self, state: bool):
     self.model_state = state
     pass
-
   pass
 
 

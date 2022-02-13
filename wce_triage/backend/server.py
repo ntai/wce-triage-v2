@@ -5,14 +5,14 @@ Copyright (c) 2022 - Naoyuki Tai
 server data storage
 
 """
+import logging
 import os, re
 import time
 from typing import Optional
 from flask import Flask
 from flask_socketio import SocketIO
-
 from .formatters import jsoned_disk
-from .messages import UserMessages
+from .messages import UserMessages, ErrorMessages
 from .models import Model, ModelDispatch
 from .cpu_info import CpuInfoModel
 from .process_runner import ProcessRunner
@@ -51,6 +51,7 @@ class TriageServer(threading.Thread):
   live_triage: bool
   overall_decision: list
   target_disks: list
+  dispatches : dict
 
   def __init__(self):
     super().__init__()
@@ -61,9 +62,11 @@ class TriageServer(threading.Thread):
     self._socketio_view = SocketIOView()
 
     self._disks = ModelDispatch(DiskModel(default = {"disks": []}), view=self._socketio_view)
+
     self._load_image = ModelDispatch(Model(default={ "pages": 1, "tasks": [], "diskRestroing": False, "device": ""}, meta={"tag": "loadimage"}), view=self._socketio_view)
     self._save_image = SaveModelDispatch(Model(default={ "pages": 1, "tasks": [], "diskSaving": False, "device": ""}, meta={"tag": "saveimage"}), view=self._socketio_view)
     self._wipe_disk = ModelDispatch(Model(default={ "pages": 1, "tasks": [], "diskWiping": False, "device": "" }, meta={"tag": "wipe"}), view=self._socketio_view)
+    self.dispatches = {"load": self._load_image, "save": self._save_image, "wipe": self._wipe_disk}
 
     self._cpu_info = ModelDispatch(CpuInfoModel())
     self._disk_portal = None
@@ -76,6 +79,7 @@ class TriageServer(threading.Thread):
     self._triage = ModelDispatch(Model(meta={"tag": "triage"}), view=self._socketio_view)
     self.triage_timestamp = None
     self.target_disks = []
+
 
     # static files are here
     self.rootdir = arguments.rootdir
@@ -141,7 +145,11 @@ class TriageServer(threading.Thread):
   def set_app(self, app: Flask, socketio: SocketIO):
     self.app = app
     self.socketio = socketio
-    UserMessages.set_view(MessageSocketIOView("message"))
+    message_socketio_view = MessageSocketIOView("message")
+    logging_view = LoggingView(self.tlog)
+    view = MultiView(views=[message_socketio_view, logging_view])
+    UserMessages.set_view(view)
+    ErrorMessages.set_view(view)
     self.start()
     pass
 
@@ -242,7 +250,8 @@ class TriageServer(threading.Thread):
     name = runner_class.class_name()
     runner = self._runners.get(name)
     if runner is None:
-      runner = runner_class()
+      dispatch = self.dispatches.get(name)
+      runner = runner_class(dispatch)
       self._runners[name] = runner
       runner.start()
       pass
@@ -302,9 +311,14 @@ class MessageSocketIOView(View):
     pass
 
   def updating(self, t0: dict, update: typing.Optional[any], meta):
+    if not isinstance(update, dict):
+      raise Exception("message must be a dict")
+    if not update.get("message"):
+      raise Exception("message must have the 'message' key")
     server.send_to_ui(self.event, update)
     pass
   pass
+
 
 
 class DiskModel(Model):
@@ -328,6 +342,44 @@ class SaveModelDispatch(ModelDispatch):
     self.set_model_data({"device": ""})
     pass
 
+  pass
+
+
+class LoggingView(View):
+  logger: logging.Logger
+
+  def __init__(self, logger):
+    self.logger = logger
+    pass
+
+  def updating(self, t0: dict, update: typing.Optional[any], meta):
+    level = meta.get("level", logging.INFO)
+    self.logger.log(level, update)
+    pass
+  pass
+
+
+class MultiView(View):
+  def __init__(self, *args, views=[], **kwargs):
+    self.views = views
+    super().__init__(*args, **kwargs)
+    pass
+
+  def add_view(self, view):
+    self.views.append(view)
+    pass
+
+  def updating(self, t0: dict, update: typing.Optional[any], meta):
+    for view in self.views:
+      view.updating(t0, update, meta)
+      pass
+    pass
+
+  def updated(self, t1: dict, meta: dict):
+    for view in self.views:
+      view.updated(t1, meta)
+      pass
+    pass
   pass
 
 server = TriageServer()

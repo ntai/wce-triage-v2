@@ -41,7 +41,7 @@ def init_app():
   from ..lib.util import set_triage_logger
   ui_dir = os.path.join(os.path.split((os.path.split(__file__)[0]))[0], "ui")
   app = Flask(__name__, root_path=ui_dir)
-  set_triage_logger(app.logger, filename="/tmp/server.log", log_level=logging.DEBUG)
+  set_triage_logger(app.logger, filename="/tmp/triage.log", log_level=logging.DEBUG)
   app.config['SECRET_KEY'] = 'notsecret'
   app.config['PROPAGATE_EXCEPTIONS'] = False
   CORS(app)

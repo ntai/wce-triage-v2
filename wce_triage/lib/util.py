@@ -157,6 +157,9 @@ def is_block_device(path):
 
 import logging
 
+global _logger_
+_logger_ = None
+
 #
 #
 #
@@ -186,7 +189,8 @@ def set_triage_logger(logger, log_level=None, filename='/tmp/triage.log'):
 
 def get_triage_logger():
   global _logger_
-  #tlog = logging.getLogger('triage')
+  if _logger_ is None:
+    init_triage_logger()
   return _logger_
 
 
