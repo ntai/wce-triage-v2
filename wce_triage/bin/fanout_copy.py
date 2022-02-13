@@ -12,7 +12,7 @@ import typing
 
 start_time = datetime.datetime.now()
 tlog = init_triage_logger()
-debugging = True
+debugging = False
 
 def handler_stop_signals(signum, frame):
   fanout_copy.running = False
