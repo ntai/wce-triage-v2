@@ -15,7 +15,7 @@ from .formatters import jsoned_disk
 from .messages import UserMessages, ErrorMessages
 from .models import Model, ModelDispatch
 from .cpu_info import CpuInfoModel
-from .process_runner import ProcessRunner
+from .process_runner import ProcessRunner, RunnerOutputDispatch
 from .view import View
 from ..components.disk import DiskPortal
 from ..components.computer import Computer
@@ -63,9 +63,9 @@ class TriageServer(threading.Thread):
 
     self._disks = ModelDispatch(DiskModel(default = {"disks": []}), view=self._socketio_view)
 
-    self._load_image = ModelDispatch(Model(default={ "pages": 1, "tasks": [], "diskRestroing": False, "device": ""}, meta={"tag": "loadimage"}), view=self._socketio_view)
-    self._save_image = SaveModelDispatch(Model(default={ "pages": 1, "tasks": [], "diskSaving": False, "device": ""}, meta={"tag": "saveimage"}), view=self._socketio_view)
-    self._wipe_disk = ModelDispatch(Model(default={ "pages": 1, "tasks": [], "diskWiping": False, "device": "" }, meta={"tag": "wipe"}), view=self._socketio_view)
+    self._load_image = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskRestroing": False, "device": ""}, meta={"tag": "loadimage"}), view=self._socketio_view)
+    self._save_image = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskSaving": False, "device": ""}, meta={"tag": "saveimage"}), view=self._socketio_view)
+    self._wipe_disk = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskWiping": False, "device": ""}, meta={"tag": "wipe"}), view=self._socketio_view)
     self.dispatches = {"load": self._load_image, "save": self._save_image, "wipe": self._wipe_disk}
 
     self._cpu_info = ModelDispatch(CpuInfoModel())
@@ -328,18 +328,6 @@ class DiskModel(Model):
 
   def refresh_disks(self):
     self.set_model_data(server.disk_portal.decision())
-    pass
-
-  pass
-
-class SaveModelDispatch(ModelDispatch):
-
-  def start(self, tag, context):
-    self.set_model_data({"device": context["devname"], "runStatus": "", "totalEstimate": 0, "tasks": []})
-    pass
-
-  def end(self, tag, context):
-    self.set_model_data({"device": ""})
     pass
 
   pass

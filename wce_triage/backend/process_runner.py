@@ -1,8 +1,7 @@
 import shlex
 import threading
-import time
 import traceback
-from queue import SimpleQueue, Queue
+from queue import SimpleQueue
 from typing import Optional
 import subprocess
 import logging
@@ -11,10 +10,11 @@ from .process_pipe_reader import ProcessPipeReader
 from .models import ModelDispatch
 from .messages import UserMessages, ErrorMessages
 from ..lib.util import get_triage_logger
+import json
 
 
 class ProcessRunner(threading.Thread):
-  process: subprocess.Popen
+  process: Optional[subprocess.Popen]
   stdout_dispatch: Optional[ModelDispatch]
   stderr_dispatch: Optional[ModelDispatch]
   meta: dict
@@ -65,7 +65,7 @@ class ProcessRunner(threading.Thread):
   def run_process(self, tag, args, context):
     self.logger.info("Start process: " + shlex.join(args))
     try:
-      self.process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+      self.process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL)
     except FileNotFoundError as exc:
       self.error_message("%s is not found." % args[0])
       return
@@ -83,10 +83,7 @@ class ProcessRunner(threading.Thread):
     self.stderr.start()
 
     try:
-      while self.process.returncode is None:
-        self.process.poll()
-        time.sleep(1)
-        pass
+      self.process.wait()
       pass
     except Exception as exc:
       self.error_message("%s: %s" % (tag, traceback.format_exc()))
@@ -120,11 +117,33 @@ class ProcessRunner(threading.Thread):
 
 
 class SimpleProcessRunner(ProcessRunner):
+  meta: dict
+
   def __init__(self,
                stdout_dispatch: Optional[ModelDispatch] = None,
                stderr_dispatch: Optional[ModelDispatch] = ErrorMessages,
-               meta={}):
+               meta=None):
+    self.meta = {} if meta is None else meta.copy()
     super().__init__(stdout_dispatch, stderr_dispatch, meta)
+    pass
+  pass
+
+
+
+class RunnerOutputDispatch(ModelDispatch):
+  """ops/runner output dispatch """
+  def dispatch(self, update):
+    json_data = None
+    try:
+      json_data = json.loads(update)
+    except:
+      pass
+    if json_data:
+      # json_data["event"] should match with the event.
+      super().dispatch(json_data["message"])
+    else:
+      raise Exception("not json")
+      pass
     pass
   pass
 
