@@ -10,6 +10,7 @@ class ProcessPipeReader(threading.Thread):
   proc: subprocess.Popen
   pipe: io.BytesIO
   dispatch: Optional[ModelDispatch]
+  big_buffer: bytearray
 
   def __init__(self, proc:subprocess.Popen, pipe: io.BytesIO,
                dispatch=None,
@@ -23,6 +24,9 @@ class ProcessPipeReader(threading.Thread):
     self.lines = []
     self.tag = tag
     self.dispatch = dispatch
+
+    self.big_buffer = bytearray(0)
+    self.length = 0
     pass
 
   def run(self):
@@ -33,13 +37,27 @@ class ProcessPipeReader(threading.Thread):
         self.alive = False
         self._flush_fragments()
       else:
-        for ch in incoming:
-          if ch in [ord('\r'), ord('\n')]:
+        while len(incoming) > 0:
+          bp0 = incoming.find(ord('\n'))
+          bp1 = incoming.find(ord('\r'))
+          if bp0 == -1:
+            bp = bp1
+          else:
+            if bp1 == -1:
+              bp = bp0
+            else:
+              bp = min(bp0, bp1)
+              pass
+            pass
+
+          if bp >= 0:
+            self.big_buffer = self.big_buffer + incoming[:bp] + b'\n'
             self._flush_fragments()
+            incoming = incoming[bp + 1:]
             pass
           else:
-            self.fragments.append(ch)
-            pass
+            self.big_buffer = self.big_buffer + incoming
+            break
           pass
         pass
       pass
@@ -57,15 +75,10 @@ class ProcessPipeReader(threading.Thread):
     return line
 
   def _flush_fragments(self):
-    if len(self.fragments) == 0:
+    if len(self.big_buffer) == 0:
       return
-    buffer = bytearray(len(self.fragments) + 1)
-    for i in range(len(self.fragments)):
-      buffer[i] = self.fragments[i]
-      pass
-    buffer[len(self.fragments)] = ord(b'\n')
-    self.fragments.clear()
-    self.handle_line(buffer.decode(self.encoding))
+    self.handle_line(self.big_buffer.decode(self.encoding))
+    self.big_buffer.clear()
     pass
 
   def handle_line(self, line):
