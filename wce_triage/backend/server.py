@@ -11,6 +11,8 @@ import time
 from typing import Optional
 from flask import Flask
 from flask_socketio import SocketIO
+
+from .cli import Config
 from .formatters import jsoned_disk
 from .messages import UserMessages, ErrorMessages
 from .models import Model, ModelDispatch
@@ -52,10 +54,14 @@ class TriageServer(threading.Thread):
   overall_decision: list
   target_disks: list
   dispatches : dict
+  host: str
+  port: str
+  wcedir: str
+  rootdir: str
+  locks: dict
 
   def __init__(self):
     super().__init__()
-    from .cli import arguments
 
     self.tlog = get_triage_logger()
 
@@ -72,33 +78,41 @@ class TriageServer(threading.Thread):
     self._disk_portal = None
     self.autoload = False
     self.load_disk_options = None
-    self.wcedir = arguments.wcedir
     self._emit_counter = itertools.count()
     self._runners = {}
     self._computer = None
     self._triage = ModelDispatch(Model(meta={"tag": "triage"}), view=self._socketio_view)
     self.triage_timestamp = None
     self.target_disks = []
+    self.live_triage = False
+    self.locks = {}
+    for lock_name in ["cpu_info"] :
+      self.locks[lock_name] = threading.Lock()
+      pass
+    pass
 
 
+  def setup(self, config: Config):
+    self.host = config.HOST
+    self.port = config.PORT
+    self.wcedir = config.WCEDIR
     # static files are here
-    self.rootdir = arguments.rootdir
+    self.rootdir = config.TRIAGE_UI_ROOTDIR
     if self.rootdir is None:
       self.rootdir = os.path.join(self.wcedir, "wce-triage-ui")
       pass
+    self.the_root_url = u"{0}://{1}:{2}".format("http", self.host, self.port)
 
-    self.the_root_url = u"{0}://{1}:{2}".format("http", arguments.host, arguments.port)
-
-    if arguments.wce_share:
-      self.wce_share_url = arguments.wce_share
+    if config.WCE_SHARE_URL:
+      self.wce_share_url = config.WCE_SHARE_URL
     else:
-      self.wce_share_url = u"{0}://{1}:{2}/wce".format("http", arguments.host, arguments.port)
+      self.wce_share_url = u"{0}://{1}:{2}/wce".format("http", self.host, self.port)
       pass
 
     self.asset_path = os.path.join(self.wcedir, "triage", "assets")
 
     self.wce_payload = None
-    self.live_triage = arguments.live_triage
+    self.live_triage = config.LIVE_TRIAGE
 
     with open("/proc/cmdline") as cmdlinefd:
       cmdline = cmdlinefd.read()
@@ -106,7 +120,7 @@ class TriageServer(threading.Thread):
       if match:
         self.wce_share_url = match.group(1)
         pass
-      if not arguments.live_triage:
+      if not config.LIVE_TRIAGE:
         match = wce_payload_re.search(cmdline)
         if match:
           self.wce_payload = match.group(1)
@@ -141,8 +155,7 @@ class TriageServer(threading.Thread):
     self.tlog.info(u"Open {0}{1} in a web browser. WCE share is {2}".format(self.the_root_url, "/index.html", self.wce_share_url))
     pass
 
-
-  def set_app(self, app: Flask, socketio: SocketIO):
+  def set_app(self, app: Flask, socketio: SocketIO, config):
     self.app = app
     self.socketio = socketio
     message_socketio_view = MessageSocketIOView("message")
@@ -150,8 +163,13 @@ class TriageServer(threading.Thread):
     view = MultiView(views=[message_socketio_view, logging_view])
     UserMessages.set_view(view)
     ErrorMessages.set_view(view)
+
+    self.setup(config)
     self.start()
     pass
+
+  def get_lock(self, lock_name) -> threading.Lock:
+    return self.locks.get(lock_name)
 
   def run(self):
     while True:
@@ -209,22 +227,53 @@ class TriageServer(threading.Thread):
     pass
 
   @property
-  def cpu_info(self):
-    if self._cpu_info.model.model_state is None:
-      self.tlog.debug("get_cpu_info: starting")
-      cpu_info = subprocess.Popen("python3 -m wce_triage.lib.cpu_info", shell=True, stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE)
-      self.tlog.debug("get_cpu_info: started")
-      (out, err) = cpu_info.communicate()
-      self.tlog.debug("get_cpu_info: done")
-      try:
-        self._cpu_info.dispatch(json.loads(out))
-      except Exception as exc:
-        self.tlog.info("get_cpu_info - json.loads: '%s'\n%s" % (out, traceback.format_exc()))
-        self._cpu_info.model.set_model_state(False)
+  def cpu_info_killer(self):
+    lock = self.get_lock("cpu_info")
+    lock.acquire()
+    try:
+      if self._cpu_info.model.model_state is None:
+        try:
+          self.tlog.debug("get_cpu_info: starting")
+          cpu_info = subprocess.Popen("python3 -m wce_triage.lib.cpu_info", shell=True, stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE)
+          self.tlog.debug("get_cpu_info: started")
+          (out, err) = cpu_info.communicate()
+          self.tlog.debug("get_cpu_info: done")
+        except Exception as exc:
+          self.tlog.debug("something happened")
+          pass
+        try:
+          self._cpu_info.dispatch(json.loads(out))
+        except Exception as exc:
+          self.tlog.info("get_cpu_info - json.loads: '%s'\n%s" % (out, traceback.format_exc()))
+          self._cpu_info.model.set_model_state(False)
+          pass
         pass
       pass
+    finally:
+      lock.release()
+      pass
     return self._cpu_info.model.data
+
+  @property
+  def cpu_info(self):
+    lock = self.get_lock("cpu_info")
+    lock.acquire()
+    try:
+      if self._cpu_info.model.model_state is None:
+        self._cpu_info.model.set_model_state(False)
+        from .simple_process import CpuInfoCommandRunner
+        cpu_info = CpuInfoCommandRunner(self._cpu_info)
+        cpu_info.start()
+        pass
+      pass
+    finally:
+      lock.release()
+      pass
+    if self._cpu_info.model.model_state is True:
+      return self._cpu_info.model.data
+    return {}, 202
+
 
   @property
   def save_model(self) -> Model:

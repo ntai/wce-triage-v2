@@ -30,7 +30,7 @@ class ProcessRunner(threading.Thread):
   def __init__(self,
                stdout_dispatch: Optional[ModelDispatch],
                stderr_dispatch: Optional[ModelDispatch],
-               meta):
+               meta={}):
     super().__init__()
     self.stdout_dispatch = stdout_dispatch
     self.stderr_dispatch = stderr_dispatch
@@ -39,7 +39,6 @@ class ProcessRunner(threading.Thread):
     self.logger = get_triage_logger()
     pass
 
-
   def queue(self, args: list, context: dict):
     self._queue.put((args, context))
     pass
@@ -47,13 +46,12 @@ class ProcessRunner(threading.Thread):
   def dequeue(self):
     return self._queue.get()
 
-
   def run(self):
     while True:
       args, context = self.dequeue()
       if not args:
         break
-      self.run_process(self.meta.get("tag", "process"), args, context)
+      self.run_process(self.meta.get("tag", "process"), args, context, self.meta.get("result"))
       pass
     pass
 
@@ -62,7 +60,7 @@ class ProcessRunner(threading.Thread):
     UserMessages.note(message)
     pass
 
-  def run_process(self, tag, args, context):
+  def run_process(self, tag, args, context, result):
     self.logger.info("Start process: " + shlex.join(args))
     try:
       self.process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL)
@@ -98,7 +96,15 @@ class ProcessRunner(threading.Thread):
 
     self.stdout_dispatch.end(tag, context)
     self.stderr_dispatch.end(tag, context)
+
+    self.process_ended(result)
     self.process = None
+    pass
+
+  def process_ended(self, result):
+    if result:
+      result(self.process)
+      pass
     pass
 
   def is_process_running(self):
@@ -154,7 +160,7 @@ if __name__ == "__main__":
   stderr = ErrorMessages
   stdout.set_view(view)
   stderr.set_view(view)
-  pr = ProcessRunner(stdout, stderr, {"tag": "test"})
+  pr = ProcessRunner(stdout_dispatch=stdout, stderr_dispatch=stderr, meta={"tag": "test"})
   pr.start()
   # pr.queue.put(["/bin/sh", "-c", "echo Hello, world 1"])
   # pr.queue.put(["/bin/sh", "echo Hello, world 2"])

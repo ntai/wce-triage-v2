@@ -25,7 +25,7 @@ from flask_socketio import emit, SocketIO
 
 def init_socketio(socketio: SocketIO):
     @socketio.on('connect')
-    def connect(auth):
+    def connect():
         wockid = "foo"
         #me.channels[wockid] = environ
         get_triage_logger().debug("WOCK: %s connected" % wockid)

@@ -60,6 +60,10 @@ class Model(object):
   def set_model_state(self, state: bool):
     self.model_state = state
     pass
+
+  def close(self):
+    """signal to no more set_model_data incoming."""
+    pass
   pass
 
 

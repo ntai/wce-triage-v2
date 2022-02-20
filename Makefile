@@ -43,3 +43,5 @@ local:
 run:
 	. ./py3/bin/activate && PYTHONPATH=${PWD} sudo ./py3/bin/python3 -m wce_triage.http.httpserver
 
+flask:
+	. ./venv/bin/activate && PYTHONPATH=${PWD} FLASK_APP=wce_triage.backend.app:create_app FLASK_ENV=development sudo -E flask wce --host localhost --port 8400 --wcedir /usr/local/share/wce

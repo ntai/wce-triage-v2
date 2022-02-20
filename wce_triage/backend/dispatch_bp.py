@@ -67,19 +67,13 @@ def route_music():
 
 @dispatch_bp.route("/messages")
 def route_messages():
-  return jsonify(server.messages)
-
-#
-# TriageWeb
-#
-@dispatch_bp.route('/wce/<path:path>')
-def ulswce(path):  # /usr/local/share/wce
-  return send_from_directory(server.wcedir, path)
+  from .messages import message_model
+  return { "messages": message_model.data.get("message", [])}
 
 
 # get_cpu_info is potentially ver slow for older computers as this runs a
 # cpu benchmark.
-@dispatch_bp.get("/cpu_info.json")
+@dispatch_bp.route("/cpu_info.json")
 def route_cpu_info():
   """Handles getting CPU rating """
   return { "cpu_info": server.cpu_info }
@@ -111,23 +105,23 @@ def stop_save():
   return {}, HTTPStatus.OK
 
 
-@dispatch_bp.get("/disk-save-status.json")
+@dispatch_bp.route("/disk-save-status.json")
 def disk_save_status():
   return server._save_image.model.data
 
-@dispatch_bp.get("/disk-load-status.json")
+@dispatch_bp.route("/disk-load-status.json")
 def disk_load_status():
   return server._load_image.model.data
 
 
-@dispatch_bp.get("/restore-types.json")
+@dispatch_bp.route("/restore-types.json")
 def route_restore_types():
   """Returning supported restore types."""
   # disk image type is in lib/disk_images
   return { "restoreTypes": read_disk_image_types() }
 
 
-@dispatch_bp.get("/disks.json")
+@dispatch_bp.route("/disks.json")
 def route_disks():
   """Handles getting the list of disks"""
   server.disk_portal.detect_disks()
@@ -137,7 +131,7 @@ def route_disks():
   return {"diskPages": 1, "disks": disks}
 
 
-@dispatch_bp.get("/disk-images.json")
+@dispatch_bp.route("/disk-images.json")
 def route_disk_images():
   """Handles getting the list of disk images on local media"""
   # Loading doesn't have to come from http server, but this is a good test for now.
@@ -147,7 +141,7 @@ def route_disk_images():
   return {"sources": server.disk_images }
 
 
-@dispatch_bp.post("/load")
+@dispatch_bp.route("/load", methods=["POST"])
 def route_load_image():
   # Disk image
   if not request.args.get('source'):
