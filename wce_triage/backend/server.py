@@ -43,6 +43,7 @@ class TriageServer(threading.Thread):
   _save_image: ModelDispatch
   _load_image: ModelDispatch
   _wipe_disk: ModelDispatch
+  _sync_image: ModelDispatch
   _cpu_info: ModelDispatch
   _disk_portal: Optional[DiskPortal]
   _emit_counter: itertools.count
@@ -72,7 +73,9 @@ class TriageServer(threading.Thread):
     self._load_image = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskRestroing": False, "device": ""}, meta={"tag": "loadimage"}), view=self._socketio_view)
     self._save_image = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskSaving": False, "device": ""}, meta={"tag": "saveimage"}), view=self._socketio_view)
     self._wipe_disk = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskWiping": False, "device": ""}, meta={"tag": "wipe"}), view=self._socketio_view)
-    self.dispatches = {"load": self._load_image, "save": self._save_image, "wipe": self._wipe_disk}
+    self._sync_image = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "device": ""}, meta={"tag": "diskimage"}), view=self._socketio_view)
+
+    self.dispatches = {"load": self._load_image, "save": self._save_image, "wipe": self._wipe_disk, "sync": self._sync_image}
 
     self._cpu_info = ModelDispatch(CpuInfoModel())
     self._disk_portal = None
@@ -178,12 +181,18 @@ class TriageServer(threading.Thread):
       pass
     pass
 
+  def overall_changed(self, new_decision):
+    """When the overall decision is changed, update the triage decisions and set it to the triage."""
+    self.overall_decision = new_decision
+    self._triage.dispatch(self.triage_decisions)
+    pass
+
   def periodic_taks(self):
     if self.triage_timestamp is None:
       self._triage.dispatch(self.triage_decisions)
       return
 
-    computer = self._computer
+    computer: Computer  = self._computer
     (added, changed, removed) = self.disk_portal.detect_disks()
 
     disks = {"disks": [jsoned_disk(disk) for disk in self.disk_portal.disks]}

@@ -1,0 +1,30 @@
+@routes.get('/version.json') -> meta_bp
+  @routes.get("/") -> meta_bp
+  @routes.get("/dispatch/cpu_info.json") -> dispatch_bp
+  @routes.get("/dispatch/disk-images.json") -> dispatch_bp
+  @routes.get("/dispatch/disk-load-status.json") -> dispatch_bp
+  @routes.get("/dispatch/disk-save-status.json") -> dispatch_bp
+  @routes.get("/dispatch/disks.json") -> dispatch_bp
+  @routes.get("/dispatch/messages") -> dispatch_bp
+  @routes.get("/dispatch/music") -> dispatch_bp
+  @routes.get("/dispatch/network-device-status.json")
+  @routes.get("/dispatch/opticaldrives.json")
+  @routes.get("/dispatch/restore-types.json")  -> dispatch_bp
+  @routes.get("/dispatch/triage.json")  -> dispatch_bp
+  @routes.get("/dispatch/wipe-types.json")  -> dispatch_bp
+  @routes.post("/dispatch/save") -> dispatch_bp
+
+  @routes.get("/dispatch/sync-status.json")
+  @routes.post("/dispatch/sync")
+
+  @routes.post("/dispatch/clean")
+  @routes.post("/dispatch/delete")
+  @routes.post("/dispatch/load")
+  @routes.post("/dispatch/mount")
+  @routes.post("/dispatch/opticaldrivetest")
+  @routes.post("/dispatch/rename")
+  @routes.post("/dispatch/shutdown")
+  @routes.post("/dispatch/stop-load")
+  @routes.post("/dispatch/stop-wipe")
+  @routes.post("/dispatch/unmount")
+  @routes.post("/dispatch/wipe")

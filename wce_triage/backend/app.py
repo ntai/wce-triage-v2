@@ -134,7 +134,7 @@ def create_app():
     pass
 
   CORS(app)
-  socketio = SocketIO(app, cors_allowed_origins="*")
+  socketio = SocketIO(app, cors_allowed_origins="*", engineio_logger=False, logger=False)
   init_socketio(app, socketio)
   from .meta_bp import meta_bp
   app.register_blueprint(meta_bp)

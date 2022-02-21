@@ -1,7 +1,9 @@
 import os
 
 from .formatters import jsoned_disk
+from .query_params import get_target_devices_from_request
 from .save_command import SaveCommandRunner
+from .sync_command import SyncCommandRunner
 from ..lib.disk_images import read_disk_image_types
 from ..lib.util import get_triage_logger
 from flask import jsonify, send_file, send_from_directory, Blueprint, request
@@ -152,19 +154,8 @@ def route_load_image():
   image_size = request.args.get("size") # This comes back in bytes from sending sources with size. value in query is always string.
   restore_type = request.args.get("restoretype")
   wipe_request = request.args.get("wipe")
-  devname = request.args.get("deviceName")
-  devnames = request.args.get("deviceNames")
 
-  # devices to load
-  if devnames is not None:
-    target_disks = devnames.split(',')
-    pass
-  elif devname and devnames is None:
-    target_disks = [devname]
-  else:
-    target_disks = None
-    pass
-
+  target_disks = get_target_devices_from_request(request)
   if not target_disks:
     return "No disk selected", HTTPStatus.BAD_REQUEST
 
@@ -173,4 +164,25 @@ def route_load_image():
   for devname in target_disks:
     load_command_runner.queue_load(devname, restore_type, imagefile, image_size, wipe_request, newhostname)
     pass
+  return {}, HTTPStatus.OK
+
+
+@dispatch_bp.route("/sync", methods=["POST"])
+def route_sync_image():
+  # Disk image
+  source = request.args.get('source')
+  sources = request.args.get('sources')
+  if source is None and sources is None:
+    return "No disk image selected", HTTPStatus.BAD_REQUEST
+
+  if sources is None:
+    sources = [source]
+    pass
+
+  target_disks = get_target_devices_from_request(request)
+  if not target_disks:
+    return "No disk selected", HTTPStatus.BAD_REQUEST
+
+  sync_command_runner:SyncCommandRunner = server.get_runner(runner_class=SyncCommandRunner)
+  sync_command_runner.queue_sync(target_disks, target_disks=target_disks, clean=False)
   return {}, HTTPStatus.OK
