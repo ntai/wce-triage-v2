@@ -7,7 +7,8 @@ aiohttp
 socketio
 \#*
 foo*
-py3
+py3/
+venv/
 packages.microsoft.gpg
 ui/
 wce_triage/ui/

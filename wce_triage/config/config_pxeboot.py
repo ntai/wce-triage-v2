@@ -39,7 +39,7 @@ class pxeboot_config:
     super().__init__(triage_config, "pxeboot")
     pass
 
-  def get_default_pxeboot_entry():
+  def get_default_pxeboot_entry(self):
     return { "name": "WCE PXE Triage",
              "label": "WCE ^Triage 64bit",
              "kernel": "wce_amd64/vmlinuz",

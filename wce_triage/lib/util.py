@@ -157,10 +157,13 @@ def is_block_device(path):
 
 import logging
 
+global _logger_
+_logger_ = None
+
 #
 #
 #
-def init_triage_logger(log_level=None, filename='/tmp/triage.log'):
+def setup_triage_logger(logger, log_level=None, filename='/tmp/triage.log'):
   if log_level is None:
     log_level = logging.INFO
     pass
@@ -168,13 +171,27 @@ def init_triage_logger(log_level=None, filename='/tmp/triage.log'):
   tlog_formatter = logging.Formatter('%(asctime)s %(processName)-10s %(name)s %(levelname)-8s %(message)s')
   tlog_handler.setFormatter(tlog_formatter)
   logging.basicConfig(level=log_level, handlers=[tlog_handler])
-  tlog = get_triage_logger()
-  return tlog
+  if logger:
+    logger.addHandler(tlog_handler)
+  return logger
 
+def init_triage_logger(log_level=None, filename='/tmp/triage.log'):
+  global _logger_
+  _logger_ = logging.getLogger('triage')
+  setup_triage_logger(_logger_, log_level=log_level, filename=filename)
+  return _logger_
+
+def set_triage_logger(logger, log_level=None, filename='/tmp/triage.log'):
+  global _logger_
+  _logger_ = logger
+  setup_triage_logger(logger, log_level=log_level, filename=filename)
+  pass
 
 def get_triage_logger():
-  tlog = logging.getLogger('triage')
-  return tlog
+  global _logger_
+  if _logger_ is None:
+    init_triage_logger()
+  return _logger_
 
 
 # Get the test password that you can feed to sudo

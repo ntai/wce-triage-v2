@@ -141,8 +141,6 @@ tasks: array of tasks
                 "tasks" : [ _describe_task(task, current_time) for task in tasks ] } )
     pass
 
-  # Log message. Probably better to be stored in file so we can see it
-  # FIXME: probably should use python's logging.
   def log(self, runner_id, msg):
     tlog.info("JSON-LOG: " +  msg)
     self.send('message', {"message": runner_id + ": " + msg})

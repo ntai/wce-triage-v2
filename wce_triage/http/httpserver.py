@@ -18,10 +18,11 @@ from argparse import ArgumentParser
 import json
 import os, re, subprocess, datetime, asyncio, traceback, queue
 import logging, logging.handlers
+from ..lib.util import get_triage_logger, init_triage_logger
+tlog = init_triage_logger(log_level=logging.DEBUG)
 
 from ..components.computer import Computer
 from ..components.disk import DiskPortal, PartitionLister
-from ..lib.util import get_triage_logger, init_triage_logger
 # from ..lib.timeutil import in_seconds
 from ..lib.pipereader import PipeReader
 # from ..components import optical_drive as _optical_drive
@@ -30,9 +31,8 @@ from ..lib.disk_images import get_disk_images, read_disk_image_types
 from ..components import network as _network
 # from ..lib.cpu_info import cpu_info
 
-
-tlog = get_triage_logger()
 routes = aiohttp.web.RouteTableDef()
+
 import socketio
 wock = socketio.AsyncServer(async_mode='aiohttp', logger=get_triage_logger(), cors_allowed_origins='*')
 
@@ -778,7 +778,7 @@ class TriageWeb(object):
       process.poll()
       if process.returncode is not None:
         returncode = process.returncode
-        if returncode is not 0:
+        if returncode != 0:
           Emitter.note("Restore failed with error code %d" % returncode)
           pass
         # hack to reset the runner state - no runner id.
