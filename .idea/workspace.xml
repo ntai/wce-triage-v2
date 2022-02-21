@@ -163,7 +163,7 @@
       <option name="presentableId" value="Default" />
       <updated>1644792540008</updated>
       <workItem from="1644792541772" duration="9568000" />
-      <workItem from="1645242869037" duration="43985000" />
+      <workItem from="1645242869037" duration="44425000" />
     </task>
     <servers />
   </component>
@@ -206,6 +206,11 @@
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
+    <watches-manager>
+      <configuration name="PythonConfigurationType">
+        <watch expression="server" language="Python" />
+      </configuration>
+    </watches-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/wce_triage_v2$Flask__wce_triage_backend_server_TriageServer_.coverage" NAME="Flask (wce_triage.backend.server:app) Coverage Results" MODIFIED="1640752609785" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
@@ -215,7 +220,7 @@
     <SUITE FILE_PATH="coverage/wce_triage_v2$Run.coverage" NAME="Run Coverage Results" MODIFIED="1640625631860" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
     <SUITE FILE_PATH="coverage/wce_triage_v2$wce_triage_backend_server.coverage" NAME="wce_triage.backend.server Coverage Results" MODIFIED="1640735589338" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/wce_triage/backend" />
     <SUITE FILE_PATH="coverage/wce_triage_v2$simple_process.coverage" NAME="wce_triage.backend.simple_process Coverage Results" MODIFIED="1645392397810" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/wce_triage/backend" />
-    <SUITE FILE_PATH="coverage/wce_triage_v2$triage.coverage" NAME="triage Coverage Results" MODIFIED="1645463682356" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/wce_triage_v2$triage.coverage" NAME="triage Coverage Results" MODIFIED="1645469487408" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/wce_triage_v2$server.coverage" NAME="wce_triage.backend.server Coverage Results" MODIFIED="1640645339423" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/wce_triage/backend" />
   </component>
 </project>
