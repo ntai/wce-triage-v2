@@ -13,18 +13,17 @@
   @routes.get("/dispatch/triage.json")  -> dispatch_bp
   @routes.get("/dispatch/wipe-types.json")  -> dispatch_bp
   @routes.post("/dispatch/save") -> dispatch_bp
+  @routes.post("/dispatch/load") -> dispatch_bp
+  @routes.get("/dispatch/sync-status.json") -> dispatch_bp
+  @routes.post("/dispatch/sync") -> dispatch_bp
+  @routes.post("/dispatch/clean") -> dispatch_bp
+  @routes.post("/dispatch/delete") -> dispatch_bp
+  @routes.post("/dispatch/mount") -> dispatch_bp
 
-  @routes.get("/dispatch/sync-status.json")
-  @routes.post("/dispatch/sync")
-
-  @routes.post("/dispatch/clean")
-  @routes.post("/dispatch/delete")
-  @routes.post("/dispatch/load")
-  @routes.post("/dispatch/mount")
   @routes.post("/dispatch/opticaldrivetest")
   @routes.post("/dispatch/rename")
-  @routes.post("/dispatch/shutdown")
   @routes.post("/dispatch/stop-load")
   @routes.post("/dispatch/stop-wipe")
   @routes.post("/dispatch/unmount")
   @routes.post("/dispatch/wipe")
+  @routes.post("/dispatch/shutdown")

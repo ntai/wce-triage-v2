@@ -1,10 +1,12 @@
 import os
+import subprocess
 
 from .formatters import jsoned_disk
 from .query_params import get_target_devices_from_request
 from .save_command import SaveCommandRunner
 from .sync_command import SyncCommandRunner
-from ..lib.disk_images import read_disk_image_types
+from .wipe_command import WipeCommandRunner
+from ..lib.disk_images import read_disk_image_types, get_disk_images
 from ..lib.util import get_triage_logger
 from flask import jsonify, send_file, send_from_directory, Blueprint, request
 from ..components import sound as _sound
@@ -12,6 +14,7 @@ from .server import server
 from http import HTTPStatus
 from .operations import WIPE_TYPES
 from .load_command import LoadCommandRunner
+
 
 dispatch_bp = Blueprint('dispatch', __name__, url_prefix='/dispatch')
 
@@ -87,12 +90,7 @@ def save_disk_image():
   saveType = request.args.get("type")
   destdir = request.args.get("destination")
   partid = request.args.get("partition", default="Linux")
-  runner_name = "save"
-  save_command_runner = server.get_runner(runner_name)
-  if save_command_runner is None:
-    save_command_runner = SaveCommandRunner()
-    server.set_runner(runner_name, save_command_runner)
-    pass
+  save_command_runner = server.get_runner(SaveCommandRunner)
   (result, code) = save_command_runner.queue_save(devname, saveType, destdir, partid)
   return result, code
 
@@ -113,6 +111,8 @@ def disk_save_status():
 
 @dispatch_bp.route("/disk-load-status.json")
 def disk_load_status():
+  tlog = get_triage_logger()
+  tlog.debug(repr(server._load_image.model.data))
   return server._load_image.model.data
 
 
@@ -167,6 +167,16 @@ def route_load_image():
   return {}, HTTPStatus.OK
 
 
+def sync_disk_images(sources, target_disks, clean: bool):
+  """Disk image manipulation common for sync and clean"""
+  if not target_disks:
+    return "No disk selected", HTTPStatus.BAD_REQUEST
+
+  sync_command_runner:SyncCommandRunner = server.get_runner(runner_class=SyncCommandRunner)
+  sync_command_runner.queue_sync(sources, target_disks, clean=clean)
+  return {}, HTTPStatus.OK
+
+
 @dispatch_bp.route("/sync", methods=["POST"])
 def route_sync_image():
   # Disk image
@@ -178,11 +188,106 @@ def route_sync_image():
   if sources is None:
     sources = [source]
     pass
+  else:
+    sources = sources.split(',')
+    pass
 
   target_disks = get_target_devices_from_request(request)
-  if not target_disks:
-    return "No disk selected", HTTPStatus.BAD_REQUEST
+  return sync_disk_images([], target_disks, False)
 
-  sync_command_runner:SyncCommandRunner = server.get_runner(runner_class=SyncCommandRunner)
-  sync_command_runner.queue_sync(target_disks, target_disks=target_disks, clean=False)
+
+@dispatch_bp.route("/sync-status.json")
+def route_sync_status():
+  return server._sync_image.model.data
+
+
+@dispatch_bp.route("/clean", methods=["POST"])
+def route_clean_image():
+  """clean disk images from the target disks"""
+  target_disks = get_target_devices_from_request(request)
+  return sync_disk_images([], target_disks, True)
+
+
+@dispatch_bp.route("/delete", methods=["POST"])
+def route_delete_image():
+  name = request.args.get("name")
+  restoretype = request.args.get("restoretype")
+
+  for disk_image in get_disk_images():
+    if disk_image['name'] != name or disk_image['restoreType'] != restoretype:
+      continue
+
+    fullpath = disk_image['fullpath']
+    try:
+      tlog.debug("Delete '%s'" % fullpath)
+      os.remove(fullpath)
+      tlog.debug("Delete '%s' succeeded." % fullpath)
+      return {}, HTTPStatus.OK
+    except Exception as exc:
+      # FIXME: better response?
+      msg = "Delete '%s' failed.\n%s" % traceback.format_exc()
+      tlog.info(msg)
+      return {}, HTTPStatus.BAD_REQUEST
+      Pass
+    pass
+  return {}, HTTPStatus.NOT_FOUND
+
+
+# FIXME: probably does not work
+@dispatch_bp.route("/mount", methods=["POST"])
+def route_mount_disk(request):
+  """Mount disk"""
+  portal = server.disk_portal
+  portal.detect_disks()
+  disks = portal.disks
+
+  requested = request.args.get("deviceName")
+  for disk in disks:
+    if disk.device_name in requested:
+      try:
+        mount_point = disk.device_name.get_mount_point()
+        if not os.path.exists(mount_point):
+          os.mkdir(mount_point)
+          pass
+        subprocess.run(["mount", disk.device_name, mount_point])
+        pass
+      except Exception as exc:
+        {}, HTTPStatus.BAD_REQUEST
+      pass
+    pass
   return {}, HTTPStatus.OK
+
+def stop_runner(runner_class):
+  runner = server.get_runner(runner_class, create=False)
+  if runner:
+    runner.terminate()
+    pass
+  return {}
+
+@dispatch_bp.route("/stop-load", methods=["POST"])
+def route_stop_load_image(request):
+  return stop_runner(LoadCommandRunner)
+
+
+@dispatch_bp.route("/stop-save", methods=["POST"])
+def route_stop_save_image(request):
+  return stop_runner(SaveCommandRunner)
+
+@dispatch_bp.route("/stop-wipe", methods=["POST"])
+def route_stop_disk_wipe(request):
+  return stop_runner(WipeCommandRunner)
+
+@dispatch_bp.route("/wipe", methods=["POST"])
+def route_wipe_disks():
+  devname = request.args.get("deviceName")
+  devnames = request.args.get("deviceNames")
+  if devnames:
+    devices = devnames.split(',')
+  elif devname:
+    devices = [devname]
+  else:
+    return {}, HTTPStatus.BAD_REQUEST
+
+  wipe_command_runner = server.get_runner(WipeCommandRunner)
+  (result, code) = wipe_command_runner.queue_save(devices)
+  return result, code

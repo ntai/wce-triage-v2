@@ -135,7 +135,6 @@ class SimpleProcessRunner(ProcessRunner):
   pass
 
 
-
 class RunnerOutputDispatch(ModelDispatch):
   """ops/runner output dispatch """
   def dispatch(self, update):
@@ -148,6 +147,41 @@ class RunnerOutputDispatch(ModelDispatch):
       # json_data["event"] should match with the event.
       super().dispatch(json_data["message"])
     else:
+      raise Exception("not json")
+      pass
+    pass
+  pass
+
+class ImageRunnerOutputDispatch(ModelDispatch):
+  def dispatch(self, update):
+    json_data = None
+    try:
+      json_data = json.loads(update)
+    except:
+      pass
+    if json_data:
+      message = json_data["message"]
+      # report_type = message.get('report') # 'task_progress' | 'task_success'
+      # device = message.get('device')
+      # runState = message.get('runState') # 'Running'
+      step = message.get('step') # integer
+      task = message.get('task') # dict
+      tasks = message.get('tasks') # array of task
+      if tasks is None:
+        if self.model.data:
+          tasks = self.model.data.get("tasks")
+          if tasks:
+            tasks = tasks.copy()
+            if task and tasks and step < len(tasks):
+              tasks[step] = task
+              message["tasks"] = tasks
+              pass
+            pass
+          pass
+        pass
+      super().dispatch(message)
+    else:
+      get_triage_logger().debug(update)
       raise Exception("not json")
       pass
     pass

@@ -17,7 +17,7 @@ from .formatters import jsoned_disk
 from .messages import UserMessages, ErrorMessages
 from .models import Model, ModelDispatch
 from .cpu_info import CpuInfoModel
-from .process_runner import ProcessRunner, RunnerOutputDispatch
+from .process_runner import ProcessRunner, RunnerOutputDispatch, ImageRunnerOutputDispatch
 from .view import View
 from ..components.disk import DiskPortal
 from ..components.computer import Computer
@@ -70,8 +70,8 @@ class TriageServer(threading.Thread):
 
     self._disks = ModelDispatch(DiskModel(default = {"disks": []}), view=self._socketio_view)
 
-    self._load_image = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskRestroing": False, "device": ""}, meta={"tag": "loadimage"}), view=self._socketio_view)
-    self._save_image = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskSaving": False, "device": ""}, meta={"tag": "saveimage"}), view=self._socketio_view)
+    self._load_image = ImageRunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskRestroing": False, "device": ""}, meta={"tag": "loadimage"}), view=self._socketio_view)
+    self._save_image = ImageRunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskSaving": False, "device": ""}, meta={"tag": "saveimage"}), view=self._socketio_view)
     self._wipe_disk = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskWiping": False, "device": ""}, meta={"tag": "wipe"}), view=self._socketio_view)
     self._sync_image = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "device": ""}, meta={"tag": "diskimage"}), view=self._socketio_view)
 
@@ -304,10 +304,10 @@ class TriageServer(threading.Thread):
     self._runners[name] = runner
     pass
 
-  def get_runner(self, runner_class=ProcessRunner) -> Optional[ProcessRunner]:
+  def get_runner(self, runner_class=ProcessRunner, create=True) -> Optional[ProcessRunner]:
     name = runner_class.class_name()
     runner = self._runners.get(name)
-    if runner is None:
+    if runner is None and create:
       dispatch = self.dispatches.get(name)
       runner = runner_class(dispatch)
       self._runners[name] = runner

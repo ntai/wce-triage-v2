@@ -26,9 +26,6 @@ from flask_socketio import emit, SocketIO
 def init_socketio(socketio: SocketIO):
     @socketio.on('connect')
     def connect():
-        wockid = "foo"
-        #me.channels[wockid] = environ
-        get_triage_logger().debug("WOCK: %s connected" % wockid)
         return None
 
     @socketio.on('message')
@@ -39,8 +36,6 @@ def init_socketio(socketio: SocketIO):
 
     @socketio.on('disconnect')
     def disconnect():
-        wockid = "foo"
-        get_triage_logger().debug("WOCK: %s disconnect" % (wockid))
         return None
 
     pass
