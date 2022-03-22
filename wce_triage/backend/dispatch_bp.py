@@ -1,19 +1,21 @@
 import os
 import subprocess
 
-from .formatters import jsoned_disk
+from .formatters import jsoned_disk, jsoned_optical
+from .optical_drive import route_opticaldrivetest
 from .query_params import get_target_devices_from_request
 from .save_command import SaveCommandRunner
 from .sync_command import SyncCommandRunner
 from .wipe_command import WipeCommandRunner
 from ..lib.disk_images import read_disk_image_types, get_disk_images
-from ..lib.util import get_triage_logger
-from flask import jsonify, send_file, send_from_directory, Blueprint, request
-from ..components import sound as _sound
+from ..lib import get_triage_logger
+from flask import jsonify, send_file, Blueprint, request
+from ..components import detect_sound_device
 from .server import server
 from http import HTTPStatus
 from .operations import WIPE_TYPES
 from .load_command import LoadCommandRunner
+from ..components import network as _network
 
 
 dispatch_bp = Blueprint('dispatch', __name__, url_prefix='/dispatch')
@@ -55,7 +57,7 @@ def route_music():
   if music_file:
     res = send_file(music_file, mimetype="audio/" + music_file[-3:])
 
-    if _sound.detect_sound_device():
+    if detect_sound_device():
       computer = server.computer
       updated = computer.update_decision({"component": "Sound"},
                                          {"result": True,
@@ -131,6 +133,15 @@ def route_disks():
   tlog = get_triage_logger()
   tlog.debug(str(disks))
   return {"diskPages": 1, "disks": disks}
+
+
+@dispatch_bp.route("/opticaldrives.json")
+def route_optical_drives():
+  """Handles getting the list of disks"""
+  opticals = [jsoned_optical(optical) for optical in server.opticals]
+  tlog = get_triage_logger()
+  tlog.debug(repr(opticals))
+  return {"opticaldrives": opticals}
 
 
 @dispatch_bp.route("/disk-images.json")
@@ -291,3 +302,38 @@ def route_wipe_disks():
   wipe_command_runner = server.get_runner(WipeCommandRunner)
   (result, code) = wipe_command_runner.queue_save(devices)
   return result, code
+
+
+@dispatch_bp.route("/shutdown", methods=["POST"])
+def route_shutdown():
+  """shutdowns the computer."""
+  shutdown_mode = request.args.get("mode", ["ignored"])
+  if shutdown_mode == "poweroff":
+    subprocess.run(['poweroff'])
+  elif shutdown_mode == "reboot":
+    subprocess.run(['reboot'])
+  else:
+    return {}, HTTPStatus.BAD_REQUEST
+  return {}, HTTPStatus.OK
+
+
+@dispatch_bp.route("/network-device-status.json")
+def route_network_device_status():
+  """Network status"""
+  if server.computer is None:
+    server.triage()
+    pass
+  netstat = []
+  computer = server.computer
+  for netdev in _network.detect_net_devices():
+    netstat.append({"device": netdev.device_name, "carrier": netdev.is_network_connected()})
+    computer.update_decision({"component": "Network",
+                              "device": netdev.device_name},
+                             {"result": netdev.is_network_connected(),
+                              "message": "Connection detected." if netdev.is_network_connected() else "Not conntected."},
+                             overall_changed=server.overall_changed)
+    pass
+  return netstat, HTTPStatus.OK
+
+
+dispatch_bp.add_url_rule("/opticaldrivetest", view_func=route_opticaldrivetest)

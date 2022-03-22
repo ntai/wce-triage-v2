@@ -1,7 +1,5 @@
-import threading
-import queue
-from ..lib.util import get_triage_logger
-from flask_socketio import emit, SocketIO
+from ..lib import get_triage_logger
+from flask_socketio import SocketIO
 
 #
 # WebSocket sender.

@@ -21,6 +21,7 @@ detect_changes(self) -> list
 """
 
 import abc
+from typing import List
 
 class Component(object):
   """Component base class for computer.
@@ -56,7 +57,7 @@ multiple video cards, the component type returns every video card found.
 """
 
   # detect changes return a list of dict objects.
-  def detect_changes(self) -> list:
+  def detect_changes(self) -> List[tuple]:
     '''detect changes return a list of dict objects.
 
 A dictionary as elemet of list is as follows:

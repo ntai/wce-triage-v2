@@ -3,6 +3,8 @@
 # MIT license - see LICENSE
 
 import os, re, subprocess
+from typing import List
+
 from .pci import detect_blacklist_devices
 from .component import Component
 from ..lib.util import safe_string, get_triage_logger
@@ -181,7 +183,7 @@ class Networks(Component):
       pass
     return decisions
 
-  def detect_changes(self) -> list:
+  def detect_changes(self) -> List[tuple]:
     updates = []
     for netdev in self.networks:
       old_connected = netdev.connected

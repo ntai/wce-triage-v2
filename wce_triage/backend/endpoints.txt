@@ -7,8 +7,7 @@
   @routes.get("/dispatch/disks.json") -> dispatch_bp
   @routes.get("/dispatch/messages") -> dispatch_bp
   @routes.get("/dispatch/music") -> dispatch_bp
-  @routes.get("/dispatch/network-device-status.json")
-  @routes.get("/dispatch/opticaldrives.json")
+  @routes.get("/dispatch/opticaldrives.json") -> dispatch_bp
   @routes.get("/dispatch/restore-types.json")  -> dispatch_bp
   @routes.get("/dispatch/triage.json")  -> dispatch_bp
   @routes.get("/dispatch/wipe-types.json")  -> dispatch_bp
@@ -19,6 +18,8 @@
   @routes.post("/dispatch/clean") -> dispatch_bp
   @routes.post("/dispatch/delete") -> dispatch_bp
   @routes.post("/dispatch/mount") -> dispatch_bp
+  @routes.post("/dispatch/shutdown") -> dispatch_bp
+  @routes.get("/dispatch/network-device-status.json")  -> dispatch_bp
 
   @routes.post("/dispatch/opticaldrivetest")
   @routes.post("/dispatch/rename")
@@ -26,4 +27,3 @@
   @routes.post("/dispatch/stop-wipe")
   @routes.post("/dispatch/unmount")
   @routes.post("/dispatch/wipe")
-  @routes.post("/dispatch/shutdown")

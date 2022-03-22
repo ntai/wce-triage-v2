@@ -9,7 +9,7 @@ from wce_triage.backend.view import ConsoleView
 from .process_pipe_reader import ProcessPipeReader
 from .models import ModelDispatch
 from .messages import UserMessages, ErrorMessages
-from ..lib.util import get_triage_logger
+from ..lib import get_triage_logger
 import json
 
 
@@ -180,6 +180,27 @@ class ImageRunnerOutputDispatch(ModelDispatch):
           pass
         pass
       super().dispatch(message)
+    else:
+      get_triage_logger().debug(update)
+      raise Exception("not json")
+      pass
+    pass
+  pass
+
+
+class JsonOutputDispatch(ModelDispatch):
+  """json output dispatch: the output of process is JSON string and store it as is."""
+
+  def dispatch(self, update):
+    """Parse the output string as json and dispatch to the model."""
+    json_data = None
+    try:
+      json_data = json.loads(update)
+    except:
+      pass
+    if json_data:
+      # json_data["event"] should match with the event.
+      super().dispatch(json_data)
     else:
       get_triage_logger().debug(update)
       raise Exception("not json")

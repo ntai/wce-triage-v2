@@ -3,6 +3,8 @@
 # MIT license - see LICENSE
 
 import os
+from typing import List
+
 from ..lib.util import get_triage_logger
 from .component import Component
 
@@ -58,7 +60,7 @@ feature_map = {'Can read multisession': ('Multisession', lambda x: int(x) == 1),
                'drive speed': ('Drive speed', lambda x: int(x) >= 18)
 }
 
-def detect_optical_drives():
+def detect_optical_drives() -> List[OpticalDrive]:
   drives = []
   found = {}
   
@@ -117,6 +119,8 @@ def detect_optical_drives():
 
 class OpticalDrives(Component):
   
+  _drives: List[OpticalDrive]
+
   def __init__(self):
     self._drives = detect_optical_drives()
     pass
@@ -148,7 +152,9 @@ class OpticalDrives(Component):
       pass
     return decisions
 
-  
+  @property
+  def drives(self) -> List[OpticalDrive]:
+    return self._drives
 
 if __name__ == "__main__":
   optical = OpticalDrives()
