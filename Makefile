@@ -4,6 +4,7 @@
 PYPI_USER := $(shell echo $$PYPI_USERNAME)
 PYPI_PASSWORD := $(shell echo $$PYPI_PASSWORD)
 
+PY3 := python3.10
 
 default: setup
 
@@ -11,10 +12,10 @@ setup: manifest
 	. ./py3/bin/activate && python3 setup.py sdist bdist_wheel
 
 bootstrap:
-	sudo apt install python3.8 python3.8-venv 
-	python3.8 -m venv py3
-	. ./py3/bin/activate && python3.8 -m pip install --upgrade setuptools wheel twine
-	. ./py3/bin/activate && python3.8 -m ensurepip --upgrade
+	sudo apt install $(PY3) $(PY3)-venv 
+	$(PY3) -m venv py3
+	. ./py3/bin/activate && $(PY3) -m pip install --upgrade setuptools wheel twine
+	. ./py3/bin/activate && $(PY3) -m ensurepip --upgrade
 	touch bootstrap
 
 upload: 

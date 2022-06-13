@@ -79,6 +79,11 @@ base_packages = {
     'nmcli',                    # connect to wifi through nmcli command
     'firefox',                  # Use firefox
   ],
+  '22.04': [
+    'iw',                       # for seeing wifi device list
+    'nmcli',                    # connect to wifi through nmcli command
+    'firefox',                  # Use firefox
+  ],
 }
 
 
@@ -317,7 +322,7 @@ if __name__ == "__main__":
     python_packages = python_packages + get_package_list(desktop_python_packages, release_version)
     pass
   
-  for ppkg in :
+  for ppkg in python_packages:
     subprocess.run([cmd, '-H', 'pip3', 'install', ppkg])
     pass
   pass
