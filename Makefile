@@ -1,5 +1,5 @@
 
-.PHONY: setup upload install manifest local run foo
+.PHONY: setup upload install manifest local run ui
 
 PYPI_USER := $(shell echo $$PYPI_USERNAME)
 PYPI_PASSWORD := $(shell echo $$PYPI_PASSWORD)
@@ -46,3 +46,6 @@ run:
 
 flask:
 	. ./venv/bin/activate && PYTHONPATH=${PWD} FLASK_APP=wce_triage.backend.app:create_app FLASK_ENV=development sudo -E flask wce --host localhost --port 8400 --wcedir /usr/local/share/wce
+
+ui:
+	rsync -av --delete ../wce-triage-ui/build/ ./wce_triage/ui/

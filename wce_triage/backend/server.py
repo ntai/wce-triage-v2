@@ -85,7 +85,7 @@ class TriageServer(threading.Thread):
     self._emit_counter = itertools.count()
     self._runners = {}
     self._computer = None
-    self._triage = ModelDispatch(Model(meta={"tag": "triage"}), view=self._socketio_view)
+    self._triage = ModelDispatch(Model(meta={"tag": "triage"}, default=[]), view=self._socketio_view)
     self.triage_timestamp = None
     self.target_disks = []
     self.live_triage = False
@@ -177,8 +177,8 @@ class TriageServer(threading.Thread):
 
   def run(self):
     while True:
+      self.periodic_task()
       time.sleep(2)
-      self.periodic_taks()
       pass
     pass
 
@@ -213,10 +213,11 @@ class TriageServer(threading.Thread):
       pass
     pass
 
-  def periodic_taks(self):
+  def periodic_task(self):
     if self.triage_timestamp is None:
-      self.update_triage()
+      self.initial_triage()
       pass
+    self.update_triage()
     self.check_autoload()
     pass
 
@@ -321,18 +322,20 @@ class TriageServer(threading.Thread):
     return decisions
 
 
-  def update_triage(self):
+  def initial_triage(self):
     self.triage_timestamp = datetime.datetime.now()
-    if self._computer is None:
-      self._computer = Computer()
-      pass
-    self.overall_decision = self._computer.triage(live_system=self.live_triage)
+    self._computer = Computer()
+    self.overall_changed(self._computer.triage(live_system=self.live_triage))
+    pass
 
-    computer: Computer  = self._computer
+
+  def update_triage(self):
+    computer: Computer = self._computer
     (added, changed, removed) = self.disk_portal.detect_disks()
 
     disks = {"disks": [jsoned_disk(disk) for disk in self.disk_portal.disks]}
-    if len(self._disks.model.data["disks"]) != len(disks["disks"]) or max([0 if t0 == t1 else 1 for t0, t1 in zip(disks["disks"], self._disks.model.data["disks"])]) == 1:
+    if len(self._disks.model.data["disks"]) != len(disks["disks"]) or max(
+      [0 if t0 == t1 else 1 for t0, t1 in zip(disks["disks"], self._disks.model.data["disks"])]) == 1:
       self._disks.dispatch(disks)
       pass
 
@@ -343,11 +346,15 @@ class TriageServer(threading.Thread):
       pass
     pass
 
-
   def update_component_decision(self, descriptors: dict, updates: dict):
-    """updates single component triage decision.
-    descriptors:
-    updates:
+    """keys dict : descriptor of component. (eg: { "component": "ethernet", "device": "eth0" })
+updates dict : values to update (eg: { "verdict": True, "message": "Network is working" })
+overall_changed:
+
+When a status/decision of component changes, this is called to update the decision of component which may or may not change the overall decision as well.
+
+Since there is no way to listen to audio, only way to confirm the functionality of component is to listen to the sound played on the computer.
+A triaging person can decide whether not sound playing. Also, if you plug in Ethernet to a router, the network status changes (such as detecting carrier) so it's done through this.
     """
     computer: Computer  = self._computer
     updated = computer.update_decision(descriptors, updates, overall_changed=self.overall_changed)

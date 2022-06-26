@@ -75,7 +75,7 @@ def route_music():
 @dispatch_bp.route("/messages")
 def route_messages():
   from .messages import message_model
-  return { "messages": message_model.data.get("message", [])}
+  return { "messages": [ message.get("message") for message in message_model.data.get("message", [])]}
 
 
 # get_cpu_info is potentially ver slow for older computers as this runs a
@@ -336,4 +336,4 @@ def route_network_device_status():
   return netstat, HTTPStatus.OK
 
 
-dispatch_bp.add_url_rule("/opticaldrivetest", view_func=route_opticaldrivetest)
+dispatch_bp.add_url_rule("/opticaldrivetest", view_func=route_opticaldrivetest, methods=["POST"])
