@@ -34,7 +34,7 @@ setuptools.setup(
   include_package_data=True,
   install_requires=[
     'python-socketio==5.6.0',
-    'aiohttp==3.6.2',
+    'aiohttp==3.7.4',
     'aiohttp_cors==0.7.0'
   ],
   classifiers=[
