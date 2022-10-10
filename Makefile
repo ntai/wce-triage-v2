@@ -4,7 +4,7 @@
 PYPI_USER := $(shell echo $$PYPI_USERNAME)
 PYPI_PASSWORD := $(shell echo $$PYPI_PASSWORD)
 
-PY3 := python3.10
+PY3 := python3.8
 
 default: setup
 
@@ -16,6 +16,7 @@ bootstrap:
 	$(PY3) -m venv py3
 	. ./py3/bin/activate && $(PY3) -m pip install --upgrade setuptools wheel twine
 	. ./py3/bin/activate && $(PY3) -m ensurepip --upgrade
+	. ./py3/bin/activate && pip install -r requirements.txt
 	touch bootstrap
 
 upload: 
@@ -25,6 +26,7 @@ check:
 	. ./py3/bin/activate && python3 -m twine check
 
 install:
+	sudo -H /usr/bin/pip3 install --no-cache-dir --upgrade  -r requirements.txt
 	sudo -H /usr/bin/pip3 install --no-cache-dir --upgrade  -i https://test.pypi.org/simple/ wce_triage
 
 uninstall:
