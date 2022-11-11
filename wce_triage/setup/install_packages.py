@@ -110,6 +110,9 @@ xorg_packages = {
   ],
   '20.04': [
     'xserver-xorg-video-mga',
+  ],
+  '22.04': [
+    'xserver-xorg-video-mga',
   ]
 }
 
@@ -176,6 +179,8 @@ server_packages = {
   ],
   '18.04': [],
   '20.04': [],
+  '22.04': [],
+
 }
 
 
@@ -231,9 +236,8 @@ desktop_packages = {
     'ubuntu-edu-tertiary',
   ],
   '20.04': [],
+  '22.04': [],
 }
-
-
 
 external_packages = {
   None: [],
@@ -243,7 +247,18 @@ external_packages = {
     ( './primary.deb',   ['curl', '-L', '-o', 'primary.deb',   'https://drive.google.com/uc?export=download&id=1JNn5EvNPnR2XyWJVImVDa2qAQXLhOab7'] ),
     ( './secondary.deb', ['curl', '-L', '-o', 'secondary.deb', 'https://drive.google.com/uc?export=download&id=1kuuSriqjDGBa9XgOctV4a5FkUOQ80A8Y'] ),
     ( './tertiary.deb',  ['curl', '-L', '-o', 'tertiary.deb',  'https://drive.google.com/uc?export=download&id=1b_vbnKZcLBMfGbkSfrUkvPUin7U2LKAm'] ),
+  ],
+  '22.04': [
+    ('./preschool.deb', ['curl', '-L', '-o', 'preschool.deb',
+                         'https://drive.google.com/uc?export=download&id=1xYANzX2gZMKzurZ-qC7hPQjLUkrEsaBy']),
+    ('./primary.deb', ['curl', '-L', '-o', 'primary.deb',
+                       'https://drive.google.com/uc?export=download&id=1JNn5EvNPnR2XyWJVImVDa2qAQXLhOab7']),
+    ('./secondary.deb', ['curl', '-L', '-o', 'secondary.deb',
+                         'https://drive.google.com/uc?export=download&id=1kuuSriqjDGBa9XgOctV4a5FkUOQ80A8Y']),
+    ('./tertiary.deb', ['curl', '-L', '-o', 'tertiary.deb',
+                        'https://drive.google.com/uc?export=download&id=1b_vbnKZcLBMfGbkSfrUkvPUin7U2LKAm']),
   ]
+
 }
   
 

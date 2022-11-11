@@ -88,7 +88,9 @@ kernel_files = {
   "18.04" : [('/vmlinuz', '/var/lib/netboot/wce/vmlinuz'),
              ('/initrd.img', '/var/lib/netboot/wce/initrd.img')],
   "20.04" : [('/boot/vmlinuz', '/var/lib/netboot/wce/vmlinuz'),
-             ('/boot/initrd.img', '/var/lib/netboot/wce/initrd.img')]
+             ('/boot/initrd.img', '/var/lib/netboot/wce/initrd.img')],
+  "22.04": [('/boot/vmlinuz', '/var/lib/netboot/wce/vmlinuz'),
+            ('/boot/initrd.img', '/var/lib/netboot/wce/initrd.img')],
 }
                    
 for src, dest in kernel_files[os_version]:
