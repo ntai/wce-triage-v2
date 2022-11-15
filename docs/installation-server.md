@@ -161,3 +161,9 @@ NOTE: Be sure to chmod. TFTP is not root and had a few head scratching happened 
 ```
 sudo touch /etc/cloud/cloud-init.disabled
 ```
+
+## tftpd
+
+The server used to use atftpd. In 22.04, this became a problem. glib detects an issue and the process is killed.
+The atftpd package is replaced by tftpd package. It no longer allows fancy options but it is fine for read-only use 
+from inetd.
