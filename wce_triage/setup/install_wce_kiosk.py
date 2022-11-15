@@ -61,7 +61,9 @@ subprocess.run('sudo install -m 0555 /tmp/wce-kiosk.sh /usr/local/bin', shell=Tr
 wce_kiosk_service = open('/tmp/wce-kiosk.service', 'w')
 wce_kiosk_service.write('''[Unit]
 Description=WCE Kiosk Web Browser
-After=dbus.target network.target sound.target network-online.target wce-triage.target
+After=dbus.target
+Wants=network.target sound.target network-online.target
+Requires=wce-triage.target
 StartLimitIntervalSec=0
 
 [Service]

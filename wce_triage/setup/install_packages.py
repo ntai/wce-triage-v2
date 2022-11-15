@@ -164,7 +164,7 @@ desktop_python_packages = {
 #
 server_packages = {
   None: [
-    'atftpd',
+    'tftpd',
     'lighttpd',
     'dnsmasq',
     'emacs',
@@ -175,12 +175,13 @@ server_packages = {
     'pxelinux',
     'syslinux',
     'syslinux-common',
-    'python3-distutils'
+    'python3-distutils',
+    'beep',
+    'syslog-ng',
   ],
   '18.04': [],
   '20.04': [],
   '22.04': [],
-
 }
 
 
