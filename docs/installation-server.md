@@ -103,7 +103,7 @@ In the past, this is done patching the file. Lately, this is done by aufs up to 
 /dev/disk/by-uuid/1989-D224 /boot/efi vfat defaults 0 1
 
 overlay /var/lib/netclient/wcetriage_amd64  overlay x-systemd.requires=/payload,workdir=/payload/wce/triage/amd64-workdir,upperdir=/payload/wce/triage/installer/amd64-overlay,lowerdir=/payload/wce/triage/installer/amd64,nfs_export=on 0 2
-/payload/wce/wce-disk-images /usr/local/share/wce/wce-disk-images none x-systemd.requires=/payload,bind 0 2
+/payload/wce/wce-disk-images x-systemd.requires=/payload,/usr/local/share/wce/wce-disk-images none x-systemd.requires=/payload,bind 0 2
 ```
 
 ## pxeboot by dnsmasq and tftp
