@@ -1,0 +1,19 @@
+*** default.pa~	2019-01-23 01:54:58.000000000 -0500
+--- default.pa	2019-06-22 16:56:40.811830356 -0400
+***************
+*** 22,28 ****
+  
+  ### Automatically restore the volume of streams and devices
+  load-module module-device-restore
+! load-module module-stream-restore
+  load-module module-card-restore
+  
+  ### Automatically augment property information from .desktop files
+--- 22,28 ----
+  
+  ### Automatically restore the volume of streams and devices
+  load-module module-device-restore
+! load-module module-stream-restore restore_device=false
+  load-module module-card-restore
+  
+  ### Automatically augment property information from .desktop files

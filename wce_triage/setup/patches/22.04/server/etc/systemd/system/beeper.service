@@ -1,0 +1,15 @@
+[Unit]
+After=systemd-user-sessions.service plymouth-quit-wait.service
+After=rc-local.service
+Before=getty.target
+IgnoreOnIsolate=yes
+
+[Service]
+ExecStart=/usr/local/bin/machine-is-up
+ExecStop=/usr/local/bin/machine-is-down
+Type=oneshot
+RemainAfterExit=true
+User=root
+
+[Install]
+WantedBy=basic.target
