@@ -2,10 +2,9 @@
 #
 import os, subprocess
 import json
+import re
 
-patch_dir = os.path.dirname(__file__)
-COMMON_PATCH_SRC = os.path.join(patch_dir, 'patches', "common")
-VARIANT_PATCH_SRC = os.path.join(patch_dir, 'patches', os.environ['PATCHES'])
+
 SYSTEM_ROOT = '/'
 
 class patch_plan:
@@ -123,7 +122,24 @@ class plan_builder:
     pass
   pass
 
+
+def get_ubuntu_release():
+  release_re = re.compile( 'DISTRIB_RELEASE\s*=\s*(\d+\.\d+)' )
+  with open('/etc/lsb-release') as lsb_release_fd:
+    for line in lsb_release_fd.readlines():
+      result = release_re.search(line)
+      if result:
+        return result.group(1)
+      pass
+    pass
+  return None
+
 if __name__ == "__main__":
+  patch_dir = os.path.dirname(__file__) 
+  patch_source_root = os.path.join(patch_dir, 'patches', get_ubuntu_release())
+  COMMON_PATCH_SRC = os.path.join(patch_source_root, "common")
+  VARIANT_PATCH_SRC = os.path.join(patch_source_root, os.environ['PATCHES'])
+
   builder = plan_builder()
   builder.traverse_dir(COMMON_PATCH_SRC)
   builder.traverse_dir(VARIANT_PATCH_SRC)

@@ -1,0 +1,53 @@
+*** 10_linux.orig	2023-03-16 00:28:11.312749803 -0400
+--- 10_linux	2023-03-16 00:29:38.585060745 -0400
+***************
+*** 175,180 ****
+--- 175,188 ----
+    version="$2"
+    type="$3"
+    args="$4"
++   suggested_title="$5"
++ 
++   title="${os}"
++   if [ "x$suggested_title" = x ] ; then
++       title="$os"
++   else
++       title="$suggested_title"
++   fi
+  
+    if [ -z "$boot_device_id" ]; then
+        boot_device_id="$(grub_get_device_id "${GRUB_DEVICE}")"
+***************
+*** 196,202 ****
+        fi
+        echo "menuentry '$(echo "$title" | grub_quote)' ${CLASS} \$menuentry_id_option 'gnulinux-$version-$type-$boot_device_id' {" | sed "s/^/$submenu_indentation/"
+    else
+!       echo "menuentry '$(echo "$os" | grub_quote)' ${CLASS} \$menuentry_id_option 'gnulinux-simple-$boot_device_id' {" | sed "s/^/$submenu_indentation/"
+    fi      
+    if [ "$quick_boot" = 1 ]; then
+        echo "	recordfail" | sed "s/^/$submenu_indentation/"
+--- 204,210 ----
+        fi
+        echo "menuentry '$(echo "$title" | grub_quote)' ${CLASS} \$menuentry_id_option 'gnulinux-$version-$type-$boot_device_id' {" | sed "s/^/$submenu_indentation/"
+    else
+!       echo "menuentry '$(echo "$title" | grub_quote)' ${CLASS} \$menuentry_id_option 'gnulinux-simple-$boot_device_id' {" | sed "s/^/$submenu_indentation/"
+    fi      
+    if [ "$quick_boot" = 1 ]; then
+        echo "	recordfail" | sed "s/^/$submenu_indentation/"
+***************
+*** 500,506 ****
+  
+    if [ "x$is_top_level" = xtrue ] && [ "x${GRUB_DISABLE_SUBMENU}" != xtrue ]; then
+      linux_entry "${OS}" "${version}" simple \
+!     "${GRUB_CMDLINE_LINUX} ${GRUB_CMDLINE_LINUX_DEFAULT}"
+  
+      submenu_indentation="$grub_tab"
+      
+--- 508,514 ----
+  
+    if [ "x$is_top_level" = xtrue ] && [ "x${GRUB_DISABLE_SUBMENU}" != xtrue ]; then
+      linux_entry "${OS}" "${version}" simple \
+!     "${GRUB_CMDLINE_LINUX} ${GRUB_CMDLINE_LINUX_DEFAULT}" "${GRUB_PRIMARY_MENU_TITLE}"
+  
+      submenu_indentation="$grub_tab"
+      
