@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 # Copyright (c) 2019 Naoyuki tai
 # MIT license - see LICENSE
+from typing import Callable
 
 from .component import Component
 # from . import pci as _pci
@@ -103,8 +104,11 @@ Overall decision (self.decision) is True only when every component decision is g
     return
 
   # This may be too invasive...
-  def update_decision( self, keys, updates, overall_changed = None):
+  def update_decision( self, keys: dict, updates: dict, overall_changed: Callable = None):
     """updating decision of component. 
+keys dict : descriptor of component. (eg: { "component": "ethernet", "device": "eth0" })
+updates dict : values to update (eg: { "verdict": True, "message": "Network is working" })
+overall_changed:
 
 When a status/decision of component changes, this is called to update the decision of component which may or may not change the overall decision as well.
 
@@ -115,12 +119,14 @@ A triaging person can decide whether not sound playing. Also, if you plug in Eth
     for decision in self.decisions:
       matched_decision = decision
 
+      # Find a triage decision that matches all of criteria
       for key, value in keys.items():
         if decision.get(key) != value:
           matched_decision = None
           break
         pass
       
+      # If found, end the search
       if matched_decision:
         break
       pass
@@ -130,8 +136,15 @@ A triaging person can decide whether not sound playing. Also, if you plug in Eth
       for key, value in updates.items():
         if key == 'message':
           matched_decision[key] = value.strip() + " " + matched_decision[key].strip()
-        else:
+        elif key == 'result':
+          # this should be bool value
+          matched_decision[key] = value
+        elif isinstance(value, str):
           matched_decision[key] = value.strip()
+        else:
+          # ???
+          tlog.debug(f"??? {key} : {value}")
+          matched_decision[key] = value
           pass
         pass
       pass

@@ -8,7 +8,7 @@ and webscoket server
 """
 import logging
 
-from flask import Flask, send_file
+from flask import Flask
 from flask_cors import CORS
 from flask_socketio import SocketIO
 import os
@@ -146,5 +146,3 @@ def create_app():
   app.register_blueprint(wce_bp)
 
   return app
-
-

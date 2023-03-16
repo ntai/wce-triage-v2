@@ -17,13 +17,14 @@ from .formatters import jsoned_disk
 from .messages import UserMessages, ErrorMessages
 from .models import Model, ModelDispatch
 from .cpu_info import CpuInfoModel
-from .process_runner import ProcessRunner, RunnerOutputDispatch
+from .process_runner import ProcessRunner, RunnerOutputDispatch, ImageRunnerOutputDispatch
 from .view import View
-from ..components.disk import DiskPortal
-from ..components.computer import Computer
+from ..components import DiskPortal
+from ..components import Computer
+from ..components import OpticalDrives
 from ..lib.disk_images import get_disk_images
 from ..const import const
-from ..lib.util import get_triage_logger
+from ..lib import get_triage_logger
 import itertools
 import datetime
 import threading
@@ -70,8 +71,8 @@ class TriageServer(threading.Thread):
 
     self._disks = ModelDispatch(DiskModel(default = {"disks": []}), view=self._socketio_view)
 
-    self._load_image = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskRestroing": False, "device": ""}, meta={"tag": "loadimage"}), view=self._socketio_view)
-    self._save_image = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskSaving": False, "device": ""}, meta={"tag": "saveimage"}), view=self._socketio_view)
+    self._load_image = ImageRunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskRestroing": False, "device": ""}, meta={"tag": "loadimage"}), view=self._socketio_view)
+    self._save_image = ImageRunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskSaving": False, "device": ""}, meta={"tag": "saveimage"}), view=self._socketio_view)
     self._wipe_disk = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskWiping": False, "device": ""}, meta={"tag": "wipe"}), view=self._socketio_view)
     self._sync_image = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "device": ""}, meta={"tag": "diskimage"}), view=self._socketio_view)
 
@@ -84,7 +85,7 @@ class TriageServer(threading.Thread):
     self._emit_counter = itertools.count()
     self._runners = {}
     self._computer = None
-    self._triage = ModelDispatch(Model(meta={"tag": "triage"}), view=self._socketio_view)
+    self._triage = ModelDispatch(Model(meta={"tag": "triage"}, default=[]), view=self._socketio_view)
     self.triage_timestamp = None
     self.target_disks = []
     self.live_triage = False
@@ -176,8 +177,8 @@ class TriageServer(threading.Thread):
 
   def run(self):
     while True:
+      self.periodic_task()
       time.sleep(2)
-      self.periodic_taks()
       pass
     pass
 
@@ -187,32 +188,9 @@ class TriageServer(threading.Thread):
     self._triage.dispatch(self.triage_decisions)
     pass
 
-  def periodic_taks(self):
-    if self.triage_timestamp is None:
-      self._triage.dispatch(self.triage_decisions)
-      return
 
-    computer: Computer  = self._computer
-    (added, changed, removed) = self.disk_portal.detect_disks()
-
-    disks = {"disks": [jsoned_disk(disk) for disk in self.disk_portal.disks]}
-    if len(self._disks.model.data["disks"]) != len(disks["disks"]) or max([0 if t0 == t1 else 1 for t0, t1 in zip(disks["disks"], self._disks.model.data["disks"])]) == 1:
-      self._disks.dispatch(disks)
-      pass
-
-    for component in computer.components:
-      for update_key, update_value in component.detect_changes():
-        updated = computer.update_decision(update_key,
-                                           update_value,
-                                           overall_changed=self.overall_changed)
-        if updated:
-          # join the key and value and send it
-          update_value.update(update_key)
-          self._triage.dispatch(update_value)
-        pass
-      pass
-
-    # Kick off the content loading if all of criterias look good
+  def check_autoload(self):
+    """Kick off the content loading if all of criterias look good"""
     if self.autoload:
       self.autoload = False
       self.target_disks = []
@@ -233,6 +211,14 @@ class TriageServer(threading.Thread):
         self.target_disks = []
         pass
       pass
+    pass
+
+  def periodic_task(self):
+    if self.triage_timestamp is None:
+      self.initial_triage()
+      pass
+    self.update_triage()
+    self.check_autoload()
     pass
 
   @property
@@ -304,16 +290,21 @@ class TriageServer(threading.Thread):
     self._runners[name] = runner
     pass
 
-  def get_runner(self, runner_class=ProcessRunner) -> Optional[ProcessRunner]:
+  def get_runner(self, runner_class=ProcessRunner, create=True, dispatch=None) -> Optional[ProcessRunner]:
     name = runner_class.class_name()
     runner = self._runners.get(name)
-    if runner is None:
-      dispatch = self.dispatches.get(name)
+    if runner is None and create:
+      dispatch = self.dispatches.get(name) if dispatch is None else dispatch
       runner = runner_class(dispatch)
-      self._runners[name] = runner
+      self.register_runner(runner)
       runner.start()
       pass
     return runner
+
+  def register_runner(self, runner):
+    name = runner.__class__.class_name()
+    self._runners[name] = runner
+    pass
 
   def send_to_ui(self, event: str, message: dict):
     if isinstance(message, dict):
@@ -325,14 +316,55 @@ class TriageServer(threading.Thread):
   @property
   def triage_decisions(self) -> list:
     if self.triage_timestamp is None:
-      self.triage_timestamp = datetime.datetime.now()
-      if self._computer is None:
-        self._computer = Computer()
-        pass
-      self.overall_decision = self._computer.triage(live_system=self.live_triage)
+      self.update_triage()
       pass
     decisions = [ { "component": "Overall", "result": self.overall_decision } ] + self._computer.decisions
     return decisions
+
+
+  def initial_triage(self):
+    self.triage_timestamp = datetime.datetime.now()
+    self._computer = Computer()
+    self.overall_changed(self._computer.triage(live_system=self.live_triage))
+    pass
+
+
+  def update_triage(self):
+    computer: Computer = self._computer
+    (added, changed, removed) = self.disk_portal.detect_disks()
+
+    disks = {"disks": [jsoned_disk(disk) for disk in self.disk_portal.disks]}
+    if len(self._disks.model.data["disks"]) != len(disks["disks"]) or max(
+      [0 if t0 == t1 else 1 for t0, t1 in zip(disks["disks"], self._disks.model.data["disks"])]) == 1:
+      self._disks.dispatch(disks)
+      pass
+
+    for component in computer.components:
+      for desc, updates in component.detect_changes():
+        self.update_component_decision(desc, updates)
+        pass
+      pass
+    pass
+
+  def update_component_decision(self, descriptors: dict, updates: dict):
+    """keys dict : descriptor of component. (eg: { "component": "ethernet", "device": "eth0" })
+updates dict : values to update (eg: { "verdict": True, "message": "Network is working" })
+overall_changed:
+
+When a status/decision of component changes, this is called to update the decision of component which may or may not change the overall decision as well.
+
+Since there is no way to listen to audio, only way to confirm the functionality of component is to listen to the sound played on the computer.
+A triaging person can decide whether not sound playing. Also, if you plug in Ethernet to a router, the network status changes (such as detecting carrier) so it's done through this.
+    """
+    computer: Computer  = self._computer
+    updated = computer.update_decision(descriptors, updates, overall_changed=self.overall_changed)
+    if updated:
+      # join the key and value and send it
+      updates.update(descriptors)
+      self._triage.dispatch(updates)
+      pass
+    pass
+
 
   @property
   def triage(self) -> list:
@@ -346,7 +378,14 @@ class TriageServer(threading.Thread):
   def disk_image_file_path(self) -> str:
       return os.path.join(self.wcedir, "wce-disk-images", "wce-disk-images.json")
 
+  @property
+  def opticals(self) -> OpticalDrives:
+    _ = self.triage_decisions
+    return self._computer.opticals
+
+
   def start_load_disks(self, reason):
+    # FIXME
     pass
 
   pass

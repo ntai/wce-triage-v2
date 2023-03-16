@@ -79,6 +79,11 @@ base_packages = {
     'nmcli',                    # connect to wifi through nmcli command
     'firefox',                  # Use firefox
   ],
+  '22.04': [
+    'iw',                       # for seeing wifi device list
+    'nmcli',                    # connect to wifi through nmcli command
+    'firefox',                  # Use firefox
+  ],
 }
 
 
@@ -104,6 +109,9 @@ xorg_packages = {
     'xserver-xorg-video-trident',
   ],
   '20.04': [
+    'xserver-xorg-video-mga',
+  ],
+  '22.04': [
     'xserver-xorg-video-mga',
   ]
 }
@@ -156,7 +164,7 @@ desktop_python_packages = {
 #
 server_packages = {
   None: [
-    'atftpd',
+    'tftpd',
     'lighttpd',
     'dnsmasq',
     'emacs',
@@ -167,10 +175,13 @@ server_packages = {
     'pxelinux',
     'syslinux',
     'syslinux-common',
-    'python3-distutils'
+    'python3-distutils',
+    'beep',
+    'syslog-ng',
   ],
   '18.04': [],
   '20.04': [],
+  '22.04': [],
 }
 
 
@@ -226,9 +237,8 @@ desktop_packages = {
     'ubuntu-edu-tertiary',
   ],
   '20.04': [],
+  '22.04': [],
 }
-
-
 
 external_packages = {
   None: [],
@@ -238,7 +248,18 @@ external_packages = {
     ( './primary.deb',   ['curl', '-L', '-o', 'primary.deb',   'https://drive.google.com/uc?export=download&id=1JNn5EvNPnR2XyWJVImVDa2qAQXLhOab7'] ),
     ( './secondary.deb', ['curl', '-L', '-o', 'secondary.deb', 'https://drive.google.com/uc?export=download&id=1kuuSriqjDGBa9XgOctV4a5FkUOQ80A8Y'] ),
     ( './tertiary.deb',  ['curl', '-L', '-o', 'tertiary.deb',  'https://drive.google.com/uc?export=download&id=1b_vbnKZcLBMfGbkSfrUkvPUin7U2LKAm'] ),
+  ],
+  '22.04': [
+    ('./preschool.deb', ['curl', '-L', '-o', 'preschool.deb',
+                         'https://drive.google.com/uc?export=download&id=1xYANzX2gZMKzurZ-qC7hPQjLUkrEsaBy']),
+    ('./primary.deb', ['curl', '-L', '-o', 'primary.deb',
+                       'https://drive.google.com/uc?export=download&id=1JNn5EvNPnR2XyWJVImVDa2qAQXLhOab7']),
+    ('./secondary.deb', ['curl', '-L', '-o', 'secondary.deb',
+                         'https://drive.google.com/uc?export=download&id=1kuuSriqjDGBa9XgOctV4a5FkUOQ80A8Y']),
+    ('./tertiary.deb', ['curl', '-L', '-o', 'tertiary.deb',
+                        'https://drive.google.com/uc?export=download&id=1b_vbnKZcLBMfGbkSfrUkvPUin7U2LKAm']),
   ]
+
 }
   
 
@@ -317,7 +338,7 @@ if __name__ == "__main__":
     python_packages = python_packages + get_package_list(desktop_python_packages, release_version)
     pass
   
-  for ppkg in :
+  for ppkg in python_packages:
     subprocess.run([cmd, '-H', 'pip3', 'install', ppkg])
     pass
   pass

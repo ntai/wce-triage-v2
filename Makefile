@@ -1,9 +1,10 @@
 
-.PHONY: setup upload install manifest local run foo
+.PHONY: setup upload install manifest local run ui
 
 PYPI_USER := $(shell echo $$PYPI_USERNAME)
 PYPI_PASSWORD := $(shell echo $$PYPI_PASSWORD)
 
+PY3 := python3.8
 
 default: setup
 
@@ -11,10 +12,11 @@ setup: manifest
 	. ./py3/bin/activate && python3 setup.py sdist bdist_wheel
 
 bootstrap:
-	sudo apt install python3.8 python3.8-venv 
-	python3.8 -m venv py3
-	. ./py3/bin/activate && python3.8 -m pip install --upgrade setuptools wheel twine
-	. ./py3/bin/activate && python3.8 -m ensurepip --upgrade
+	sudo apt install $(PY3) $(PY3)-venv 
+	$(PY3) -m venv py3
+	. ./py3/bin/activate && $(PY3) -m pip install --upgrade setuptools wheel twine
+	. ./py3/bin/activate && $(PY3) -m ensurepip --upgrade
+	. ./py3/bin/activate && pip install -r requirements.txt
 	touch bootstrap
 
 upload: 
@@ -24,6 +26,7 @@ check:
 	. ./py3/bin/activate && python3 -m twine check
 
 install:
+	sudo -H /usr/bin/pip3 install --no-cache-dir --upgrade  -r requirements.txt
 	sudo -H /usr/bin/pip3 install --no-cache-dir --upgrade  -i https://test.pypi.org/simple/ wce_triage
 
 uninstall:
@@ -45,3 +48,6 @@ run:
 
 flask:
 	. ./venv/bin/activate && PYTHONPATH=${PWD} FLASK_APP=wce_triage.backend.app:create_app FLASK_ENV=development sudo -E flask wce --host localhost --port 8400 --wcedir /usr/local/share/wce
+
+ui:
+	rsync -av --delete ../wce-triage-ui/build/ ./wce_triage/ui/

@@ -1,6 +1,5 @@
 import traceback
-# from ..lib.util import get_triage_logger
-from flask import jsonify, send_file, send_from_directory, Blueprint
+from flask import jsonify, send_file, Blueprint
 from ..version import TRIAGE_VERSION, TRIAGE_TIMESTAMP
 import json
 
@@ -24,7 +23,7 @@ def route_version():
       pass
     pass
   except Exception as exc:
-    from ..lib.util import get_triage_logger, init_triage_logger
+    from ..lib import get_triage_logger, init_triage_logger
     tlog = get_triage_logger()
     tlog.info(
       'Reading /usr/local/share/wce/wce-triage-ui/manifest.json failed with exception. ' + traceback.format_exc())

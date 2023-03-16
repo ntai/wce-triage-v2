@@ -4,9 +4,8 @@
 
 import re, os
 
-from .tasks import op_task_python_simple, fstab_template, efi_template, swap_template
-#from .estimate import 
-from ..lib.util import get_triage_logger
+from ..ops.tasks import op_task_python_simple, fstab_template, efi_template, swap_template
+from ..lib import get_triage_logger
 from ..lib.grub import grub_set_wce_share
 from ..ops.pplan import EFI_NAME
 

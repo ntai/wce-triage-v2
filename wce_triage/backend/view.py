@@ -28,23 +28,3 @@ class ConsoleView(View):
       sys.stdout.flush()
       pass
     pass
-
-
-
-class SocketView(View):
-
-  def updating(self, t0: dict, update: typing.Optional[any], meta: dict):
-    pass
-
-  def updated(self, t1: dict, meta: dict):
-    if update.get("severity", 0) > 1:
-      sys.stderr.write("#2: " + update.get("message", ""))
-      sys.stderr.flush()
-    else:
-      sys.stdout.write("#1: " + update.get("message", ""))
-      sys.stdout.flush()
-      pass
-
-    pass
-
-  pass

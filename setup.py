@@ -33,9 +33,9 @@ setuptools.setup(
             'wce_triage.setup'],
   include_package_data=True,
   install_requires=[
-    'python-socketio',
-    'aiohttp',
-    'aiohttp_cors'
+    'python-socketio==5.6.0',
+    'aiohttp==3.6.2',
+    'aiohttp_cors==0.7.0'
   ],
   classifiers=[
     "Programming Language :: Python :: 3",

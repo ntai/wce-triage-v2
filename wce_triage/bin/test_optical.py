@@ -14,7 +14,7 @@ tlog = init_triage_logger()
 import json
 
 def reply_result(result):
-  jata = json.dumps( { "event": "triageupdate", "runMessage": result } )
+  jata = json.dumps( { "event": "triageupdate", "message": result } )
   tlog.debug(jata)
   print(jata)
   sys.stdout.flush()

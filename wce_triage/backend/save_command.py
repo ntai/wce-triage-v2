@@ -2,7 +2,7 @@ from .messages import UserMessages
 from .models import Model, ModelDispatch
 from .process_runner import SimpleProcessRunner
 from ..lib.disk_images import read_disk_image_types
-from ..lib.util import get_triage_logger
+from ..lib import get_triage_logger
 from ..components.disk import PartitionLister
 from .server import server
 from http import HTTPStatus

@@ -8,5 +8,5 @@ for mod in ['cgi', 'dir-listing', 'flv-streaming', 'rewrite']:
     pass
 
 if not os.path.exists("/var/www/html/wce"):
-    subprocess.run("ln -s /usr/local/share/wce /var/www/html/wce")
+    subprocess.run("ln -s /usr/local/share/wce /var/www/html/wce", shell=True)
     pass
