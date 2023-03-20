@@ -29,7 +29,8 @@ if __name__ == "__main__":
            'install_live_triage',
            # patch up system and boot loader installation
            'patch_system',
-           'install_boot'
+           'install_boot',
+           'cleanup_installation',
   ]
   
   # Install Ubunto packages (some are python packages)

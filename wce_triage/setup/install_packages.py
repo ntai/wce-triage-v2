@@ -146,31 +146,43 @@ triage_kiosk_packages = {
     'smartmontools'
   ],
   '18.04': [],
-  '20.04': [],
+  '20.04': [
+    'overlayroot',
+    'build-essential',
+    'gcc',
+  ],
   '22.04': [
     'overlayroot',
+    'build-essential',
+    'gcc',
   ],
   '24.04': [
     'overlayroot',
-  ]
+    'build-essential',
+    'gcc',  ]
 }
 
-# python-socketio - websocket.
-# I would have used the ubuntu package if provided.
-# semms to not work for now.
-#
-base_python_packages = {
-  None: ['python-socketio']
+# For existing triage server, these packages are needed.
+# 
+
+wce_triage_python_packages = {
+  None: [
+    "aiohttp==3.6.2",
+    "aiohttp-cors==0.7.0",
+    "python-socketio==5.6.0"
+  ]
 }
 
 # Some interesting packages.
 desktop_python_packages = {
-  None: [ 'tensorflow==2.0.0b1',
-          'numpy==1.16.*',
-          'tensorflow-datasets',
-          'h5py'
+  None: [
+    'tensorflow==2.0.0b1',
+    'numpy==1.16.*',
+    'tensorflow-datasets',
+    'h5py'
   ]
 }
+
 
 
 
@@ -350,7 +362,7 @@ if __name__ == "__main__":
   #  Why not use pip3? Ubuntu server is far more stable than pypi server.
   #  Also, the packages on pypi moves too fast and dependencies can be a headache.
 
-  python_packages = get_package_list(base_python_packages, release_version)
+  python_packages = get_package_list(wce_triage_python_packages, release_version)
   if os.environ.get('WCE_DESKTOP') == "true":
     python_packages = python_packages + get_package_list(desktop_python_packages, release_version)
     pass
