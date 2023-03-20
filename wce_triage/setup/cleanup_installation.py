@@ -138,6 +138,9 @@ def get_ubuntu_release():
 def get_package_list(package_list, release_version) -> list:
   return package_list.get(None, []) + package_list.get(release_version, [])
 
+def get_dir_list(dirs_list, release_version) -> list:
+  return dirs_list.get(None, []) + dirs_list.get(release_version, [])
+
 
 def get_package_purge_plan():
   release_version = get_ubuntu_release()
@@ -160,19 +163,20 @@ def get_package_purge_plan():
 
 
 def get_purge_dirs(release_version):
-  dirs = get_dir_list(base_dirs, release_version)
+  dirs = []
+  # dirs = get_dir_list(base_dirs, release_version)
 
   if os.environ.get('WCE_TRIAGE_DISK') == "true":
     dirs = dirs + get_package_list(triage_dirs, release_version)
     pass
 
-  if os.environ.get(const.WCE_SERVER) == "true":
-    dirs = dirs + get_package_list(server_dirs, release_version)
-    pass
+  # if os.environ.get(const.WCE_SERVER) == "true":
+  #   dirs = dirs + get_package_list(server_dirs, release_version)
+  #   pass
 
-  if os.environ.get('WCE_DESKTOP') == "true":
-    dirs = dirs + get_package_list(desktop_dirs, release_version)
-    pass
+  # if os.environ.get('WCE_DESKTOP') == "true":
+  #   dirs = dirs + get_package_list(desktop_dirs, release_version)
+  #   pass
   return dirs, release_version
 
 
