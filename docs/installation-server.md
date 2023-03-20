@@ -143,7 +143,7 @@ pxe-service=x86PC, "WCE Triage/Ubuntu", pxelinux
 ```
 
 
-## /var/lib/netboot/wce_amd64
+## /var/lib/netboot/wce_amd6
 
 ```
 cd /var/lib/netboot/wce_amd64

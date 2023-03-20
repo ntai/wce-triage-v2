@@ -84,6 +84,11 @@ base_packages = {
     'nmcli',                    # connect to wifi through nmcli command
     'firefox',                  # Use firefox
   ],
+  '24.04': [
+    'iw',                       # for seeing wifi device list
+    'nmcli',                    # connect to wifi through nmcli command
+    'firefox',                  # Use firefox
+  ],
 }
 
 
@@ -113,6 +118,9 @@ xorg_packages = {
   ],
   '22.04': [
     'xserver-xorg-video-mga',
+  ],
+  '24.04': [
+    'xserver-xorg-video-mga',
   ]
 }
 
@@ -131,12 +139,19 @@ xorg_packages = {
 triage_kiosk_packages = {
   None: [
     'openbox',
-    'aufs-tools',
     'vbetool',
     'gfxboot',
     'lighttpd',
     'hardinfo',
     'smartmontools'
+  ],
+  '18.04': [],
+  '20.04': [],
+  '22.04': [
+    'overlayroot',
+  ],
+  '24.04': [
+    'overlayroot',
   ]
 }
 
@@ -182,6 +197,7 @@ server_packages = {
   '18.04': [],
   '20.04': [],
   '22.04': [],
+  '24.04': [],
 }
 
 
@@ -238,6 +254,7 @@ desktop_packages = {
   ],
   '20.04': [],
   '22.04': [],
+  '24.04': [],
 }
 
 external_packages = {
