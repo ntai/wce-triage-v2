@@ -21,8 +21,9 @@ subprocess.run(['sudo', '-H', 'install', '-m', '0555', tmpfile, '/usr/local/bin'
 wce_triage_service = open('/tmp/wce-triage.service', 'w')
 wce_triage_service.write('''[Unit]
 Description=WCE Triage service
-After=dbus.target
+After=dbus.target snapd.service
 StartLimitIntervalSec=0
+Wants=network.target sound.target network-online.target
 
 [Service]
 Type=simple
