@@ -23,9 +23,19 @@ def list_installed_packages():
   return installed_packages
 
 
+ppa_list = {
+  '22.04': [
+    'ppa:ubuntu-mozilla-security/ppa',
+  ],
+  '24.04': [
+    'ppa:ubuntu-mozilla-security/ppa',
+  ]
+}
+
 # python3-aiohttp python3-aiohttp-cors - triage backend.
 # yes, you can cross-domain
 # probably, not used for live triage.
+
 
 base_packages = {
   None: [
@@ -83,11 +93,13 @@ base_packages = {
     'iw',                       # for seeing wifi device list
     'nmcli',                    # connect to wifi through nmcli command
     'firefox',                  # Use firefox
+    'xdg-utils',
   ],
   '24.04': [
     'iw',                       # for seeing wifi device list
     'nmcli',                    # connect to wifi through nmcli command
     'firefox',                  # Use firefox
+    'xdg-utils',
   ],
 }
 
@@ -159,7 +171,8 @@ triage_kiosk_packages = {
   '24.04': [
     'overlayroot',
     'build-essential',
-    'gcc',  ]
+    'gcc',
+  ]
 }
 
 # For existing triage server, these packages are needed.
@@ -182,9 +195,6 @@ desktop_python_packages = {
     'h5py'
   ]
 }
-
-
-
 
 #
 # Packages for the server
@@ -304,13 +314,15 @@ def get_ubuntu_release():
     pass
   return None
 
+def get_ppa_list(package_list, release_version) -> list:
+  return ppa_list.get(None, []) + ppa_list.get(release_version, [])
+
+
 def get_package_list(package_list, release_version) -> list:
   return package_list.get(None, []) + package_list.get(release_version, [])
 
 
-def get_package_plan():
-  release_version = get_ubuntu_release()
-
+def get_package_plan(release_version):
   packages = get_package_list(base_packages, release_version) + get_package_list(xorg_packages, release_version)
 
   if os.environ.get('WCE_TRIAGE_DISK') == "true":
@@ -325,10 +337,22 @@ def get_package_plan():
   if os.environ.get('WCE_DESKTOP') == "true":
     packages = packages + get_package_list(desktop_packages, release_version)
     pass
-  return packages, release_version
+  return packages
 
 
 if __name__ == "__main__":
+  release_version = get_ubuntu_release()
+
+  ppas = get_ppa_list(release_version)
+  if ppas:
+    for ppa in ppas:
+      subprocess.run([cmd, '-H', "add-apt-repository", "-n", "-y",  ppa])
+      pass
+    subprocess.run([cmd, '-H', "apt", "update"])
+    pass
+
+  packages = get_package_plan(release_version)
+
   packages, release_version = get_package_plan()
   installed_packages = list_installed_packages()
   
