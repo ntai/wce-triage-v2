@@ -341,27 +341,25 @@ def get_package_plan(release_version):
 
 
 if __name__ == "__main__":
+  sudo = 'sudo'
+
   release_version = get_ubuntu_release()
 
   ppas = get_ppa_list(release_version)
   if ppas:
     for ppa in ppas:
-      subprocess.run([cmd, '-H', "add-apt-repository", "-n", "-y",  ppa])
+      subprocess.run([sudo, '-H', "add-apt-repository", "-n", "-y", ppa])
       pass
-    subprocess.run([cmd, '-H', "apt", "update"])
+    subprocess.run([sudo, '-H', "apt", "update"])
     pass
 
   packages = get_package_plan(release_version)
-
-  packages, release_version = get_package_plan()
   installed_packages = list_installed_packages()
-  
-  cmd = 'sudo'
 
   for package in packages:
     if installed_packages.get(package):
       continue
-    subprocess.run([cmd, '-H', 'apt', 'install', '-y', '--no-install-recommends', package])
+    subprocess.run([sudo, '-H', 'apt', 'install', '-y', '--no-install-recommends', package])
     pass
 
   if os.environ.get('WCE_DESKTOP') == "true":
@@ -377,7 +375,7 @@ if __name__ == "__main__":
     for deb_name, pkg_argv in get_package_list(external_packages, release_version):
       ext_package_files.append(deb_name)
       subprocess.run(pkg_argv)
-      subprocess.run([cmd, 'apt', 'install', '--fix-broken', '-y', '--no-install-recommends', deb_name])
+      subprocess.run([sudo, 'apt', 'install', '--fix-broken', '-y', '--no-install-recommends', deb_name])
       pass
     os.chdir(cwd)
     pass
@@ -392,6 +390,6 @@ if __name__ == "__main__":
     pass
   
   for ppkg in python_packages:
-    subprocess.run([cmd, '-H', 'pip3', 'install', ppkg])
+    subprocess.run([sudo, '-H', 'pip3', 'install', ppkg])
     pass
   pass

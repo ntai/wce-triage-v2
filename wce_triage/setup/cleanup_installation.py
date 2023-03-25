@@ -3,6 +3,7 @@
 # Cleanup installation
 #
 import os, subprocess, re, tempfile
+import os.path
 
 from ..const import const
 from .install_vscode import install_vscode
@@ -195,7 +196,7 @@ if __name__ == "__main__":
 
   dirs = get_purge_dirs(release_version)
   for adir in dirs:
-      if os.path.exists():
+      if os.path.exists(adir):
           subprocess.run(['rm', '-rf', adir])
           pass
       pass
