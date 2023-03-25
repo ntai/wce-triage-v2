@@ -2,10 +2,14 @@
 #
 # Install Ubunto packages (some are python packages)
 #
-import os, subprocess, re, tempfile
+import os
+import subprocess
+import re
+import tempfile
 
 from ..const import const
 from .install_vscode import install_vscode
+
 
 def list_installed_packages():
   """Lists and returns installed packages.
@@ -314,7 +318,7 @@ def get_ubuntu_release():
     pass
   return None
 
-def get_ppa_list(package_list, release_version) -> list:
+def get_ppa_list(ppa_list, release_version) -> list:
   return ppa_list.get(None, []) + ppa_list.get(release_version, [])
 
 
@@ -345,7 +349,7 @@ if __name__ == "__main__":
 
   release_version = get_ubuntu_release()
 
-  ppas = get_ppa_list(release_version)
+  ppas = get_ppa_list(ppa_list, release_version)
   if ppas:
     for ppa in ppas:
       subprocess.run([sudo, '-H', "add-apt-repository", "-n", "-y", ppa])
