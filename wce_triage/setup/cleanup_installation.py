@@ -2,7 +2,7 @@
 #
 # Cleanup installation
 #
-import os, subprocess, re, tempfile
+import os, subprocess, re
 import os.path
 
 from ..const import const

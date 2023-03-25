@@ -43,7 +43,7 @@ if __name__ == "__main__":
   lister = PartitionLister(disk)
   lister.execute()
   part = disk.find_partition('Linux')
-  if part == None:
+  if part is None:
     part = disk.find_partition_by_file_system('ext4')
     pass
   if part is None:

@@ -8,9 +8,9 @@ import re
 SYSTEM_ROOT = '/'
 
 class patch_plan:
-  def __init__(self, rootdepth, dir, file):
+  def __init__(self, rootdepth, direc, file):
     self.rootdepth = rootdepth
-    self.dir = dir
+    self.dir = direc
     self.file = file
     self.plans = []
     self.plan()
@@ -84,16 +84,17 @@ class patch_plan:
 class plan_builder:
   def __init__(self):
     self.plans = []
+    self.rootdepth = 0
     pass
 
-  def traverse_dir(self, dir):
-    self.rootdepth=len(dir.split('/'))
-    self._traverse_dir(dir)
+  def traverse_dir(self, direc):
+    self.rootdepth = len(direc.split('/'))
+    self._traverse_dir(direc)
     pass
 
-  def _traverse_dir(self, dir):
+  def _traverse_dir(self, direc):
     dirs = []
-    for entity in os.listdir(dir):
+    for entity in os.listdir(direc):
       longpath = os.path.join(dir, entity)
       if os.path.isdir(longpath):
         dirs.append(longpath)

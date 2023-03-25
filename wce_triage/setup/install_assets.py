@@ -22,6 +22,7 @@ if __name__ == "__main__":
   subprocess.call('apt download grub-efi-amd64', shell=True, stderr=subprocess.PIPE)
 
   apt = subprocess.run('apt search -q xserver-xorg-video-nvidia', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  driver_name = ""
   for line in apt.stdout.decode('iso-8859-1').splitlines():
     line = line.strip()
     if 'xserver-xorg-video-nvidia' in line:

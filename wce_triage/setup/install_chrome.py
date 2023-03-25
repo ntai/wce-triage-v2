@@ -4,7 +4,7 @@
 Install Chrome... Not quite. I used to use the Chrome but Chromium is a
 fine replacement, and doesn't need extra work.
 """
-import subprocess
+#import subprocess
 
 if __name__ == "__main__":
   #
