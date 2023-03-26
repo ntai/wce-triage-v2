@@ -68,11 +68,13 @@ triage_packages = {
     'build-essential',
     'gcc',
     'cloud-init',
+    'python3-dev',
   ],
   '24.04': [
     'build-essential',
     'gcc',
     'cloud-init',
+    'python3-dev',
   ]
 }
 

@@ -63,7 +63,7 @@ wce_kiosk_service.write('''[Unit]
 Description=WCE Kiosk Web Browser
 After=snapd.service
 Wants=network.target sound.target network-online.target
-Requires=wce_triage.service
+Requires=wce-triage.service
 StartLimitIntervalSec=0
 
 [Service]

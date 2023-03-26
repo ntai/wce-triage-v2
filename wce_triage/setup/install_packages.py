@@ -98,6 +98,8 @@ base_packages = {
     'nmcli',                    # connect to wifi through nmcli command
     'firefox',                  # Use firefox
     'xdg-utils',
+    'build-essential',          # Needed to build python packages. Should be uninstalled at the end
+    'python3-dev'
   ],
   '24.04': [
     'iw',                       # for seeing wifi device list
@@ -168,11 +170,13 @@ triage_kiosk_packages = {
     'gcc',
   ],
   '22.04': [
+    'iproute2',
     'overlayroot',
     'build-essential',
     'gcc',
   ],
   '24.04': [
+    'iproute2',
     'overlayroot',
     'build-essential',
     'gcc',
