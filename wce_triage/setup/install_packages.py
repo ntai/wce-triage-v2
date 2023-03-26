@@ -4,12 +4,11 @@
 #
 import os
 import subprocess
-import re
 import tempfile
 
 from ..const import const
 from .install_vscode import install_vscode
-
+from . import get_ubuntu_release
 
 def list_installed_packages():
   """Lists and returns installed packages.
@@ -157,6 +156,23 @@ xorg_packages = {
 # lighttpd - serving payload. much better than using python.
 #
 
+for_server_minimal = [
+    # Because the minimal server contains very little, this list is longer.
+    # Maybe not using the minimal makes things easier but then it may include
+    # man pages
+    'pulseaudio-utils',
+    'iproute2',
+    'overlayroot',
+    'build-essential',          # Needed to build python packages. Should be uninstalled at the end
+    'python3-dev'
+    'gcc',
+    'fdisk',
+    'isc-dhcp-client',          # needs to be marked install
+    'netplan.io',
+    'python3-requests',
+    'python3-urllib3',
+]
+
 triage_kiosk_packages = {
   None: [
     'openbox',
@@ -172,20 +188,10 @@ triage_kiosk_packages = {
     'build-essential',
     'gcc',
   ],
-  '22.04': [
-    'apt-utils',
-    'iproute2',
-    'overlayroot',
-    'build-essential',          # Needed to build python packages. Should be uninstalled at the end
-    'python3-dev'
-    'gcc',
+  '22.04': for_server_minimal + [
   ],
-  '24.04': [
-    'iproute2',
-    'overlayroot',
-    'build-essential',
-    'gcc',
-  ]
+  '24.04': for_server_minimal + [
+  ],
 }
 
 # For existing triage server, these packages are needed.
@@ -319,18 +325,6 @@ external_packages = {
 
 }
   
-
-
-def get_ubuntu_release():
-  release_re = re.compile( 'DISTRIB_RELEASE\s*=\s*(\d+\.\d+)' )
-  with open('/etc/lsb-release') as lsb_release_fd:
-    for line in lsb_release_fd.readlines():
-      result = release_re.search(line)
-      if result:
-        return result.group(1)
-      pass
-    pass
-  return None
 
 def get_ppa_list(ppa_list, release_version) -> list:
   return ppa_list.get(None, []) + ppa_list.get(release_version, [])

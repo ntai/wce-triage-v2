@@ -13,7 +13,7 @@ from flask_cors import CORS
 from flask_socketio import SocketIO
 import os
 import click
-from flask.cli import CertParamType, _validate_key, SeparatedPathType, pass_script_info, show_server_banner, get_debug_flag, get_env, DispatchingApp
+from flask.cli import CertParamType, _validate_key, SeparatedPathType, pass_script_info, show_server_banner, get_debug_flag
 from werkzeug.serving import run_simple
 
 
@@ -120,16 +120,16 @@ def create_app():
     if debugger is None:
         debugger = debug
 
-    show_server_banner(get_env(), debug, info.app_import_path, eager_loading)
+    show_server_banner(debug, info.app_import_path)
     run_simple(
         host,
         port,
-        DispatchingApp(info.load_app, use_eager_loading=eager_loading),
+        info.load_app,
         use_reloader=reload,
         use_debugger=debugger,
         threaded=with_threads,
         ssl_context=cert,
-        extra_files=extra_files,
+        extra_files=extra_files
     )
     pass
 

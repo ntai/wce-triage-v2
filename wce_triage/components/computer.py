@@ -12,6 +12,7 @@ from . import disk as _disk
 from . import video as _video
 from . import sound as _sound
 from . import optical_drive as _optical_drive
+from . import power as _power
 
 import re
 
@@ -62,7 +63,9 @@ As a aggregator of components, it calls into the device detections and accumulat
 
     self.opticals = _optical_drive.OpticalDrives()
 
-    self.components = [ self.cpu, self.memory, self.video, self.disk_portal, self.opticals, self.networks, self.sound]
+    self.power = _power.PowerSupply()
+
+    self.components = [ self.cpu, self.memory, self.video, self.disk_portal, self.opticals, self.networks, self.sound, self.power]
     pass
 
 
