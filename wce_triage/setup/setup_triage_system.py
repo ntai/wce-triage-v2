@@ -26,6 +26,8 @@ if __name__ == "__main__":
            'install_assets',
            'install_wce_triage',
            'install_wce_kiosk',
+           # Install non-snap (aka pkg) Firefox
+           'install_firefox',
            'install_live_triage',
            # patch up system and boot loader installation
            'patch_system',
