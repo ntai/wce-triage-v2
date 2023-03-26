@@ -81,4 +81,4 @@ wce_kiosk_service.close()
 subprocess.run(['sudo', '-H', 'install', '-m', '0644', '/tmp/wce-kiosk.service', '/etc/systemd/system/wce-kiosk.service'])
 
 subprocess.run(['sudo', 'systemctl', 'daemon-reload'])
-subprocess.run(['sudo', 'systemctl', 'enable', 'wce-kiosk.service'])
+subprocess.run(['sudo', 'systemctl', 'enable', 'wce-triage.service'])

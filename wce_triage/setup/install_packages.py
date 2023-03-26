@@ -83,7 +83,10 @@ base_packages = {
     'alsa-firmware-loaders',
 
     #
-    'parallel'
+    'parallel',
+    #
+    # Network
+    #
   ],
   '18.04': [
     'iwconfig',                 # for seeing wifi device list
@@ -92,20 +95,20 @@ base_packages = {
     'iw',                       # for seeing wifi device list
     'nmcli',                    # connect to wifi through nmcli command
     'firefox',                  # Use firefox
+    'xdg-utils',
+    'build-essential',
   ],
   '22.04': [
     'iw',                       # for seeing wifi device list
     'nmcli',                    # connect to wifi through nmcli command
-    'firefox',                  # Use firefox
     'xdg-utils',
-    'build-essential',          # Needed to build python packages. Should be uninstalled at the end
-    'python3-dev'
+    'build-essential',
   ],
   '24.04': [
     'iw',                       # for seeing wifi device list
     'nmcli',                    # connect to wifi through nmcli command
-    'firefox',                  # Use firefox
     'xdg-utils',
+    'build-essential',
   ],
 }
 
@@ -170,9 +173,11 @@ triage_kiosk_packages = {
     'gcc',
   ],
   '22.04': [
+    'apt-utils',
     'iproute2',
     'overlayroot',
-    'build-essential',
+    'build-essential',          # Needed to build python packages. Should be uninstalled at the end
+    'python3-dev'
     'gcc',
   ],
   '24.04': [
@@ -270,6 +275,8 @@ desktop_packages = {
     # GNU Octave and friends
     'gnuplot-qt',
     'gnuplot-x11',
+    'g++',
+    'gcc',
     'libopenblas-base',
     'libatlas3-base'
     'pstoedit',
@@ -282,8 +289,11 @@ desktop_packages = {
     'ubuntu-edu-secondary',
     'ubuntu-edu-tertiary',
   ],
-  '20.04': [],
-  '22.04': [],
+  '20.04': [
+    
+  ],
+  '22.04': [
+  ],
   '24.04': [],
 }
 
@@ -356,9 +366,9 @@ if __name__ == "__main__":
   ppas = get_ppa_list(ppa_list, release_version)
   if ppas:
     for ppa in ppas:
-      subprocess.run([sudo, '-H', "add-apt-repository", "-n", "-y", ppa])
+      subprocess.run([sudo, '-E', '-H', "add-apt-repository", "-n", "-y", ppa])
       pass
-    subprocess.run([sudo, '-H', "apt", "update"])
+    subprocess.run([sudo, '-E', '-H', "apt", "update"])
     pass
 
   packages = get_package_plan(release_version)
@@ -367,7 +377,7 @@ if __name__ == "__main__":
   for package in packages:
     if installed_packages.get(package):
       continue
-    subprocess.run([sudo, '-H', 'apt', 'install', '-y', '--no-install-recommends', package])
+    subprocess.run([sudo, '-E', '-H', 'apt', 'install', '-y', '--no-install-recommends', package])
     pass
 
   if os.environ.get('WCE_DESKTOP') == "true":
@@ -398,6 +408,6 @@ if __name__ == "__main__":
     pass
   
   for ppkg in python_packages:
-    subprocess.run([sudo, '-H', 'pip3', 'install', ppkg])
+    subprocess.run([sudo, '-E', '-H', 'pip3', 'install', ppkg])
     pass
   pass

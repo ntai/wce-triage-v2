@@ -65,16 +65,12 @@ triage_packages = {
   '18.04': [],
   '20.04': [],
   '22.04': [
-    'build-essential',
     'gcc',
     'cloud-init',
-    'python3-dev',
   ],
   '24.04': [
-    'build-essential',
     'gcc',
     'cloud-init',
-    'python3-dev',
   ]
 }
 
@@ -188,18 +184,18 @@ if __name__ == "__main__":
   packages, release_version = get_package_purge_plan()
   installed_packages = list_installed_packages()
   
-  cmd = 'sudo'
+  cmd = 'sudo' # so that I can use echo to print command
 
   for package in packages:
     if not installed_packages.get(package):
       continue
-    subprocess.run([cmd, '-H', 'apt', 'purge', '-y', package])
+    subprocess.run([cmd, '-E', '-H', 'apt', 'purge', '-y', package])
     pass
 
   dirs = get_purge_dirs(release_version)
   for adir in dirs:
       if os.path.exists(adir):
-          subprocess.run(['rm', '-rf', adir])
+          subprocess.run([cmd, '-E', '-H', 'rm', '-rf', adir])
           pass
       pass
           

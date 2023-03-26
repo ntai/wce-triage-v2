@@ -95,13 +95,13 @@ class plan_builder:
   def _traverse_dir(self, direc):
     dirs = []
     for entity in os.listdir(direc):
-      longpath = os.path.join(dir, entity)
+      longpath = os.path.join(direc, entity)
       if os.path.isdir(longpath):
         dirs.append(longpath)
       elif os.path.isfile(longpath):
         if entity.endswith('.metadata.json'):
           continue
-        self.plans.append(patch_plan(self.rootdepth, dir, entity))
+        self.plans.append(patch_plan(self.rootdepth, direc, entity))
         pass
       pass
 

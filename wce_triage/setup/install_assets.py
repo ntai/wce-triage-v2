@@ -83,7 +83,7 @@ if __name__ == "__main__":
     pass
 EOF
 
-MOUNTPOINT=$(python3 /tmp/get-mount-point.py pwd)
+MOUNTPOINT=$(python3 $tempdir/get-mount-point.py pwd)
 cd $MOUNTPOINT/usr/local/share/wce/wce-triage-ui
 pwd
 wget -q -O - http://release.cleanwinner.com/wce/wce-triage-ui.tgz | tar xzf -
