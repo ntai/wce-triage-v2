@@ -12,7 +12,7 @@ from . import disk as _disk
 from . import video as _video
 from . import sound as _sound
 from . import optical_drive as _optical_drive
-from . import power as _power
+from . import power_supply as _power_supply
 
 import re
 
@@ -63,9 +63,9 @@ As a aggregator of components, it calls into the device detections and accumulat
 
     self.opticals = _optical_drive.OpticalDrives()
 
-    self.power = _power.PowerSupply()
+    self.powers = _power_supply.PowerSupply()
 
-    self.components = [ self.cpu, self.memory, self.video, self.disk_portal, self.opticals, self.networks, self.sound, self.power]
+    self.components = [ self.cpu, self.memory, self.video, self.disk_portal, self.opticals, self.networks, self.sound, self.powers]
     pass
 
 
@@ -82,7 +82,7 @@ The difference between live/non-live system is, the mounted disk counts for live
     # The difference between live/non-live system is, the mounted disk
     # counts for live system while non-live triage excludes the monted disk.
     self.live_system = live_system
-    self.gather_info();
+    self.gather_info()
     self.make_decision()
     return self.decision
 
@@ -118,7 +118,7 @@ When a status/decision of component changes, this is called to update the decisi
 Since there is no way to listen to audio, only way to confirm the functionality of component is to listen to the sound played on the computer.
 A triaging person can decide whether not sound playing. Also, if you plug in Ethernet to a router, the network status changes (such as detecting carrier) so it's done through this.
 """
-
+    matched_decision = None
     for decision in self.decisions:
       matched_decision = decision
 

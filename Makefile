@@ -9,21 +9,21 @@ PY3 := python3
 default: setup
 
 setup: manifest
-	. ./py3/bin/activate && python3 setup.py sdist bdist_wheel
+	. ./venv/bin/activate && python3 setup.py sdist bdist_wheel
 
 bootstrap:
 	sudo apt install $(PY3) $(PY3)-venv 
-	$(PY3) -m venv py3
-	. ./py3/bin/activate && $(PY3) -m pip install --upgrade setuptools wheel twine
-	. ./py3/bin/activate && $(PY3) -m ensurepip --upgrade
-	. ./py3/bin/activate && pip install -r requirements.txt
+	$(PY3) -m venv venv
+	. ./venv/bin/activate && $(PY3) -m pip install --upgrade setuptools wheel twine
+	. ./venv/bin/activate && $(PY3) -m ensurepip --upgrade
+	. ./venv/bin/activate && pip install -r requirements.txt
 	touch bootstrap
 
 upload: 
-	. ./py3/bin/activate && twine upload --repository-url https://test.pypi.org/legacy/ dist/* --skip-existing -u ${PYPI_USER} -p ${PYPI_PASSWORD}
+	. ./venv/bin/activate && twine upload --repository-url https://test.pypi.org/legacy/ dist/* --skip-existing -u ${PYPI_USER} -p ${PYPI_PASSWORD}
 
 check:
-	. ./py3/bin/activate && python3 -m twine check
+	. ./venv/bin/activate && python3 -m twine check
 
 install:
 	sudo -H /usr/bin/pip3 install --no-cache-dir --upgrade  -r requirements.txt
@@ -44,7 +44,7 @@ local:
 	sudo rsync -av --delete /home/ntai/sand/wce-triage-v2/wce_triage/ /var/lib/netclient/wcetriage_x32/usr/local/lib/python3.6/dist-packages/wce_triage/
 
 run:
-	. ./py3/bin/activate && PYTHONPATH=${PWD} sudo ./py3/bin/python3 -m wce_triage.http.httpserver
+	. ./venv/bin/activate && PYTHONPATH=${PWD} sudo ./venv/bin/python3 -m wce_triage.http.httpserver
 
 flask:
 	. ./venv/bin/activate && PYTHONPATH=${PWD} FLASK_APP=wce_triage.backend.app:create_app FLASK_ENV=development sudo -E flask wce --host localhost --port 8400 --wcedir /usr/local/share/wce
