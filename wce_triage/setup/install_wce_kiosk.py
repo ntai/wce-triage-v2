@@ -42,14 +42,12 @@ while ! wget -T 1 -O /dev/null -q http://localhost:8312/version.json; do
 done
 
 echo "starting browser" >> $LOGFILE
-sleep 3
-sudo -H -u triage -g triage $BROWSER --display=$DISPLAY --kiosk 'http://localhost:8312' >> $LOGFILE 2>&1
+sudo -H -u triage -g triage $BROWSER --display=$DISPLAY --kiosk  'http://localhost:8312' >> $LOGFILE 2>&1
 echo "browser started" >> $LOGFILE
 
 while wget -T 1 -O /dev/null -q http://localhost:8312/version.json; do
   sleep 1
 done
-
 '''.format(U=TRIAGEUSER))
 wce_kiosk_sh.close()
 

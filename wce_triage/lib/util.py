@@ -187,7 +187,7 @@ def set_triage_logger(logger, log_level=None, filename='/tmp/triage.log'):
   setup_triage_logger(logger, log_level=log_level, filename=filename)
   pass
 
-def get_triage_logger():
+def get_triage_logger() -> logging.Logger:
   global _logger_
   if _logger_ is None:
     init_triage_logger()

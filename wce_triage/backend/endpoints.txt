@@ -20,9 +20,9 @@
   @routes.post("/dispatch/mount") -> dispatch_bp
   @routes.post("/dispatch/shutdown") -> dispatch_bp
   @routes.get("/dispatch/network-device-status.json")  -> dispatch_bp
+  @routes.post("/dispatch/opticaldrivetest") -> dispatch_bp
+  @routes.post("/dispatch/rename") -> dispatch_bp
 
-  @routes.post("/dispatch/opticaldrivetest")
-  @routes.post("/dispatch/rename")
   @routes.post("/dispatch/stop-load")
   @routes.post("/dispatch/stop-wipe")
   @routes.post("/dispatch/unmount")

@@ -243,6 +243,33 @@ def route_delete_image():
     pass
   return {}, HTTPStatus.NOT_FOUND
 
+@dispatch_bp.route("/rename", methods=["POST"])
+def route_rename_image():
+  name_from = request.args.get("from")
+  name_to = request.args.get("to")
+  restoretype = request.args.get("restoretype")
+  tlog = get_triage_logger()
+
+  for disk_image in get_disk_images():
+    if disk_image['name'] != name_from or disk_image['restoreType'] != restoretype:
+      continue
+
+    fullpath = disk_image['fullpath']
+    parent_dir = os.path.split(fullpath)[0]
+    to_path = os.path.join(parent_dir, name_to)
+    try:
+      os.rename(fullpath, to_path)
+      break
+    except IOError:
+      # FIXME: better response?
+      tlog.info("RENAME failed - %s/%s." % (restoretype, name_from), exc_info=True)
+      return {}, HTTPStatus.NOT_FOUND
+    except Exception as exc:
+      # FIXME: better response?
+      tlog.info("RENAME failed - %s/%s." % (restoretype, name_from), exc_info=True)
+      return {}, HTTPStatus.BAD_REQUEST
+      pass
+  return {}, HTTPStatus.OK
 
 # FIXME: probably does not work
 @dispatch_bp.route("/mount", methods=["POST"])

@@ -108,19 +108,24 @@ class PowerSupply(Component):
         reports.append("SN: " + psu["serial_number"])
         pass
       if "technology" in psu:
-        reports.append("SN: " + psu["technology"])
+        reports.append("Material: " + psu["technology"])
         pass
-      return ", ".join(reports)
+      if "energy_full_design" in psu:
+        full_t0 = float(psu["energy_full_design"])
+        # Unit is microwatt hours
+        reports.append("Design capacity: %dWh" % round(full_t0 / 1000000.0))
+        pass
+      return "Battery " + ", ".join(reports)
     elif p_type == "Mains":
       reports = []
       if "online" in psu:
         if psu["online"] == "1":
-          reports.append("Power on")
+          reports.append("AC on")
         else:
-          reports.append("No power")
+          reports.append("AC off")
           pass
         pass
-      return ", ".join(reports)
+      return "Power suppy " + ", ".join(reports)
     return repr(psu)
 
   pass
