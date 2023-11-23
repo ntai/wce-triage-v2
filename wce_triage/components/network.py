@@ -23,12 +23,45 @@ class NetworkDeviceType(Enum):
   pass
 
 
+class RFKill(object):
+
+  def __init__(self):
+    self.devices = {}
+    self.refresh()
+    pass
+
+  def refresh(self):
+    self.devices = {}
+    rfk_root = '/sys/class/rfkill'
+    for rfkill in os.listdir(rfk_root):
+      wifi_mac = os.path.join(rfk_root, rfkill, 'device', 'macaddress')
+      if not os.path.exists(wifi_mac):
+        continue
+      with open(wifi_mac, encoding="iso-8859-1") as mac:
+        macaddress = mac.read()
+        self.devices[macaddress] = {}
+        pass
+      for prop in ['hard', 'soft', 'state']:
+        with open(os.path.join(rfk_root, rfkill, prop), encoding="iso-8859-1") as fd:
+          self.devices[macaddress][prop] = fd.read().strip()
+          pass
+        pass
+      pass
+    pass
+
+  def is_wifi_blocked(self, macaddress):
+    if macaddress not in self.devices:
+      return None
+    return self.devices[macaddress]['hard'] == '1' or self.devices[macaddress]['soft'] == '1'
+
+
 class NetworkDevice(object):
   
   def __init__(self, device_name=None, device_type=None):
     self.device_type = NetworkDeviceType.Unknown if device_type is None else device_type
     self.device_name = device_name
     self.device_node = os.path.join('/sys/class/net', device_name)
+    self.mac_address = None
     self.connected = None
 
     if self.device_type in [None, NetworkDeviceType.Unknown]:
@@ -42,6 +75,14 @@ class NetworkDevice(object):
 
     # from /etc/netplan/<.IF-ssh_host_rsa_key_pub.hashed.json>
     self.config = {}
+
+    try:
+      with open(os.path.join(self.device_node, "address"), encoding="iso-8859-1") as address:
+        self.mac_address = address.read().strip()
+        pass
+      pass
+    except:
+      pass
     pass
   
   def set_config(self, config):
@@ -77,8 +118,6 @@ class NetworkDevice(object):
   pass
 
 
-#
-# FIXME: do something with iwconfig and rfkill
 #
 def detect_net_devices():
   net_devices = []
@@ -147,6 +186,7 @@ class Networks(Component):
 
   def decision(self, **kwargs):
     decisions = []
+    rfkill = RFKill()
 
     blacklist = detect_blacklist_devices()
 
@@ -163,7 +203,8 @@ class Networks(Component):
       for netdev in self.networks:
         connected = " and connected" if netdev.is_network_connected() else " not connected"
         if netdev.is_wifi():
-          msg = "WIFI device '{dev}' detected{conn}. ".format(dev=netdev.device_name, conn=connected)
+          rfk = " and RFKILLed" if rfkill.is_wifi_blocked(netdev.mac_address) else ""
+          msg = "WIFI device '{dev}'{rfk} detected{conn}".format(dev=netdev.device_name, rfk=rfk, conn=connected)
           pass
         else:
           msg = "Network device '{dev}' detected{conn}".format(dev=netdev.device_name, conn=connected)
