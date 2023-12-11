@@ -100,8 +100,7 @@ def create_app():
   def cli_wce(info, wcedir, rootdir, wce_share, live_triage,
     host, port, reload, debugger, eager_loading, with_threads, cert, extra_files):
     from .cli import DevConfig
-    if wcedir:
-      DevConfig.WCEDIR = wcedir
+    DevConfig.WCEDIR = wcedir if wcedir else "/usr/local/share/wce"
     if rootdir:
       DevConfig.TRIAGE_UI_ROOTDIR = rootdir
     if wce_share:
@@ -144,5 +143,35 @@ def create_app():
 
   from .wce_bp import wce_bp
   app.register_blueprint(wce_bp)
+
+  return app
+
+
+# Define and parse the command line arguments
+def flask_app():
+  from ..lib.util import set_triage_logger
+  ui_dir = os.path.join(os.path.split((os.path.split(__file__)[0]))[0], "ui")
+  app = Flask(__name__, root_path=ui_dir)
+  set_triage_logger(app.logger, filename="/tmp/triage.log", log_level=logging.DEBUG)
+  app.url_map.strict_slashes = False
+
+  from .cli import DevConfig
+  DevConfig.WCEDIR = "/usr/local/share/wce"
+  app.config.from_object(DevConfig)
+
+  CORS(app)
+  socketio = SocketIO(app, cors_allowed_origins="*", engineio_logger=False, logger=False)
+  init_socketio(app, socketio)
+  from .meta_bp import meta_bp
+  app.register_blueprint(meta_bp)
+
+  from .dispatch_bp import dispatch_bp
+  app.register_blueprint(dispatch_bp)
+
+  from .wce_bp import wce_bp
+  app.register_blueprint(wce_bp)
+
+  from .server import server
+  server.set_app(app, socketio, DevConfig)
 
   return app

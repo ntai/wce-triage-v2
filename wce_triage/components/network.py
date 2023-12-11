@@ -240,8 +240,3 @@ class Networks(Component):
 
   pass
 
-#
-if __name__ == "__main__":
-  networks = Networks()
-  print(networks.decision())
-  pass

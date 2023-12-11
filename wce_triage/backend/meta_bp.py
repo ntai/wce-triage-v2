@@ -12,6 +12,7 @@ def root_index():
 
 
 @meta_bp.route('/version.json')
+@meta_bp.route('/version')
 def route_version():
   """Get the version number of backend"""
   # FIXME: Front end version is in manifest.

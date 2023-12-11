@@ -24,6 +24,7 @@ dispatch_bp = Blueprint('dispatch', __name__, url_prefix='/dispatch')
 # name: displayed on web
 # arg: arg used for restore image runner.
 @dispatch_bp.route("/wipe-types.json")
+@dispatch_bp.route("/wipe-types")
 def route_wipe_types():
   """Returning wipe types."""
   return jsonify({"wipeTypes": WIPE_TYPES})
@@ -31,6 +32,7 @@ def route_wipe_types():
 #
 #
 @dispatch_bp.route("/triage.json")
+@dispatch_bp.route("/triage")
 def route_triage():
   """Handles requesting triage result"""
   return {"components": server.triage}
@@ -81,6 +83,7 @@ def route_messages():
 # get_cpu_info is potentially ver slow for older computers as this runs a
 # cpu benchmark.
 @dispatch_bp.route("/cpu_info.json")
+@dispatch_bp.route("/cpu_info")
 def route_cpu_info():
   """Handles getting CPU rating """
   return { "cpu_info": server.cpu_info }
@@ -108,6 +111,7 @@ def stop_save():
 
 
 @dispatch_bp.route("/disk-save-status.json")
+@dispatch_bp.route("/disk-save-status")
 def disk_save_status():
   return server._save_image.model.data
 
@@ -119,6 +123,7 @@ def disk_load_status():
 
 
 @dispatch_bp.route("/restore-types.json")
+@dispatch_bp.route("/restore-types")
 def route_restore_types():
   """Returning supported restore types."""
   # disk image type is in lib/disk_images
@@ -126,6 +131,7 @@ def route_restore_types():
 
 
 @dispatch_bp.route("/disks.json")
+@dispatch_bp.route("/disks")
 def route_disks():
   """Handles getting the list of disks"""
   server.disk_portal.detect_disks()
@@ -136,6 +142,7 @@ def route_disks():
 
 
 @dispatch_bp.route("/opticaldrives.json")
+@dispatch_bp.route("/opticaldrives")
 def route_optical_drives():
   """Handles getting the list of disks"""
   opticals = [jsoned_optical(optical) for optical in server.opticals]
@@ -145,6 +152,7 @@ def route_optical_drives():
 
 
 @dispatch_bp.route("/disk-images.json")
+@dispatch_bp.route("/disk-images")
 def route_disk_images():
   """Handles getting the list of disk images on local media"""
   # Loading doesn't have to come from http server, but this is a good test for now.
@@ -208,6 +216,7 @@ def route_sync_image():
 
 
 @dispatch_bp.route("/sync-status.json")
+@dispatch_bp.route("/sync-status")
 def route_sync_status():
   return server._sync_image.model.data
 
@@ -345,6 +354,7 @@ def route_shutdown():
 
 
 @dispatch_bp.route("/network-device-status.json")
+@dispatch_bp.route("/network-device-status")
 def route_network_device_status():
   """Network status"""
   if server.computer is None:

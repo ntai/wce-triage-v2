@@ -2,6 +2,7 @@ from .view import View
 from typing import Optional
 import threading
 
+
 class Model(object):
   _model: dict
   _meta: dict
