@@ -33,11 +33,12 @@ import subprocess
 import json
 import traceback
 
-wce_share_re = re.compile(const.wce_share + '=([\w/.+\-_:?=@#*&\\%]+)')
-wce_payload_re = re.compile(const.wce_payload + '=([\w.+\-_:?=@#*&\\%]+)')
+wce_share_re = re.compile(const.wce_share + r'=([\w/.+\-_:?=@#*&\\%]+)')
+wce_payload_re = re.compile(const.wce_payload + r'=([\w.+\-_:?=@#*&\\%]+)')
 
 class TriageServer(threading.Thread):
   app: Flask
+  config: Config
   socketio: SocketIO
   _disks: ModelDispatch
   _loading: ModelDispatch
@@ -52,23 +53,16 @@ class TriageServer(threading.Thread):
   _computer: Optional[Computer]
   _triage: ModelDispatch
   triage_timestamp: Optional[datetime.datetime]
-  live_triage: bool
   overall_decision: list
   target_disks: list
   dispatches : dict
-  host: str
-  port: str
-  wcedir: str
-  rootdir: str
   locks: dict
 
   def __init__(self):
     super().__init__()
 
     self.tlog = get_triage_logger()
-
     self._socketio_view = SocketIOView()
-
     self._disks = ModelDispatch(DiskModel(default = {"disks": []}), view=self._socketio_view)
 
     self._load_image = ImageRunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskRestroing": False, "device": ""}, meta={"tag": "loadimage"}), view=self._socketio_view)
@@ -88,7 +82,6 @@ class TriageServer(threading.Thread):
     self._triage = ModelDispatch(Model(meta={"tag": "triage"}, default=[]), view=self._socketio_view)
     self.triage_timestamp = None
     self.target_disks = []
-    self.live_triage = False
     self.locks = {}
     for lock_name in ["cpu_info"] :
       self.locks[lock_name] = threading.Lock()
@@ -194,6 +187,7 @@ class TriageServer(threading.Thread):
     lock.acquire()
     try:
       if self._cpu_info.model.model_state is None:
+        out = None
         try:
           self.tlog.debug("get_cpu_info: starting")
           cpu_info = subprocess.Popen("python3 -m wce_triage.lib.cpu_info", shell=True, stdout=subprocess.PIPE,
@@ -204,11 +198,14 @@ class TriageServer(threading.Thread):
         except Exception as exc:
           self.tlog.debug("something happened")
           pass
-        try:
-          self._cpu_info.dispatch(json.loads(out))
-        except Exception as exc:
-          self.tlog.info("get_cpu_info - json.loads: '%s'\n%s" % (out, traceback.format_exc()))
-          self._cpu_info.model.set_model_state(False)
+
+        if out:
+          try:
+            self._cpu_info.dispatch(json.loads(out))
+          except Exception as exc:
+            self.tlog.info("get_cpu_info - json.loads: '%s'\n%s" % (out, traceback.format_exc()))
+            self._cpu_info.model.set_model_state(False)
+            pass
           pass
         pass
       pass
@@ -287,7 +284,7 @@ class TriageServer(threading.Thread):
   def initial_triage(self):
     self.triage_timestamp = datetime.datetime.now()
     self._computer = Computer()
-    self.overall_changed(self._computer.triage(live_system=self.live_triage))
+    self.overall_changed(self._computer.triage(live_system=self.config.LIVE_TRIAGE))
     pass
 
 
@@ -334,11 +331,11 @@ A triaging person can decide whether not sound playing. Also, if you plug in Eth
 
   @property
   def disk_images(self) -> list:
-    return get_disk_images(wce_share_url=self.wce_share_url)
+    return get_disk_images(wce_share_url=self.config.WCE_SHARE_URL)
 
   @property
   def disk_image_file_path(self) -> str:
-      return os.path.join(self.wcedir, "wce-disk-images", "wce-disk-images.json")
+      return os.path.join(self.config.WCEDIR, "wce-disk-images", "wce-disk-images.json")
 
   @property
   def opticals(self) -> OpticalDrives:
@@ -407,8 +404,8 @@ class LoggingView(View):
 
 
 class MultiView(View):
-  def __init__(self, *args, views=[], **kwargs):
-    self.views = views
+  def __init__(self, *args, views=None, **kwargs):
+    self.views = views if views else []
     super().__init__(*args, **kwargs)
     pass
 

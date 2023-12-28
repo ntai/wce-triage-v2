@@ -6,7 +6,6 @@ cli.py: WCE http server command line interface
 #
 #
 #
-import os
 import re
 # from argparse import ArgumentParser
 

@@ -275,7 +275,7 @@ def route_rename_image():
       # FIXME: better response?
       tlog.info("RENAME failed - %s/%s." % (restoretype, name_from), exc_info=True)
       return {}, HTTPStatus.NOT_FOUND
-    except Exception as exc:
+    except Exception as _exc:
       # FIXME: better response?
       tlog.info("RENAME failed - %s/%s." % (restoretype, name_from), exc_info=True)
       return {}, HTTPStatus.BAD_REQUEST
@@ -300,7 +300,7 @@ def route_mount_disk(request):
           pass
         subprocess.run(["mount", disk.device_name, mount_point])
         pass
-      except Exception as exc:
+      except Exception as _exc:
         return {}, HTTPStatus.BAD_REQUEST
       pass
     pass
