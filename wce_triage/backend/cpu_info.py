@@ -1,3 +1,5 @@
+import json
+
 from .models import Model
 
 class CpuInfoModel(Model):
@@ -10,3 +12,6 @@ class CpuInfoModel(Model):
       self.set_model_data(cpu_info)
       pass
     return self._model
+
+
+  pass

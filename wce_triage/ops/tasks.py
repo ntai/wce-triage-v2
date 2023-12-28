@@ -641,15 +641,15 @@ def task_get_uuid_from_partition(op_task_process_simple):
 #
 class task_fsck(op_task_process):
   #
-  def __init__(self, description, disk=None, partition_id=None, payload_size=None, fix_filesytem=False, **kwargs):
+  def __init__(self, description, disk=None, partition_id=None, payload_size=None, fix_file_system=False, **kwargs):
     self.disk = disk
     self.partition_id = partition_id
     self.payload_size = payload_size
-    self.fix_filesytem = fix_filesytem
+    self.fix_file_system = fix_file_system
     speed = self.disk.estimate_speed("fsck")
     estimate_size = self.disk.get_byte_size() if self.payload_size is None else self.payload_size
     # The command is just a placeholder. Actuall command is assembled in "setup"
-    self.fsck_mode = "-y" if fix_filesytem else "-p"
+    self.fsck_mode = "-y" if fix_file_system else "-p"
     super().__init__(description, argv=["/sbin/e2fsck", "-f", self.fsck_mode, disk.device_name, partition_id], time_estimate=estimate_size/speed+2, encoding='iso-8859-1', **kwargs)
     # It's okay to be 0 - success or 1 - corrected
     self.good_returncode = [0, 1]

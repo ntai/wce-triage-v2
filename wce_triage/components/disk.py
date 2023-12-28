@@ -1,9 +1,11 @@
 #!/usr/bin/python3
 # Copyright (c) 2019 Naoyuki tai
 # MIT license - see LICENSE
+from __future__ import annotations
 
 import re, subprocess, traceback, time, os
 import json
+import typing
 
 from ..lib.util import get_triage_logger
 from .component import Component
@@ -156,6 +158,31 @@ ata_ssd  = StorageProperty("ata-ssd",  read_speed= 80 * 2**20, write_speed= 80 *
 # disk class represents a disk
 #
 class Disk:
+
+  verdict: bool
+  device_name: str
+  partitions: typing.List[Partition]
+  byte_size: int | None
+  sectors: int | None
+  mounted: bool
+  is_disk: bool | None
+  is_ata_or_scsi: bool | None
+  is_usb: bool | None
+  bus: str | None
+  vendor: str
+  model_name: str
+  serial_no: str
+  mount_dir: str
+  wce_release_file: str
+  is_detected: bool
+  disappeared: bool
+  smart: bool
+  smart_enabled: bool
+  is_usb3 : bool
+  usb_driver: str | None
+  storage_property: StorageProperty | None
+
+
   def __init__(self, device_name=None, mounted=False):
     self.verdict = False  # True if this is valid disk
     self.device_name = device_name
@@ -181,7 +208,7 @@ class Disk:
     # These two will be redesigned. Need a better way.
     self.is_usb3 = False
     self.usb_driver = None
-    self.storage_propery = None
+    self.storage_property = None
     pass
 
   def _set_byte_size(self, size):
@@ -192,20 +219,20 @@ class Disk:
   def get_storage_property(self) -> StorageProperty:
     """provides the property of storage device for estimation."""
 
-    if self.storage_propery == None:
+    if self.storage_property == None:
       if self.is_usb:
         if self.usb_driver == "uas":
-          self.storage_propery = usb3_disk if self.is_usb3 else usb2_disk
+          self.storage_property = usb3_disk if self.is_usb3 else usb2_disk
           pass
-        self.storage_propery = usb3_flash if self.is_usb3 else usb2_flash
+        self.storage_property = usb3_flash if self.is_usb3 else usb2_flash
         pass
       else:
-        self.storage_propery = ata_disk
+        self.storage_property = ata_disk
         pass
 
-      tlog.debug("device %s property %s" % (self.device_name, self.storage_propery.name))
+      tlog.debug("device %s property %s" % (self.device_name, self.storage_property.name))
       pass
-    return self.storage_propery
+    return self.storage_property
 
 
   # find a partition in the partitions
@@ -707,8 +734,11 @@ class DiskPortal(Component):
 class PartitionLister:
   #                          1:    2: start s 3: end s   4: size    5:fs  6:name  7:flags   
   partline_re = re.compile('^(\d+):([\d\.]+)s:([\d\.]+)s:([\d\.]+)s:([^:]*):([^:]*):[^;]*;')
+  disk: Disk
+  argv: list(str)
+  out: str
 
-  def __init__(self, disk):
+  def __init__(self, disk: Disk):
     self.disk = disk
     self.argv = ["parted", "-m", disk.device_name, 'unit', 's', 'print']
     self.out = ""

@@ -1,4 +1,4 @@
-# Copyright (c) 2019 Naoyuki tai
+# Copyright (c) 2019-2023 Naoyuki tai
 # MIT license - see LICENSE
 """# Component base class for computer components.
 

@@ -1,0 +1,19 @@
+*** systemd-networkd-wait-online.service~       2023-03-02 12:58:02.000000000 +0000
+--- systemd-networkd-wait-online.service        2023-12-24 16:02:24.116759370 +0000
+***************
+*** 18,24 ****
+
+  [Service]
+  Type=oneshot
+! ExecStart=/lib/systemd/systemd-networkd-wait-online
+  RemainAfterExit=yes
+
+  [Install]
+--- 18,24 ----
+
+  [Service]
+  Type=oneshot
+! ExecStart=/lib/systemd/systemd-networkd-wait-online -q --timeout=10
+  RemainAfterExit=yes
+
+  [Install]

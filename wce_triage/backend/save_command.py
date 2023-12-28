@@ -1,5 +1,5 @@
 from .messages import UserMessages
-from .models import Model, ModelDispatch
+from .models import ModelDispatch
 from .process_runner import SimpleProcessRunner
 from ..lib.disk_images import read_disk_image_types
 from ..lib import get_triage_logger

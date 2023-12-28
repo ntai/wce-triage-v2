@@ -1,12 +1,6 @@
-from .messages import UserMessages
-from .models import Model, ModelDispatch
+from .models import ModelDispatch
 from .process_runner import SimpleProcessRunner
-from ..lib.disk_images import read_disk_image_types
-from ..lib.util import get_triage_logger
-from ..components.disk import PartitionLister
-from .server import server
 from http import HTTPStatus
-
 
 #
 #
@@ -26,7 +20,7 @@ class WipeCommandRunner(SimpleProcessRunner):
 
   def queue_wipe(self, devices):
     args = ['python3', '-m', 'wce_triage.bin.multiwipe'] + devices
-    self.queue(args, {"args": args, "devnames": ",".devices})
+    self.queue(args, {"args": args, "devnames": ",".join(devices)})
     return {}, HTTPStatus.OK
 
   pass

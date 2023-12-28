@@ -163,7 +163,14 @@ _logger_ = None
 #
 #
 #
-def setup_triage_logger(logger, log_level=None, filename='/tmp/triage.log'):
+def setup_triage_logger(logger, log_level=None, filename=None):
+  if filename is None:
+    if os.getuid() == 0:
+      filename = '/tmp/triage.log'
+    else:
+      filename = '/tmp/development.log'
+      pass
+    pass
   if log_level is None:
     log_level = logging.INFO
     pass
@@ -175,13 +182,13 @@ def setup_triage_logger(logger, log_level=None, filename='/tmp/triage.log'):
     logger.addHandler(tlog_handler)
   return logger
 
-def init_triage_logger(log_level=None, filename='/tmp/triage.log'):
+def init_triage_logger(log_level=None, filename=None):
   global _logger_
   _logger_ = logging.getLogger('triage')
   setup_triage_logger(_logger_, log_level=log_level, filename=filename)
   return _logger_
 
-def set_triage_logger(logger, log_level=None, filename='/tmp/triage.log'):
+def set_triage_logger(logger, log_level=None, filename=None):
   global _logger_
   _logger_ = logger
   setup_triage_logger(logger, log_level=log_level, filename=filename)

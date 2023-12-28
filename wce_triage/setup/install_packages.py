@@ -96,18 +96,21 @@ base_packages = {
     'firefox',                  # Use firefox
     'xdg-utils',
     'build-essential',
+    'overlayroot',
   ],
   '22.04': [
     'iw',                       # for seeing wifi device list
     'nmcli',                    # connect to wifi through nmcli command
     'xdg-utils',
     'build-essential',
+    'overlayroot',
   ],
   '24.04': [
     'iw',                       # for seeing wifi device list
     'nmcli',                    # connect to wifi through nmcli command
     'xdg-utils',
     'build-essential',
+    'overlayroot',
   ],
 }
 

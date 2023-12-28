@@ -30,11 +30,11 @@ class ProcessRunner(threading.Thread):
   def __init__(self,
                stdout_dispatch: Optional[ModelDispatch],
                stderr_dispatch: Optional[ModelDispatch],
-               meta={}):
+               meta=None):
     super().__init__()
     self.stdout_dispatch = stdout_dispatch
     self.stderr_dispatch = stderr_dispatch
-    self.meta = meta
+    self.meta = {} if meta is None else meta.copy()
     self._queue = SimpleQueue()
     self.logger = get_triage_logger()
     pass
@@ -220,8 +220,9 @@ if __name__ == "__main__":
   # pr.queue.put(["/bin/sh", "-c", "echo Hello, world 1"])
   # pr.queue.put(["/bin/sh", "echo Hello, world 2"])
   # pr.queue.put(["/bin/foobar", "echo Hello, world 2"])
-  pr.queue.put(["stdbuf", "-oL", "fixture/slow.sh"])
-  pr.queue.put(None)
+  context = {"job": "test"}
+  pr.queue(["stdbuf", "-oL", "fixture/slow.sh"], context)
+  pr.queue(None, context)
   pr.join()
   print(stdout.model.data)
   print(stderr.model.data)

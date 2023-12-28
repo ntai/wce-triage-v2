@@ -12,7 +12,7 @@ from typing import Optional
 from flask import Flask
 from flask_socketio import SocketIO
 
-from .cli import Config
+from .config import Config
 from .formatters import jsoned_disk
 from .messages import UserMessages, ErrorMessages
 from .models import Model, ModelDispatch
@@ -97,49 +97,17 @@ class TriageServer(threading.Thread):
 
 
   def setup(self, config: Config):
-    self.host = config.HOST
-    self.port = config.PORT
-    self.wcedir = config.WCEDIR
-    # static files are here
-    self.rootdir = config.TRIAGE_UI_ROOTDIR
-    if self.rootdir is None:
-      self.rootdir = os.path.join(self.wcedir, "wce-triage-ui")
-      pass
-    self.the_root_url = u"{0}://{1}:{2}".format("http", self.host, self.port)
+    self.config = config
 
-    if config.WCE_SHARE_URL:
-      self.wce_share_url = config.WCE_SHARE_URL
-    else:
-      self.wce_share_url = u"{0}://{1}:{2}/wce".format("http", self.host, self.port)
-      pass
-
-    self.asset_path = os.path.join(self.wcedir, "triage", "assets")
-
-    self.wce_payload = None
-    self.live_triage = config.LIVE_TRIAGE
-
-    with open("/proc/cmdline") as cmdlinefd:
-      cmdline = cmdlinefd.read()
-      match = wce_share_re.search(cmdline)
-      if match:
-        self.wce_share_url = match.group(1)
-        pass
-      if not config.LIVE_TRIAGE:
-        match = wce_payload_re.search(cmdline)
-        if match:
-          self.wce_payload = match.group(1)
-          pass
-        pass
-      pass
-
-    if self.wce_payload:
+    payload = self.config.PAYLOAD
+    if payload:
       disk_image = None
-      for disk_image in get_disk_images(self.wce_share_url):
-        if disk_image['name'] == self.wce_payload:
-          self.autoload = True
+      for disk_image in get_disk_images(self.config.WCE_SHARE_URL):
+        if disk_image['name'] == payload:
           break
         pass
 
+      self.autoload = not self.config.LIVE_TRIAGE
       if self.autoload:
         self.load_disk_options = disk_image
         # translate the load option lingo here and web side
@@ -152,11 +120,10 @@ class TriageServer(threading.Thread):
         pass
       else:
         self.tlog.info("Payload {0} is requested but not autoloading as matching disk image does not exist.".format(
-          self.wce_payload))
-        self.wce_payload = None
+          payload))
+        self.autoload = False
         pass
       pass
-    self.tlog.info(u"Open {0}{1} in a web browser. WCE share is {2}".format(self.the_root_url, "/index.html", self.wce_share_url))
     pass
 
   def set_app(self, app: Flask, socketio: SocketIO, config):
@@ -266,13 +233,8 @@ class TriageServer(threading.Thread):
       lock.release()
       pass
     if self._cpu_info.model.model_state is True:
-      return self._cpu_info.model.data
+      return self._cpu_info.model.data, 200
     return {}, 202
-
-
-  @property
-  def save_model(self) -> Model:
-    return server._save_model.model
 
   @property
   def disk_portal(self) -> DiskPortal:
@@ -295,7 +257,7 @@ class TriageServer(threading.Thread):
     runner = self._runners.get(name)
     if runner is None and create:
       dispatch = self.dispatches.get(name) if dispatch is None else dispatch
-      runner = runner_class(dispatch)
+      runner = runner_class(dispatch, None)
       self.register_runner(runner)
       runner.start()
       pass

@@ -1,6 +1,7 @@
 from .view import View
 from typing import Optional
 import threading
+import logging
 
 
 class Model(object):

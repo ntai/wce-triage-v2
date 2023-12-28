@@ -55,7 +55,7 @@ For now, this is only dealing with the EXT4 linux partition.
     task = task_unmount("Unmount target", disk=self.disk, partition_id=self.partition_id)
     task.set_teardown_task()
     self.tasks.append(task)
-    self.tasks.append(task_fsck("fsck partition", disk=self.disk, partition_id=self.partition_id))
+    self.tasks.append(task_fsck("fsck partition", disk=self.disk, partition_id=self.partition_id, fix_file_system=True)))
     self.tasks.append(task_shrink_partition("Shrink partition to smallest", disk=self.disk, partition_id=self.partition_id))
     self.tasks.append(task_create_disk_image("Create disk image", disk=self.disk, partition_id=self.partition_id, imagename=self.imagename))
     task = task_expand_partition("Expand the partion back", disk=self.disk, partition_id=self.partition_id)

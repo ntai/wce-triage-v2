@@ -1,11 +1,13 @@
 import os
 import subprocess
+import traceback
 
 from .formatters import jsoned_disk, jsoned_optical
 from .optical_drive import route_opticaldrivetest
 from .query_params import get_target_devices_from_request
 from .save_command import SaveCommandRunner
 from .sync_command import SyncCommandRunner
+from .unmount_command import UnmountCommandRunner
 from .wipe_command import WipeCommandRunner
 from ..lib.disk_images import read_disk_image_types, get_disk_images
 from ..lib import get_triage_logger
@@ -212,7 +214,7 @@ def route_sync_image():
     pass
 
   target_disks = get_target_devices_from_request(request)
-  return sync_disk_images([], target_disks, False)
+  return sync_disk_images(sources, target_disks, False)
 
 
 @dispatch_bp.route("/sync-status.json")
@@ -232,6 +234,7 @@ def route_clean_image():
 def route_delete_image():
   name = request.args.get("name")
   restoretype = request.args.get("restoretype")
+  tlog = get_triage_logger()
 
   for disk_image in get_disk_images():
     if disk_image['name'] != name or disk_image['restoreType'] != restoretype:
@@ -243,12 +246,11 @@ def route_delete_image():
       os.remove(fullpath)
       tlog.debug("Delete '%s' succeeded." % fullpath)
       return {}, HTTPStatus.OK
-    except Exception as exc:
+    except Exception as _exc:
       # FIXME: better response?
-      msg = "Delete '%s' failed.\n%s" % traceback.format_exc()
+      msg = "Delete '%s' failed.\n%s" % (fullpath, traceback.format_exc())
       tlog.info(msg)
       return {}, HTTPStatus.BAD_REQUEST
-      Pass
     pass
   return {}, HTTPStatus.NOT_FOUND
 
@@ -299,7 +301,7 @@ def route_mount_disk(request):
         subprocess.run(["mount", disk.device_name, mount_point])
         pass
       except Exception as exc:
-        {}, HTTPStatus.BAD_REQUEST
+        return {}, HTTPStatus.BAD_REQUEST
       pass
     pass
   return {}, HTTPStatus.OK
@@ -312,16 +314,16 @@ def stop_runner(runner_class):
   return {}
 
 @dispatch_bp.route("/stop-load", methods=["POST"])
-def route_stop_load_image(request):
+def route_stop_load_image(_request):
   return stop_runner(LoadCommandRunner)
 
 
 @dispatch_bp.route("/stop-save", methods=["POST"])
-def route_stop_save_image(request):
+def route_stop_save_image(_request):
   return stop_runner(SaveCommandRunner)
 
 @dispatch_bp.route("/stop-wipe", methods=["POST"])
-def route_stop_disk_wipe(request):
+def route_stop_disk_wipe(_request):
   return stop_runner(WipeCommandRunner)
 
 @dispatch_bp.route("/wipe", methods=["POST"])
@@ -371,6 +373,22 @@ def route_network_device_status():
                              overall_changed=server.overall_changed)
     pass
   return netstat, HTTPStatus.OK
+
+@dispatch_bp.route("/unmount", methods=["POST"])
+def route_unmount():
+  devname = request.args.get("deviceName")
+  devnames = request.args.get("deviceNames")
+  if devnames:
+    devices = devnames.split(',')
+  elif devname:
+    devices = [devname]
+  else:
+    return {}, HTTPStatus.BAD_REQUEST
+
+  unmount_command_runner = server.get_runner(UnmountCommandRunner)
+  (result, code) = unmount_command_runner.queue_save(devices)
+  return result, code
+
 
 
 dispatch_bp.add_url_rule("/opticaldrivetest", view_func=route_opticaldrivetest, methods=["POST"])

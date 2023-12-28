@@ -31,6 +31,9 @@ class StreamModel(Model):
   def __str__(self):
     return self._data.getvalue()
 
+  def json(self):
+    return json.loads(self._data.getvalue())
+
 #
 #
 class CpuInfoCommandRunner(ProcessRunner):
@@ -38,19 +41,19 @@ class CpuInfoCommandRunner(ProcessRunner):
   # This is to receive the stream
   out: StreamModel
   err: StreamModel
-  _cpu_info: Model
+  _cpu_info: ModelDispatch
 
   @classmethod
   def class_name(cls):
     return "cpu_info"
 
-  def __init__(self, cpu_info: Model):
+  def __init__(self, cpu_info: ModelDispatch):
     self.returncode = None
     self.out = StreamModel()
     self.err = StreamModel()
     self._cpu_info = cpu_info
-    super().__init__(stdout_dispatch=ModelDispatch(self.out),
-                     stderr_dispatch=ModelDispatch(self.err),
+    super().__init__(stdout_dispatch=self._cpu_info,
+                     stderr_dispatch=self._cpu_info,
                      meta={"tag": "cpu_info"})
     pass
 
@@ -61,11 +64,8 @@ class CpuInfoCommandRunner(ProcessRunner):
     self.queue(None, {})
     self.join()
 
-    if self.returncode == 0:
-      self._cpu_info.dispatch(json.loads(str(self.out)))
-      pass
-    else:
-      self._cpu_info.dispatch({"output": str(out), "error": str(err), "returncode": returncode})
+    if self.returncode != 0:
+      self._cpu_info.model.set_model_data({"output": str(out), "error": str(err), "returncode": returncode})
       pass
     pass
 
@@ -86,8 +86,10 @@ class CpuInfoCommandRunner(ProcessRunner):
 
 
 if __name__ == "__main__":
-  cpu_info = CpuInfoCommandRunner()
-  (out, err, returncode) = cpu_info.test()
+  from wce_triage.backend.cpu_info import CpuInfoModel
+  model = CpuInfoModel()
+  cpu_info = ModelDispatch(model)
+  runner = CpuInfoCommandRunner(cpu_info)
+  (out, err, returncode) = runner.test()
   print(returncode)
-  print(out)
-  print(err)
+  print(model.data)

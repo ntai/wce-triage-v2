@@ -1,9 +1,8 @@
 from .messages import UserMessages
-from .models import Model, ModelDispatch
+from .models import ModelDispatch
 from .process_runner import SimpleProcessRunner
 from ..lib.disk_images import read_disk_image_types
 from ..lib import get_triage_logger
-from ..components.disk import PartitionLister
 from .server import server
 from http import HTTPStatus
 from .operations import WIPE_TYPES
@@ -55,7 +54,7 @@ class LoadCommandRunner(SimpleProcessRunner):
       tlog.info(message)
       return {"message": message}, HTTPStatus.BAD_REQUEST
 
-    disk = server.disk_portal.find_disk_by_device_name(devname)
+    #disk = server.disk_portal.find_disk_by_device_name(devname)
 
     # loadType is a single word coming back from read_disk_image_types()
     image_type = None

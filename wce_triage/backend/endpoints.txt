@@ -1,4 +1,6 @@
-@routes.get('/version.json') -> meta_bp
+# Implemented
+
+  @routes.get('/version.json') -> meta_bp
   @routes.get("/") -> meta_bp
   @routes.get("/dispatch/cpu_info.json") -> dispatch_bp
   @routes.get("/dispatch/disk-images.json") -> dispatch_bp
@@ -22,8 +24,9 @@
   @routes.get("/dispatch/network-device-status.json")  -> dispatch_bp
   @routes.post("/dispatch/opticaldrivetest") -> dispatch_bp
   @routes.post("/dispatch/rename") -> dispatch_bp
-
-  @routes.post("/dispatch/stop-load")
   @routes.post("/dispatch/stop-wipe")
-  @routes.post("/dispatch/unmount")
+  @routes.post("/dispatch/stop-load")
   @routes.post("/dispatch/wipe")
+  @routes.post("/dispatch/unmount")
+
+# Not yet

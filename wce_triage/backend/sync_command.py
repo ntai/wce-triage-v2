@@ -1,6 +1,9 @@
-from .models import Model, ModelDispatch
+from .models import ModelDispatch
 from .process_runner import SimpleProcessRunner
 from http import HTTPStatus
+
+from ..lib import get_triage_logger
+
 
 #
 #
@@ -15,9 +18,9 @@ class SyncCommandRunner(SimpleProcessRunner):
     pass
 
   def queue_sync(self, image_files: list, target_disks: str, clean=False):
-
+    tlog = get_triage_logger()
     if len(target_disks) == 0:
-      self.tlog.debug("SYNC: Sync target disk is none.")
+      tlog.debug("SYNC: Sync target disk is none.")
       return {}, HTTPStatus.OK
 
     if clean:

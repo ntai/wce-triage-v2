@@ -1,6 +1,5 @@
 import typing
 import sys
-from flask_socketio import SocketIO
 
 class View(object):
   def updating(self, t0: dict, update: typing.Optional[any], meta: dict):

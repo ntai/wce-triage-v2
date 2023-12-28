@@ -4,7 +4,7 @@
 PYPI_USER := $(shell echo $$PYPI_USERNAME)
 PYPI_PASSWORD := $(shell echo $$PYPI_PASSWORD)
 
-PY3 := python3
+PY3 := python3.8
 
 default: setup
 
@@ -40,14 +40,13 @@ manifest:
 	echo "recursive-include wce_triage/ui" >> MANIFEST.in
 
 local:
-	sudo rsync -av --delete /home/ntai/sand/wce-triage-v2/wce_triage/ /var/lib/netclient/wcetriage_amd64/usr/local/lib/python3.6/dist-packages/wce_triage/
-	sudo rsync -av --delete /home/ntai/sand/wce-triage-v2/wce_triage/ /var/lib/netclient/wcetriage_x32/usr/local/lib/python3.6/dist-packages/wce_triage/
+	sudo rsync -av --delete /home/ntai/sand/wce-triage-v2/build/lib/wce_triage/ /var/lib/wcetriage/wcetriage_2004/usr/local/lib/python3.8/dist-packages/wce_triage/
 
 run:
-	. ./venv/bin/activate && PYTHONPATH=${PWD} sudo ./venv/bin/python3 -m wce_triage.http.httpserver
+	. ./venv/bin/activate && PYTHONPATH=${PWD} sudo ./venv/bin/python3 -m wce_triage.backent
 
 flask:
-	. ./venv/bin/activate && PYTHONPATH=${PWD} FLASK_APP=wce_triage.backend.app:create_app FLASK_ENV=development sudo -E flask wce --host localhost --port 8400 --wcedir /usr/local/share/wce
+	. ./venv/bin/activate && PYTHONPATH=${PWD} sudo -E --preserve-env=PYTHONPATH,FLASK_DEBUG ${PWD}/venv/bin/flask --app wce_triage.backend.app run
 
 ui:
 	rsync -av --delete ../wce-triage-ui/build/ ./wce_triage/ui/
