@@ -65,6 +65,7 @@ def create_app(wcedir=None, rootdir=None, wce_share=None, live_triage=False, pay
 
   CORS(app)
   socketio = SocketIO(app, cors_allowed_origins="*", engineio_logger=False, logger=False)
+  #                    async_mode="threading", transports=['websocket'])
   init_socketio(app, socketio)
   from .meta_bp import meta_bp
   app.register_blueprint(meta_bp)

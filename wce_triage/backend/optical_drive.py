@@ -1,3 +1,5 @@
+from typing import Optional
+
 from .models import Model, ModelDispatch
 from .process_runner import SimpleProcessRunner, JsonOutputDispatch
 from ..components import detect_optical_drives
@@ -13,8 +15,14 @@ class OpticalDriveTestRunner(SimpleProcessRunner):
   def class_name(cls):
     return "opticaldrive"
 
-  def __init__(self, dispatch: ModelDispatch):
-    super().__init__(stdout_dispatch=dispatch, meta = {"tag": "opticaldrive"})
+  def __init__(self,
+               stdout_dispatch: Optional[ModelDispatch] = None,
+               stderr_dispatch: Optional[ModelDispatch] = None,
+               meta=None):
+    if meta is None:
+      meta = {"tag": "opticaldrive"}
+      pass
+    super().__init__(stdout_dispatch=stdout_dispatch, stderr_dispatch=stderr_dispatch, meta=meta)
     pass
 
   def queue_test(self, device_name):

@@ -39,8 +39,6 @@ class StreamModel(Model):
 class CpuInfoCommandRunner(ProcessRunner):
   returncode: Optional[int]
   # This is to receive the stream
-  out: StreamModel
-  err: StreamModel
   _cpu_info: ModelDispatch
 
   @classmethod
@@ -49,11 +47,9 @@ class CpuInfoCommandRunner(ProcessRunner):
 
   def __init__(self, cpu_info: ModelDispatch):
     self.returncode = None
-    self.out = StreamModel()
-    self.err = StreamModel()
     self._cpu_info = cpu_info
     super().__init__(stdout_dispatch=self._cpu_info,
-                     stderr_dispatch=self._cpu_info,
+                     stderr_dispatch=None,
                      meta={"tag": "cpu_info"})
     pass
 
@@ -65,7 +61,7 @@ class CpuInfoCommandRunner(ProcessRunner):
     self.join()
 
     if self.returncode != 0:
-      self._cpu_info.model.set_model_data({"output": str(out), "error": str(err), "returncode": returncode})
+      self._cpu_info.model.set_model_data({"output": self._cpu_info.model.data, "returncode": returncode})
       pass
     pass
 
@@ -75,7 +71,7 @@ class CpuInfoCommandRunner(ProcessRunner):
     self.queue(args, {"job": "cpu_info"})
     self.queue(None, {})
     self.join()
-    return self.out, self.err, self.returncode
+    return self._cpu_info.model.data, self.returncode
 
 
   def process_ended(self, result):
@@ -90,6 +86,6 @@ if __name__ == "__main__":
   model = CpuInfoModel()
   cpu_info = ModelDispatch(model)
   runner = CpuInfoCommandRunner(cpu_info)
-  (out, err, returncode) = runner.test()
+  (out, returncode) = runner.test()
   print(returncode)
-  print(model.data)
+  print(out)

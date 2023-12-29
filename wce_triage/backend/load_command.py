@@ -1,3 +1,5 @@
+from typing import Optional
+
 from .messages import UserMessages
 from .models import ModelDispatch
 from .process_runner import SimpleProcessRunner
@@ -19,8 +21,16 @@ class LoadCommandRunner(SimpleProcessRunner):
   def class_name(cls):
     return "load"
 
-  def __init__(self, dispatch: ModelDispatch):
-    super().__init__(stdout_dispatch=dispatch, meta = {"tag": "loadimage"})
+  def __init__(self,
+               stdout_dispatch: Optional[ModelDispatch] = None,
+               stderr_dispatch: Optional[ModelDispatch] = None,
+               meta=None):
+    if meta is None:
+      meta = {"tag": "loadimage"}
+      pass
+    super().__init__(stdout_dispatch=stdout_dispatch,
+                     stderr_dispatch=stderr_dispatch,
+                     meta=meta)
     pass
 
   def queue_load(self, devname, load_type, imagefile, image_size, wipe_request, newhostname):

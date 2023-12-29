@@ -1,3 +1,5 @@
+from typing import Optional
+
 from .models import ModelDispatch
 from .process_runner import SimpleProcessRunner
 from http import HTTPStatus
@@ -13,8 +15,11 @@ class SyncCommandRunner(SimpleProcessRunner):
   def class_name(cls):
     return "sync"
   
-  def __init__(self, dispatch: ModelDispatch):
-    super().__init__(stdout_dispatch=dispatch, meta = {"tag": "syncing"})
+  def __init__(self,
+               stdout_dispatch: Optional[ModelDispatch] = None,
+               stderr_dispatch: Optional[ModelDispatch] = None,
+               _meta=None):
+    super().__init__(stdout_dispatch=stdout_dispatch, stderr_dispatch=stderr_dispatch, meta = {"tag": "syncing"})
     pass
 
   def queue_sync(self, image_files: list, target_disks: str, clean=False):

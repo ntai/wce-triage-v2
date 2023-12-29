@@ -4,6 +4,7 @@ import subprocess
 import io
 from typing import Optional
 from wce_triage.backend.models import ModelDispatch
+from wce_triage.lib import get_triage_logger
 
 
 class ProcessPipeReader(threading.Thread):
@@ -82,6 +83,8 @@ class ProcessPipeReader(threading.Thread):
     pass
 
   def handle_line(self, line):
+    tlog = get_triage_logger()
+    tlog.debug("handle_line(%s): %s" % (self.tag, line))
     if self.dispatch:
       self.dispatch.dispatch(line)
     else:

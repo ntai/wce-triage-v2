@@ -1,3 +1,5 @@
+from typing import Optional
+
 from .messages import UserMessages
 from .models import ModelDispatch
 from .process_runner import SimpleProcessRunner
@@ -20,8 +22,12 @@ class SaveCommandRunner(SimpleProcessRunner):
   def class_name(cls):
     return "save"
 
-  def __init__(self, dispatch: ModelDispatch):
-    super().__init__(stdout_dispatch=dispatch, meta = {"tag": "saveimage"})
+  def __init__(self,
+               stdout_dispatch: Optional[ModelDispatch] = None,
+               stderr_dispatch: Optional[ModelDispatch] = None,
+               meta=None):
+    meta = {"tag": "saveimage"}
+    super().__init__(stdout_dispatch=stdout_dispatch, stderr_dispatch=stderr_dispatch, meta=meta)
     pass
 
   def queue_save(self, devname, saveType, destdir, partid):

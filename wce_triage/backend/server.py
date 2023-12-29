@@ -70,7 +70,10 @@ class TriageServer(threading.Thread):
     self._wipe_disk = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskWiping": False, "device": ""}, meta={"tag": "wipe"}), view=self._socketio_view)
     self._sync_image = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "device": ""}, meta={"tag": "diskimage"}), view=self._socketio_view)
 
-    self.dispatches = {"load": self._load_image, "save": self._save_image, "wipe": self._wipe_disk, "sync": self._sync_image}
+    self.dispatches = {"load": (self._load_image, None),
+                       "save": (self._save_image, None),
+                       "wipe": (self._wipe_disk, None),
+                       "sync": (self._sync_image, None)}
 
     self._cpu_info = ModelDispatch(CpuInfoModel())
     self._disk_portal = None
@@ -249,12 +252,14 @@ class TriageServer(threading.Thread):
     self._runners[name] = runner
     pass
 
-  def get_runner(self, runner_class=ProcessRunner, create=True, dispatch=None) -> Optional[ProcessRunner]:
+  def get_runner(self, runner_class:ProcessRunner=None, create=True,
+                 stdout_dispatch=None, stderr_dispatch=None, meta=None) -> Optional[ProcessRunner]:
+    runner_class = ProcessRunner if runner_class is None else runner_class
     name = runner_class.class_name()
     runner = self._runners.get(name)
     if runner is None and create:
-      dispatch = self.dispatches.get(name) if dispatch is None else dispatch
-      runner = runner_class(dispatch, None)
+      out, err = self.dispatches.get(name) if stdout_dispatch is None else stdout_dispatch
+      runner = runner_class(stdout_dispatch=out, stderr_dispatch=err, meta=meta)
       self.register_runner(runner)
       runner.start()
       pass

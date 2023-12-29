@@ -7,7 +7,7 @@ import subprocess
 import logging
 from wce_triage.backend.view import ConsoleView
 from .process_pipe_reader import ProcessPipeReader
-from .models import ModelDispatch
+from .models import ModelDispatch, Model
 from .messages import UserMessages, ErrorMessages
 from ..lib import get_triage_logger
 import json
@@ -15,8 +15,8 @@ import json
 
 class ProcessRunner(threading.Thread):
   process: Optional[subprocess.Popen]
-  stdout_dispatch: Optional[ModelDispatch]
-  stderr_dispatch: Optional[ModelDispatch]
+  stdout_dispatch: ModelDispatch
+  stderr_dispatch: ModelDispatch
   meta: dict
   _queue: SimpleQueue
   logger: logging.Logger
@@ -28,12 +28,13 @@ class ProcessRunner(threading.Thread):
     return "process_runner"
 
   def __init__(self,
-               stdout_dispatch: Optional[ModelDispatch],
-               stderr_dispatch: Optional[ModelDispatch],
+               stdout_dispatch: Optional[ModelDispatch] = None,
+               stderr_dispatch: Optional[ModelDispatch] = None,
                meta=None):
     super().__init__()
-    self.stdout_dispatch = stdout_dispatch
-    self.stderr_dispatch = stderr_dispatch
+    # when model/model_dispatch is not given, stub is created.
+    self.stdout_dispatch = stdout_dispatch if stdout_dispatch else ModelDispatch(Model())
+    self.stderr_dispatch = stderr_dispatch if stderr_dispatch else ModelDispatch(Model())
     self.meta = {} if meta is None else meta.copy()
     self._queue = SimpleQueue()
     self.logger = get_triage_logger()
@@ -129,7 +130,6 @@ class SimpleProcessRunner(ProcessRunner):
                stdout_dispatch: Optional[ModelDispatch] = None,
                stderr_dispatch: Optional[ModelDispatch] = ErrorMessages,
                meta=None):
-    self.meta = {} if meta is None else meta.copy()
     super().__init__(stdout_dispatch, stderr_dispatch, meta)
     pass
   pass
