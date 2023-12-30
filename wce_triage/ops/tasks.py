@@ -10,10 +10,12 @@
 import datetime, re, subprocess, abc, os, select, uuid, json, traceback, shutil
 import struct
 import errno
+from typing import Optional
+
 from ..components.pci import find_pci_device_node
 from ..components.disk import Partition, PartitionLister, canonicalize_file_system_name
 from ..components.network import detect_net_devices, get_router_ip_address
-from ..lib.util import get_triage_logger, safe_string, get_filename_stem
+from ..lib.util import get_triage_logger, get_filename_stem
 from ..lib.timeutil import in_seconds
 from ..lib.grub import grub_config
 from .pplan import EFI_NAME
@@ -209,7 +211,7 @@ class op_task_python_simple(op_task_python):
     try:
       self.run_python()
     except Exception as exc:
-      msg = traceback.format_exc(exc)
+      msg = traceback.format_exc()
       self.verdict.append(msg)
       raise exc
 
@@ -226,6 +228,10 @@ class op_task_python_simple(op_task_python):
 
   def explain(self):
     return "Run " + self.description
+
+  @abc.abstractmethod
+  def run_python(self):
+    pass
   pass
 
 
@@ -246,6 +252,11 @@ class op_task_process(op_task):
     self.out = ""
     self.err = ""
     pass
+
+  def is_success(self) -> Optional[bool]:
+    if self.process.returncode is None:
+      return None
+    return self.process.returncode in self.good_returncode
 
   def set_time_estimate(self, time_estimate):
     self.time_estimate = time_estimate
@@ -306,7 +317,8 @@ class op_task_process(op_task):
     pass
 
   def _update_progress(self):
-    if self.process.returncode is None:
+    completion = self.is_success()
+    if completion is None:  # still running
       # Let's fake it.
       wallclock = datetime.datetime.now()
       dt = wallclock - self.start_time
@@ -317,38 +329,35 @@ class op_task_process(op_task):
         self.set_progress(progress, self.kwargs.get('progress_running', "Running" ))
         pass
       pass
-    else:
-      if self.process.returncode in self.good_returncode:
-        self.set_progress(100, self.kwargs.get('progress_finished', "Finished" ) )
-        if self.out:
-          out_msg = "Process stdout: " + self.out
-          tlog.info(out_msg)
-          pass
-        if self.err:
-          err_msg = "Process stderr: " + self.err
-          tlog.info(err_msg)
-          pass
-        pass
-      else:
-        self.set_progress(999, "Failed with return code %d" % (self.process.returncode))
-        log_msg = "%s failed with return code %d" % (self.description, self.process.returncode)
-        if self.out:
-          log_msg = log_msg + "\nstdout\n" + self.out
-          pass
-        if self.err:
-          log_msg = log_msg + "\nstderr\n" + self.err
-          pass
-        tlog.info(log_msg)
-        pass
-
+    elif completion:  # success
+      self.set_progress(100, self.kwargs.get('progress_finished', "Finished" ) )
       if self.out:
-        self.verdict.append("stdout: " + self.out)
+        out_msg = "Process stdout: " + self.out
+        tlog.info(out_msg)
         pass
-
       if self.err:
-        self.verdict.append("stderr: " + self.err)
+        err_msg = "Process stderr: " + self.err
+        tlog.info(err_msg)
         pass
+      pass
+    else:  # failed
+      self.set_progress(999, "Failed with return code %d" % (self.process.returncode))
+      log_msg = "%s failed with return code %d" % (self.description, self.process.returncode)
+      if self.out:
+        log_msg = log_msg + "\nstdout\n" + self.out
+        pass
+      if self.err:
+        log_msg = log_msg + "\nstderr\n" + self.err
+        pass
+      tlog.info(log_msg)
+      pass
 
+    if self.out:
+      self.verdict.append("stdout: " + self.out)
+      pass
+
+    if self.err:
+      self.verdict.append("stderr: " + self.err)
       pass
     pass
 
@@ -368,8 +377,9 @@ class op_task_process(op_task):
 
 
 class op_task_process_simple(op_task_process):
-  def __init__(self, description, **kwargs):
-    super().__init__(description, **kwargs)
+  def __init__(self, description, argv=None, **kwargs):
+    assert(argv is not None)
+    super().__init__(description, argv=argv, **kwargs)
     pass
 
   # For simple process task, report this as half done
@@ -415,12 +425,13 @@ class task_mkdir(op_task_python_simple):
     :param dir_path: path to do mkdir
 
     """
-    super().__init__(description, time_estimate=1, **kwargs)
+    kwargs["time_estimate"] = kwargs.get("time_estimate", 1)
+    super().__init__(description, **kwargs)
     self.dir_path = dir_path
     pass
 
   def run_python(self):
-    if not os.path.exist(self.dir_path):
+    if not os.path.exists(self.dir_path):
       try:
         os.mkdir(self.dir_path)
         self.is_done = True
@@ -443,8 +454,16 @@ class task_mkdir(op_task_python_simple):
 #
 #
 class task_mkfs(op_task_process_simple):
-  def __init__(self, description, partition=None, mkfs_opts=None, time_estimate=None, media=None, **kwargs):
-    super().__init__(description, encoding='iso-8859-1', time_estimate=time_estimate, **kwargs)
+  def __init__(self, description, partition:Partition=None, mkfs_opts=None, media=None, **kwargs):
+    time_estimate = 10
+    if partition:
+      part_size = partition.get_parition_size()
+      if part_size:
+        time_estimate = round(part_size / 1024.0 / 1024 / 1024 / 10) + 5
+        pass
+      pass
+    kwargs["time_estimate"] = kwargs.get("time_estimate", time_estimate)
+    super().__init__(description, encoding='iso-8859-1', **kwargs)
     self.success_returncodes = [0]
     self.success_msg = "Creating file system succeeded."
     self.failure_msg = "Creating file system failed."
@@ -506,8 +525,9 @@ class task_mkfs(op_task_process_simple):
 # run mkswap
 #
 class task_mkswap(op_task_process_simple):
-  def __init__(self, description, partition=None, time_estimate=None, **kwargs):
-    super().__init__(description, encoding='iso-8859-1', time_estimate=time_estimate, **kwargs)
+  def __init__(self, description, partition=None, **kwargs):
+    kwargs["time_estimate"] = kwargs.get("time_estimate", 2)
+    super().__init__(description, encoding='iso-8859-1', **kwargs)
     self.success_returncodes = [0]
     self.success_msg = "Creating swap paritition succeeded."
     self.failure_msg = "Creating swap paritition failed."
@@ -526,6 +546,7 @@ class task_mkswap(op_task_process_simple):
 #
 class task_unmount(op_task_process_simple):
   def __init__(self, description, disk=None, partition_id='Linux', force_unmount=False, **kwargs):
+    kwargs["time_estimate"] = kwargs.get("time_estimate", 2)
     self.disk = disk
     self.partition_id = partition_id
     self.force = force_unmount
@@ -572,6 +593,7 @@ class task_mount(op_task_process_simple):
   """mount a partition on disk"""
 
   def __init__(self, description, disk=None, partition_id='Linux', add_mount_point=None, **kwargs):
+    kwargs["time_estimate"] = kwargs.get("time_estimate", 1)
     self.disk = disk
     self.partition_id = partition_id
     self.part = None
@@ -609,33 +631,6 @@ class task_mount(op_task_process_simple):
 
   pass
 
-
-def task_get_uuid_from_partition(op_task_process_simple):
-  def __init__(self, description, partition=None, **kwargs):
-    self.part = partition
-    arg = ["/sbin/blkid", self.part.device_name]
-    super().__init__(description, argv=arg, time_estimate=2, **kwargs)
-    pass
-
-  def setup(self):
-    self.part.partition_uuid = None
-    pass
-
-  def poll(self):
-    super().poll()
-
-    if self.progress == 100:
-      blkid_re = re.compile(r'/dev/(\w+)1: LABEL="([/\w\.\d]+)" UUID="([\w\d]+-[\w\d]+-[\w\d]+-[\w\d]+-[\w\d]+)" TYPE="([\w\d]+)"')
-      for line in safe_string(self.out).splitlines():
-        m = blkid_re.match(line)
-        if m:
-          self.part.partition_uuid = m.group(2)
-          break
-      pass
-    pass
-  pass
-
-
 #
 # Run fsck on a partition
 #
@@ -648,9 +643,11 @@ class task_fsck(op_task_process):
     self.fix_file_system = fix_file_system
     speed = self.disk.estimate_speed("fsck")
     estimate_size = self.disk.get_byte_size() if self.payload_size is None else self.payload_size
+    kwargs["time_estimate"] = estimate_size/speed+2
+
     # The command is just a placeholder. Actuall command is assembled in "setup"
     self.fsck_mode = "-y" if fix_file_system else "-p"
-    super().__init__(description, argv=["/sbin/e2fsck", "-f", self.fsck_mode, disk.device_name, partition_id], time_estimate=estimate_size/speed+2, encoding='iso-8859-1', **kwargs)
+    super().__init__(description, argv=["/sbin/e2fsck", "-f", self.fsck_mode, disk.device_name, partition_id], encoding='iso-8859-1', **kwargs)
     # It's okay to be 0 - success or 1 - corrected
     self.good_returncode = [0, 1]
     pass
@@ -660,7 +657,7 @@ class task_fsck(op_task_process):
     part1 = self.disk.find_partition(self.partition_id)
     if part1 is None:
       error_message = "fsck: disk %s partition %s is not found" % (self.disk.device_name, self.partition_id)
-      tlog.warn(error_message)
+      tlog.warning(error_message)
       self._setup_failed(error_message)
       return
 
@@ -749,7 +746,7 @@ class task_create_wce_tag(op_task_python_simple):
     # Set up the /etc/wce-release file
     release = open(self.disk.wce_release_file, "w+")
     release.write("wce-contents: %s\n" % get_filename_stem(self.source))
-    release.write("installer-version: %s.%s\n" % TRIAGE_VERSION, TRIAGE_TIMESTAMP)
+    release.write("installer-version: %s.%s\n" % (TRIAGE_VERSION, TRIAGE_TIMESTAMP))
     release.write("installation-date: %s\n" % datetime.datetime.isoformat( datetime.datetime.utcnow() ))
     release.close()
     self.set_progress(100, "WCE release tag written")
@@ -984,11 +981,14 @@ class task_refresh_partitions(op_task_command):
 #
 #
 class task_set_ext_partition_uuid(op_task_process_simple):
-  def __init__(self, description, disk=None, partition_id=None, time_estimate=6, **kwargs):
+  def __init__(self, description, disk=None, partition_id=None, allow_fail=False, **kwargs):
     self.disk = disk
     self.partition_id = partition_id
+    self.allow_fail = allow_fail
+
+    kwargs["time_estimate"] = kwargs.get("time_estimate", 3)
     # argv is a placeholder
-    super().__init__(description, encoding='iso-8859-1', time_estimate=3, argv=["tune2fs", "-f", "-U", disk.device_name, partition_id], **kwargs)
+    super().__init__(description, encoding='iso-8859-1', argv=["tune2fs", "-f", "-U", disk.device_name, partition_id], **kwargs)
     pass
   
   def setup(self):
@@ -1001,15 +1001,20 @@ class task_set_ext_partition_uuid(op_task_process_simple):
     super().setup()
     return
 
+  def is_success(self) -> Optional[bool]:
+    if self.process.returncode is None:
+      return None
+    return self.allow_fail or (self.process.returncode in self.good_returncode)
+
   pass
 
 
 #
 class task_set_fat_label(op_task_process_simple):
-  def __init__(self, description, disk=None, partition_id=None, time_estimate=6, **kwargs):
+  def __init__(self, description, disk=None, partition_id=None, **kwargs):
     self.disk = disk
     self.partition_id = partition_id
-    # argv is a placeholder
+    kwargs["time_estimate"] = kwargs.get("time_estimate", 6)
     super().__init__(description, encoding='iso-8859-1', time_estimate=3, argv=["fatlabel", disk.device_name, partition_id], **kwargs)
     pass
   
@@ -1438,40 +1443,40 @@ new hostname set up is only done if the new hostname is provided. If it's None, 
   pass
 
 
-class task_finalize_disk_aux(op_task_python):
-  def __init__(self, description, disk=None, newhostname=None, partition_id='Linux', **kwargs):
-    super().__init__(description, time_estimate=1, **kwargs)
-    self.disk = disk
-    self.partition_id = partition_id
-    self.newhostname = newhostname
-    pass
-   
-  def run_python(self):
-    #
-    # Patch up the grub.cfg just in case the "/dev/disk/by-uuid/%s" % 
-    # self.uuid1 does not exist. If that happens, grub-mkconfig 
-    # genertes the device name based grub.cfg which is bad.
-    #
-    # This should fix up the most of unbootable disk imaging.
-    #
-    part1 = self.disk.find_partition(self.partition_id)
-    root_fs = "UUID=%s" % part1.uuid
-    linux_re = re.compile(r'(\s+linux\s+[^ ]+\s+root=)([^ ]+)(\s+ro .*)')
-    grub_cfg_file = open("%s/boot/grub/grub.cfg" % self.mount_dir)
-    grub_cfg = grub_cfg_file.readlines()
-    grub_cfg_file.close()
-    grub_cfg_file = open("%s/boot/grub/grub.cfg" % self.mount_dir, "w")
-    for line in grub_cfg:
-      m = linux_re.match(line)
-      if m:
-        grub_cfg_file.write("%s%s%s\n" % (m.group(1), root_fs, m.group(3)))
-      else:
-        grub_cfg_file.write(line)
-        pass
-      pass
-    grub_cfg_file.close()
-    pass
-  pass
+# class task_finalize_disk_aux(op_task_python):
+#   def __init__(self, description, disk=None, newhostname=None, partition_id='Linux', **kwargs):
+#     super().__init__(description, time_estimate=1, **kwargs)
+#     self.disk = disk
+#     self.partition_id = partition_id
+#     self.newhostname = newhostname
+#     pass
+#
+#   def run_python(self):
+#     #
+#     # Patch up the grub.cfg just in case the "/dev/disk/by-uuid/%s" %
+#     # self.uuid1 does not exist. If that happens, grub-mkconfig
+#     # genertes the device name based grub.cfg which is bad.
+#     #
+#     # This should fix up the most of unbootable disk imaging.
+#     #
+#     part1 = self.disk.find_partition(self.partition_id)
+#     root_fs = "UUID=%s" % part1.uuid
+#     linux_re = re.compile(r'(\s+linux\s+[^ ]+\s+root=)([^ ]+)(\s+ro .*)')
+#     grub_cfg_file = open("%s/boot/grub/grub.cfg" % self.disk.mount_dir)
+#     grub_cfg = grub_cfg_file.readlines()
+#     grub_cfg_file.close()
+#     grub_cfg_file = open("%s/boot/grub/grub.cfg" % self.disk.mount_dir, "w")
+#     for line in grub_cfg:
+#       m = linux_re.match(line)
+#       if m:
+#         grub_cfg_file.write("%s%s%s\n" % (m.group(1), root_fs, m.group(3)))
+#       else:
+#         grub_cfg_file.write(line)
+#         pass
+#       pass
+#     grub_cfg_file.close()
+#     pass
+#   pass
 
 #
 # Adjust grub in EFI 
@@ -1682,7 +1687,7 @@ class op_task_wipe_disk(op_task_process):
         break
       line = self.out[:newline]
       self.out = self.out[newline+1:]
-      self.verdict(line)
+      self.verdict.append(line)
       pass
     pass
   pass

@@ -67,8 +67,8 @@ class sqlite3_table(object):
 
 
 class tag_value_table(sqlite3_table):
-  def __init__(self, db, table_name, **kwargs):
-    super().__init__(db, table_name, **kwargs)
+  def __init__(self, db, table_name):
+    super().__init__(db, table_name)
     pass
 
   def open(self):

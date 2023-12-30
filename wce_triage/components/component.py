@@ -38,7 +38,7 @@ For example, CPU is a component.
 This is presented to human as a name for this particular component (like "CPU") 
 as well as this is an ID.  (It's not very i18n friendly...)
 """
-    return None
+    pass
 
 
   # This can produce multiple entries so it must return as list

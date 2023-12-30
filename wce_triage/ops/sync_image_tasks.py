@@ -37,12 +37,12 @@ class task_image_sync_delete( op_task_process_simple, task_image_sync ):
   """delete disk image file
 """
 
-  def __init__(self, description, keepers=[], testflight=False, **kwargs):
+  def __init__(self, description, keepers=None, testflight=False, **kwargs):
     if testflight:
       print("Test flight %s" % description)
       pass
     self.keepers = {}
-    for keeper in keepers:
+    for keeper in keepers if keepers else []:
       self.keepers[keeper['name']] = keeper
       pass
     self.testflight = testflight
@@ -112,9 +112,9 @@ class task_image_sync_copy(op_task_process_simple, task_image_sync):
   """copy disk image files
 """
 
-  def __init__(self, description, source={}, scoreboard={}, testflight=False, **kwargs):
-    self.source = source
-    self.scoreboard = scoreboard
+  def __init__(self, description, source=None, scoreboard=None, testflight=False, **kwargs):
+    self.source = source if source else {}
+    self.scoreboard = scoreboard if scoreboard else {}
     self.testflight = testflight
     if self.testflight:
       bin = ["echo", "python3"]

@@ -17,7 +17,7 @@ MiB = 2**20
 # -- result how much total time this one needs 
 #
 class DataPath:
-  def __init__(self, name, rate_limit=None, io_ratio=1, cpu_second=0, fixed_overhead=0):
+  def __init__(self, name, rate_limit=None, io_ratio=1.0, cpu_second=0.0, fixed_overhead=0.0):
     self.name = name
     self.rate_limit = rate_limit # my throughput limit
     self.io_ratio = io_ratio # 1:1 for normal. compression - 0.5. decompression - 2.

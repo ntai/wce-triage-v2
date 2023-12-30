@@ -118,6 +118,7 @@ def disk_save_status():
   return server._save_image.model.data
 
 @dispatch_bp.route("/disk-load-status.json")
+@dispatch_bp.route("/disk-load-status")
 def disk_load_status():
   tlog = get_triage_logger()
   tlog.debug(repr(server._load_image.model.data))

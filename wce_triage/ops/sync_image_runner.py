@@ -207,8 +207,8 @@ if __name__ == "__main__":
       pass
     sys.exit(0)
     # NOTREACHED
-  except Exception as exc:
-    sys.stderr.write(traceback.format_exc(exc) + "\n")
+  except Exception as _exc:
+    sys.stderr.write(traceback.format_exc() + "\n")
     sys.exit(1)
     # NOTREACHED
     pass

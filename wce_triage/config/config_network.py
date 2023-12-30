@@ -13,7 +13,7 @@ class network_config(config_base):
     return self.get("ip_address")
 
   @property.setter
-  def ip_address(self, value):
+  def set_ip_address(self, value):
     return self.set("ip_address", value)
   
   @property.getter
@@ -21,7 +21,7 @@ class network_config(config_base):
     return self.get("bonded_interfaces")
 
   @property.setter
-  def bonded_interfaces(self, value):
+  def set_bonded_interfaces(self, value):
     return self.set("bonded_interfaces", value)
 
 

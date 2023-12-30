@@ -3,12 +3,18 @@ from flask import jsonify, send_file, Blueprint
 from ..version import TRIAGE_VERSION, TRIAGE_TIMESTAMP
 import json
 
+
 meta_bp = Blueprint('meta', __name__, static_folder="/ui")
 
 @meta_bp.route("/")
 @meta_bp.route("/index.html")
 def root_index():
   return send_file("index.html")
+
+
+@meta_bp.route('/favicon.ico')
+def favicon():
+  return send_file("favicon.ico", mimetype='image/vnd.microsoft.icon')
 
 
 @meta_bp.route('/version.json')
@@ -23,7 +29,7 @@ def route_version():
       fversion = manifest.get('version', "1.0.0")
       pass
     pass
-  except Exception as exc:
+  except Exception as _exc:
     from ..lib import get_triage_logger, init_triage_logger
     tlog = get_triage_logger()
     tlog.info(
@@ -31,3 +37,4 @@ def route_version():
     pass
   jsonified = {"version": {"backend": TRIAGE_VERSION + "-" + TRIAGE_TIMESTAMP, "frontend": fversion}}
   return jsonify(jsonified)
+

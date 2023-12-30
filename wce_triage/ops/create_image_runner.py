@@ -55,10 +55,11 @@ For now, this is only dealing with the EXT4 linux partition.
     task = task_unmount("Unmount target", disk=self.disk, partition_id=self.partition_id)
     task.set_teardown_task()
     self.tasks.append(task)
-    self.tasks.append(task_fsck("fsck partition", disk=self.disk, partition_id=self.partition_id, fix_file_system=True)))
+    self.tasks.append(task_fsck("fsck partition", disk=self.disk, partition_id=self.partition_id, fix_file_system=True))
     self.tasks.append(task_shrink_partition("Shrink partition to smallest", disk=self.disk, partition_id=self.partition_id))
     self.tasks.append(task_create_disk_image("Create disk image", disk=self.disk, partition_id=self.partition_id, imagename=self.imagename))
-    task = task_expand_partition("Expand the partion back", disk=self.disk, partition_id=self.partition_id)
+
+    task = task_expand_partition("Expand the partition back", disk=self.disk, partition_id=self.partition_id)
     task.set_teardown_task()
     self.tasks.append(task)
     pass
@@ -73,7 +74,8 @@ if __name__ == "__main__":
     print( 'Unloader: devicename part destdir')
     sys.exit(0)
     # NOTREACHED
-    pass 
+    pass
+
   devname = sys.argv[1]
   if not is_block_device(devname):
     print( '%s is not a block device.' % devname)
@@ -112,8 +114,8 @@ if __name__ == "__main__":
     runner.run()
     sys.exit(0)
     # NOTREACHED
-  except Exception as exc:
-    sys.stderr.write(traceback.format_exc(exc) + "\n")
+  except Exception as _exc:
+    sys.stderr.write(traceback.format_exc() + "\n")
     sys.exit(1)
     # NOTREACHED
     pass

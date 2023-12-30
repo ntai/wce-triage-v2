@@ -23,8 +23,8 @@ tlog = init_triage_logger()
 # create a new gpt partition from partition plan
 #
 class CloneRunner(Runner):
-  def __init__(self, ui, runner_id, disk=None, partition_map=None, partition_plan=None, wipe=None, media=None, **kwargs):
-    super().__init__(ui, runner_id, **kwargs)
+  def __init__(self, ui, runner_id, disk=None, partition_map=None, partition_plan=None, wipe=None, media=None):
+    super().__init__(ui, runner_id)
     self.disk = disk
     self.partition_map = partition_map
     self.pplan = partition_plan
@@ -127,7 +127,9 @@ if __name__ == "__main__":
   efi_boot = True
   part_map = 'gpt' if efi_boot else 'msdos'
   ui = console_ui()
-  runner = CloneRunner(ui, disk.device_name, disk, make_usb_stick_partition_plan(disk, efi_boot=efi_boot), partition_map=part_map)
+  runner = CloneRunner(ui, disk.device_name, disk=disk,
+                       partition_plan=make_usb_stick_partition_plan(disk, efi_boot=efi_boot),
+                       partition_map=part_map)
   runner.prepare()
   runner.preflight()
   runner.explain()

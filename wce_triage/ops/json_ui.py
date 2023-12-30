@@ -43,6 +43,7 @@ def _describe_task(task, current_time):
 
 class json_ui(ops_ui):
   def __init__(self, wock_event = "loadimage", message_catalog=None):
+    super().__init__()
     self.previous = None
     self.wock_event = wock_event
     self.message_catalog = message_catalog

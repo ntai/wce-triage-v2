@@ -258,7 +258,13 @@ class TriageServer(threading.Thread):
     name = runner_class.class_name()
     runner = self._runners.get(name)
     if runner is None and create:
-      out, err = self.dispatches.get(name) if stdout_dispatch is None else stdout_dispatch
+      out, err = self.dispatches.get(name)
+      if stdout_dispatch:
+        out = stdout_dispatch
+        pass
+      if stderr_dispatch:
+        err = stderr_dispatch
+        pass
       runner = runner_class(stdout_dispatch=out, stderr_dispatch=err, meta=meta)
       self.register_runner(runner)
       runner.start()

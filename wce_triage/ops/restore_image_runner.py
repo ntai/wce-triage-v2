@@ -103,17 +103,17 @@ class RestoreDiskRunner(PartitionDiskRunner):
 
     # Make sure it went right. If this is a bad disk, this should catch it.
     self.tasks.append(task_fsck("fsck partition", disk=disk, partition_id=partition_id, payload_size=self.source_size/4, fix_file_system=True))
-    self.tasks.append(task_fsck("fsck partition", disk=disk, partition_id=partition_id, payload_size=self.source_size/4))
+    self.tasks.append(task_fsck("fsck partition", disk=disk, partition_id=partition_id, payload_size=self.source_size/4, fix_file_system=True))
 
     # Loading disk image changes file system's UUID. 
     if self.restore_type["id"] != const.clone:
       # set the fs's uuid to it
-      self.tasks.append(task_set_ext_partition_uuid("Set partition UUID", disk=disk, partition_id=partition_id))
+      self.tasks.append(task_set_ext_partition_uuid("Set partition UUID", disk=disk, partition_id=partition_id, allow_fail=True))
     else:
       # Read the fs's uuid back
       self.tasks.append(task_fetch_partitions("Fetch disk information", disk))
-      self.tasks.append(task_refresh_partitions("Refresh partition information", disk))
       pass
+    self.tasks.append(task_refresh_partitions("Refresh partition information", disk))
 
     # expand partition
     self.tasks.append(task_expand_partition("Expand the partition back", disk=disk, partition_id=partition_id))
@@ -325,6 +325,7 @@ if __name__ == "__main__":
   # file is when I am typing from terminal for manual restore.
   # Hardcoded ones here are also for testing but I think it describes
   # what should be in the restore type json file
+  restore_param: dict = {}
   if isinstance(restore_type, str) and len(restore_type) > 0:
     if restore_type[0] in [".", "/"]:
       with open(restore_type) as json_file:
@@ -383,8 +384,8 @@ if __name__ == "__main__":
                    do_it=not args.preflight)
     sys.exit(0)
     # NOTREACHED
-  except Exception as exc:
-    sys.stderr.write(traceback.format_exc(exc) + "\n")
+  except Exception as _exc:
+    sys.stderr.write(traceback.format_exc() + "\n")
     sys.exit(1)
     # NOTREACHED
     pass

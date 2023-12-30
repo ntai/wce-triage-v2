@@ -115,6 +115,12 @@ it's /tmp/mnt/<fs_uuid>.
   def is_file_system(self, fsname):
     return self.file_system == canonicalize_file_system_name(fsname)
 
+  def get_parition_size(self):
+    if self.start_sector and self.end_sector and self.sector_size:
+      return (self.end_sector - self.start_sector + 1) * self.sector_size
+    return None
+
+
   pass
 
 #

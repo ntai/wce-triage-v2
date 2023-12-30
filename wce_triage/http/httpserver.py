@@ -1251,9 +1251,9 @@ Error status report is a lot to be desired.
         os.remove(fullpath)
         tlog.debug( "Delete '%s' succeeded." % fullpath)
         return aiohttp.web.json_response({})
-      except Exception as exc:
+      except Exception as _exc:
         # FIXME: better response?
-        msg = "Delete '%s' failed.\n%s" % traceback.format_exc()
+        msg = "Delete '%s' failed.\n%s" % (fullpath, traceback.format_exc())
         tlog.info(msg)
         raise HTTPBadRequest(text=msg)
         Pass

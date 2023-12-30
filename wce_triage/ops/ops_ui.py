@@ -62,6 +62,7 @@ class ops_ui(object):
 
 class console_ui(ops_ui):
   def __init__(self):
+    super().__init__()
     self.last_report_time = datetime.datetime.now()
     pass
 
@@ -126,6 +127,7 @@ class console_ui(ops_ui):
 
 class virtual_ui(ops_ui):
   def __init__(self):
+    super().__init__()
     self.state = RunState.Initial
     pass
 
