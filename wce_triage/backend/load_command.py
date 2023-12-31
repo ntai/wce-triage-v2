@@ -1,3 +1,4 @@
+import sys
 from typing import Optional
 
 from .messages import UserMessages
@@ -34,7 +35,7 @@ class LoadCommandRunner(SimpleProcessRunner):
     pass
 
   def queue_load(self, devname, load_type, imagefile, image_size, wipe_request, newhostname):
-    args = ['python3', '-m', 'wce_triage.ops.restore_image_runner', devname, imagefile, image_size, load_type]
+    args = [sys.executable, '-m', 'wce_triage.ops.restore_image_runner', devname, imagefile, image_size, load_type]
     tlog = get_triage_logger()
 
     if newhostname:

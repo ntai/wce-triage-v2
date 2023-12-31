@@ -1,3 +1,5 @@
+import sys
+
 from .models import Model, ModelDispatch
 from .process_runner import ProcessRunner
 from typing import Optional
@@ -55,7 +57,7 @@ class CpuInfoCommandRunner(ProcessRunner):
 
   def start(self):
     super().start()
-    args = ['python3', '-m', 'wce_triage.lib.cpu_info']
+    args = [sys.executable, '-m', 'wce_triage.lib.cpu_info']
     self.queue(args, {"job": "cpu_info"})
     self.queue(None, {})
     self.join()

@@ -7,6 +7,7 @@ server data storage
 """
 import logging
 import os, re
+import sys
 import time
 from typing import Optional
 from flask import Flask
@@ -193,7 +194,7 @@ class TriageServer(threading.Thread):
         out = None
         try:
           self.tlog.debug("get_cpu_info: starting")
-          cpu_info = subprocess.Popen("python3 -m wce_triage.lib.cpu_info", shell=True, stdout=subprocess.PIPE,
+          cpu_info = subprocess.Popen([sys.executable, "-m",  "wce_triage.lib.cpu_info"], stdout=subprocess.PIPE,
                                            stderr=subprocess.PIPE)
           self.tlog.debug("get_cpu_info: started")
           (out, err) = cpu_info.communicate()

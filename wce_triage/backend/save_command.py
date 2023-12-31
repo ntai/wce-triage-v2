@@ -1,3 +1,4 @@
+import sys
 from typing import Optional
 
 from .messages import UserMessages
@@ -81,7 +82,7 @@ class SaveCommandRunner(SimpleProcessRunner):
       return {"message": msg}, HTTPStatus.BAD_REQUEST
 
     # save image runs its own course, and output will be monitored by a call back
-    args = ['python3', '-m', 'wce_triage.ops.create_image_runner', devname, str(partition_id), destdir]
+    args = [sys.executable, '-m', 'wce_triage.ops.create_image_runner', devname, str(partition_id), destdir]
     self.queue(args, {"args": args, "devname": devname, "destdir": destdir, "partid": str(partition_id)})
     return {}, HTTPStatus.OK
 

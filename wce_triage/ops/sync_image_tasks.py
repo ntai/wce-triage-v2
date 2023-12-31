@@ -8,6 +8,8 @@
 #
 
 import os, json, traceback
+import sys
+
 from ..lib.util import get_triage_logger
 from .run_state import RUN_STATE, RunState
 from ..lib.disk_images import list_image_files
@@ -117,9 +119,9 @@ class task_image_sync_copy(op_task_process_simple, task_image_sync):
     self.scoreboard = scoreboard if scoreboard else {}
     self.testflight = testflight
     if self.testflight:
-      bin = ["echo", "python3"]
+      bin = ["echo", sys.executable]
     else:
-      bin = ["python3"]
+      bin = [sys.executable]
       pass
 
     source_filename = self.source["name"]
@@ -166,7 +168,7 @@ class task_image_sync_copy(op_task_process_simple, task_image_sync):
                               "timeRemaining": 0,
                               "progress": 100}
         cmd = f'import sys, json; json.dump({repr(no_copy)}, sys.stderr); print("",file=sys.stderr)'
-        self.argv = ["python3", "-c", cmd]
+        self.argv = [sys.executable, "-c", cmd]
         pass
       pass
     super().setup()

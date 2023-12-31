@@ -10,6 +10,7 @@
 import datetime, re, subprocess, abc, os, select, uuid, json, traceback, shutil
 import struct
 import errno
+import sys
 from typing import Optional
 
 from ..components.pci import find_pci_device_node
@@ -267,6 +268,10 @@ class op_task_process(op_task):
       raise Exception(self.description + ": Time estimate is not provided.")
     return self.time_estimate
 
+  def preflight(self, tasks):
+    super().preflight(tasks)
+    pass
+
   def setup(self):
     tlog.debug( "op_task_process Poepn: " + repr(self.argv))
     self.verdict.append("Process: " + repr(self.argv))
@@ -277,7 +282,9 @@ class op_task_process(op_task):
     self.out = ""
     self.err = ""
     super().setup()
+    assert(self.argv is not None)
     pass
+
 
   def _poll_process(self):
     # check the process but not be blocked.
@@ -378,7 +385,6 @@ class op_task_process(op_task):
 
 class op_task_process_simple(op_task_process):
   def __init__(self, description, argv=None, **kwargs):
-    assert(argv is not None)
     super().__init__(description, argv=argv, **kwargs)
     pass
 
@@ -1636,7 +1642,7 @@ class op_task_wipe_disk(op_task_process):
   #
   def __init__(self, description, disk=None, short=False, **kwargs):
     self.disk = disk
-    argv = ["python3", "-m", "wce_triage.bin.zerowipe"]
+    argv = [sys.executable, "-m", "wce_triage.bin.zerowipe"]
 
     estimate = 2
     if short:

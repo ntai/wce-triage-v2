@@ -7,8 +7,15 @@ CPU detection and triaging.
 
 import os
 import re
+import sys
+from ..lib.util import get_triage_logger
 
-from ruamel.yaml import YAML
+try:
+  from ruamel.yaml import YAML
+except ModuleNotFoundError:
+  get_triage_logger().error("path: %s", sys.path)
+  exit(1)
+  pass
 
 from .component import Component
 

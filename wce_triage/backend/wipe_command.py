@@ -1,3 +1,4 @@
+import sys
 from .models import ModelDispatch
 from .process_runner import SimpleProcessRunner
 from http import HTTPStatus
@@ -19,7 +20,7 @@ class WipeCommandRunner(SimpleProcessRunner):
     pass
 
   def queue_wipe(self, devices):
-    args = ['python3', '-m', 'wce_triage.bin.multiwipe'] + devices
+    args = [sys.executable, '-m', 'wce_triage.bin.multiwipe'] + devices
     self.queue(args, {"args": args, "devnames": ",".join(devices)})
     return {}, HTTPStatus.OK
 

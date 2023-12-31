@@ -46,7 +46,7 @@ run:
 	. ./venv/bin/activate && PYTHONPATH=${PWD} sudo ./venv/bin/python3 -m wce_triage.backent
 
 flask:
-	. ./venv/bin/activate && PYTHONPATH=${PWD} sudo -E --preserve-env=PYTHONPATH,FLASK_DEBUG ${PWD}/venv/bin/flask --app wce_triage.backend.app run
+	. ./venv/bin/activate && PYTHONPATH=${PWD} FLASK_APP=wce_triage.backend.app:create_app sudo -E --preserve-env=PYTHONPATH,FLASK_DEBUG,FLASK_APP ${PWD}/venv/bin/flask run
 
 ui:
 	rsync -av --delete ../wce-triage-ui/build/ ./wce_triage/ui/

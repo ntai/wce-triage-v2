@@ -1,3 +1,4 @@
+import sys
 from typing import Optional
 
 from .models import Model, ModelDispatch
@@ -26,7 +27,7 @@ class OpticalDriveTestRunner(SimpleProcessRunner):
     pass
 
   def queue_test(self, device_name):
-    args = ['python3', '-m', 'wce_triage.bin.test_optical', device_name]
+    args = [sys.executable, '-m', 'wce_triage.bin.test_optical', device_name]
     self.queue(args, {"args": args, "devnames": device_name})
     return
   pass

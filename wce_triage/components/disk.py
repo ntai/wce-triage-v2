@@ -508,6 +508,64 @@ class Nvme(Disk):
 
   pass # End of nvme class
 
+
+#
+# Mmc class represents eMMC ssd
+#
+# eMMc is different from other storage devices in that there are two boot partitions and they behave like a separate
+# disk. As a matter of fact, they are often physically separate disks.
+#
+# The eMMC partition map has to be very specific.  boot0, boot1
+#
+# class Mmc(Disk):
+#   def __init__(self, prop=None, device_name=None, mounted=False):
+#     # So prop comes back from nvme list.
+#     #
+#     #  "DevicePath" : "/dev/mmcblk0",
+#     #  "Index" : 0,
+#     #  "ModelNumber" : "",
+#     #  "ProductName" : "",
+#     #  "SerialNumber" : "S359NB0J504295",
+#     #  "UsedBytes" : 13095006208,
+#     #  "MaximiumLBA" : 1000215216,
+#     #  "PhysicalSize" : 512110190592,
+#     #  "SectorSize" : 512
+#     #
+#
+#     self.prop = prop
+#     if device_name is None and prop:
+#       device_name = prop.get("DevicePath")
+#       pass
+#     super().__init__(device_name=device_name, mounted=mounted)
+#
+#     # Since it's coming back from nvme list command,
+#     # it must be a nvme disk, and detected.
+#     if prop:
+#       self.is_disk = True
+#       self.is_detected = True
+#     else:
+#       self.is_disk = False
+#       self.is_detected = False
+#       pass
+#     pass
+#
+#   def detect_disk(self):
+#     return self.is_detected
+#
+#   def detect_disk_type(self):
+#     return self.is_disk
+#
+#   def estimate_speed(self, operation=None):
+#     props = self.get_storage_property()
+#     return props.write_speed_4k
+#
+#   # part_no: string but it is digit only
+#   def get_partition_device_file(self, part_no):
+#     return "%sp%s" % (self.device_name, part_no)
+#
+#   pass # End of Mmc class
+
+
 #
 #
 # FIXME: Should fetch what it is from actual device

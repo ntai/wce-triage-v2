@@ -1,3 +1,4 @@
+import sys
 from typing import Optional
 
 from .models import ModelDispatch
@@ -32,9 +33,9 @@ class SyncCommandRunner(SimpleProcessRunner):
 
     if clean:
       # clean
-      args = ['python3', '-m', 'wce_triage.ops.sync_image_runner', ",".join(target_disks)] + ["clean"]
+      args = [sys.executable, '-m', 'wce_triage.ops.sync_image_runner', ",".join(target_disks)] + ["clean"]
     else:
-      args = ['python3', '-m', 'wce_triage.ops.sync_image_runner', ",".join(target_disks)] + image_files
+      args = [sys.executable, '-m', 'wce_triage.ops.sync_image_runner', ",".join(target_disks)] + image_files
       pass
     self.queue(args, {"args": args})
     return {}, HTTPStatus.OK
