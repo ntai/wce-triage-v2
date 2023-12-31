@@ -1,0 +1,461 @@
+cpus:
+  amd:
+    generations:
+      - name: Athlon 64
+        cpu_family: 15
+        generation: 1
+        release_year: 2003
+        microarchitectures:
+          - name: K8
+            release_year: 2003
+            features:
+              - 64-bit architecture
+              - integrated memory controller
+              - HyperTransport
+      - name: Athlon 64 X2
+        cpu_family: 15
+        generation: 2
+        release_year: 2005
+        microarchitectures:
+          - name: K8
+            patterns:
+              - "AMD Athlon\\(TM\\) 64 X2"
+            release_year: 2005
+            features:
+              - 64-bit architecture
+              - integrated memory controller
+              - HyperTransport
+              - dual-core
+      - name: Athlon 64 FX
+        cpu_family: 15
+        generation: 3
+        release_year: 2005
+        microarchitectures:
+          - name: K8
+            patterns:
+              - "AMD Athlon\\(TM\\) 64 FX"
+              - "AMD Athlon\\(tm\\) 64 FX"
+            release_year: 2005
+            features:
+              - 64-bit architecture
+              - integrated memory controller
+              - HyperTransport
+              - dual-core
+              - unlocked multiplier
+      - name: Athlon 64 X2
+        generation: 4
+        release_year: 2007
+        microarchitectures:
+          - name: K10
+            release_year: 2007
+            features:
+              - 64-bit architecture
+              - integrated memory controller
+              - HyperTransport
+              - dual-core
+      - name: Phenom
+        cpu_family: 16
+        generation: 5
+        intel_generation: 1
+        release_year: 2007
+        microarchitectures:
+          - name: K10
+            release_year: 2007
+            features:
+              - 64-bit architecture
+              - integrated memory controller
+              - HyperTransport
+              - quad-core
+      - name: Phenom II
+        generation: 6
+        intel_generation: 1
+        cpu_family: 16
+        release_year: 2009
+        microarchitectures:
+          - name: K10
+            patterns:
+              - "AMD Phenom\\(TM\\) II"
+              - "AMD Phenom\\(tm\\) II"
+            models: [ "4" ]
+            release_year: 2009
+            features:
+              - 64-bit architecture
+              - integrated memory controller
+              - HyperTransport
+              - quad-core
+      - name: FX
+        cpu_family: 21
+        generation: 7
+        intel_generation: 2
+        release_year: 2011
+        microarchitectures:
+          - name: Bulldozer
+            models: [ "2" ]
+            release_year: 2011
+            features:
+              - 32nm manufacturing process
+              - 8 cores
+              - 16 threads
+              - 2 memory channels
+              - 42 PCIe lanes
+      - name: Piledriver
+        cpu_family: 21
+        generation: 8
+        intel_generation: 3
+        release_year: 2012
+        microarchitectures:
+          - name: Piledriver
+            release_year: 2012
+            features:
+              - 32nm manufacturing process
+              - 8 cores
+              - 16 threads
+              - 2 memory channels
+              - 42 PCIe lanes
+      - name: Steamroller
+        generation: 9
+        intel_generation: 5
+        release_year: 2014
+        microarchitectures:
+          - name: Steamroller
+            release_year: 2014
+            features:
+              - 28nm manufacturing process
+              - 8 cores
+              - 16 threads
+              - 2 memory channels
+              - 42 PCIe lanes
+      - name: Excavator
+        generation: 10
+        intel_generation: 6
+        release_year: 2015
+        microarchitectures:
+          - name: Excavator
+            release_year: 2015
+            features:
+              - 28nm manufacturing process
+              - 4 cores
+              - 4 threads
+              - 2 memory channels
+              - 8 PCIe lanes
+      - name: Ryzen 1000 Series
+        generation: 1
+        intel_generation: 8
+        release_year: 2017
+        microarchitectures:
+          - name: Zen
+            release_year: 2017
+            pattern:
+              - "AMD Ryzen 1\\d{3}"
+            features:
+              - 14nm manufacturing process
+              - 8 cores
+              - 16 threads
+              - 2 memory channels
+              - 20 PCIe lanes
+      - name: Ryzen 2000 series
+        generation: 2
+        intel_generation: 9
+        release_year: 2018
+        microarchitectures:
+          - name: Zen+
+            release_year: 2018
+            pattern:
+              - "AMD Ryzen 2\\d{3}"
+            features:
+              - 12nm manufacturing process
+              - 8 cores
+              - 16 threads
+              - 2 memory channels
+              - 20 PCIe lanes
+      - name: Ryzen 3000 series
+        cpu_family: 23
+        generation: 3
+        intel_generation: 10
+        release_year: 2019
+        microarchitectures:
+          - name: Zen 2
+            models: [ "24", "113" ]
+            pattern:
+              - "AMD Ryzen 3\\d{3}"
+            release_year: 2019
+            features:
+              - 7nm manufacturing process
+              - 16 cores
+              - 32 threads
+              - 4 memory channels
+              - 40 PCIe lanes
+      - name: Ryzen 4000 series
+        cpu_family: 24
+        generation: 4
+        intel_generation: 11
+        release_year: 2020
+        microarchitectures:
+          - name: Zen 2
+            release_year: 2020
+            pattern:
+              - "AMD Ryzen 4\\d{3}"
+            features:
+              - 7nm manufacturing process
+              - 16 cores
+              - 32 threads
+              - 4 memory channels
+              - 40 PCIe lanes
+          - name: Zen 3
+            release_year: 2020
+            pattern:
+              - "AMD Ryzen 4\\d{3}"
+            features:
+              - 7nm manufacturing process
+              - 16 cores
+              - 32 threads
+              - 4 memory channels
+              - 40 PCIe lanes
+      - name: Ryzen 5000 series
+        cpu_family: 25
+        generation: 5
+        release_year: 2020
+        microarchitectures:
+          - name: Zen 3
+            release_year: 2020
+            pattern:
+              - "AMD Ryzen 5\\d{3}"
+            features:
+              - 7nm manufacturing process
+              - 16 cores
+              - 32 threads
+              - 4 memory channels
+              - 40 PCIe lanes
+      - name: Ryzen 6000 series
+        generation: 6
+        release_year: 2022
+        microarchitectures:
+          - name: Zen 4
+            release_year: 2022
+            pattern:
+              - "AMD Ryzen 6\\d{3}"
+            features:
+              - 5nm manufacturing process
+              - 16 cores
+              - 32 threads
+              - 4 memory channels
+              - 40 PCIe lanes
+      - name: Ryzen 7000 series
+        generation: 7
+        release_year: 2023
+        microarchitectures:
+          - name: Zen 5
+            release_year: 2023
+            pattern:
+              - "AMD Ryzen 7\\d{3}"
+            features:
+              - 3nm manufacturing process
+              - 16 cores
+              - 32 threads
+              - 4 memory channels
+              - 40 PCIe lanes
+  intel:
+    generations:
+      - name: 1st Generation
+        cpu_family: 6
+        generation: 1
+        intel_generation: 1
+        release_year: 2008
+        microarchitectures:
+          - name: Nehalem
+            patterns:
+              - "First Gen Intel.+"
+            release_year: 2008
+            features:
+              - integrated memory controllers
+              - QuickPath Interconnect (QPI)
+      - name: 2nd Generation
+        cpu_family: 6
+        generation: 2
+        intel_generation: 2
+        release_year: 2011
+        microarchitectures:
+          - name: Sandy Bridge
+            models: [ "42" ]
+            patterns:
+              - "Intel\\(R\\) Core\\(TM\\) i\\d-2\\d{3}:alpha:{0,2}"
+            release_year: 2011
+            features:
+              - improved performance
+              - integrated graphics
+              - 32nm manufacturing process
+      - name: 3rd Generation
+        cpu_family: 6
+        generation: 3
+        intel_generation: 3
+        release_year: 2012
+        microarchitectures:
+          - name: Ivy Bridge
+            models: [ "58" ]
+            patterns:
+              - "Intel\\(R\\) Core\\(TM\\) i\\d-3\\d{3}:alpha:{0,2}"
+            release_year: 2012
+            features:
+              - improved graphics and CPU performance
+              - 22nm manufacturing process
+      - name: 4th Generation
+        cpu_family: 6
+        generation: 4
+        intel_generation: 4
+        release_year: 2013
+        microarchitectures:
+          - name: Haswell
+            models: [ "60" ]
+            patterns:
+              - "Intel\\(R\\) Core\\(TM\\) i\\d-4\\d{3}:alpha:{0,2}"
+            release_year: 2013
+            features:
+              - increased power efficiency
+      - name: 5th Generation
+        cpu_family: 6
+        generation: 5
+        intel_generation: 5
+        release_year: 2014
+        microarchitectures:
+          - name: Broadwell
+            patterns:
+              - "Intel\\(R\\) Core\\(TM\\) i\\d-5\\d{3}:alpha:{0,2}"
+            release_year: 2014
+            features:
+              - 14nm manufacturing process
+      - name: 6th Generation
+        cpu_family: 6
+        generation: 6
+        intel_generation: 6
+        release_year: 2015
+        microarchitectures:
+          - name: Skylake
+            models: [ "94" ]
+            patterns:
+              - "Intel\\(R\\) Core\\(TM\\) i\\d-6\\d{3}:alpha:{0,2}"
+            release_year: 2015
+            features:
+              - significant performance improvements
+              - DDR4 memory support
+      - name: 7th Generation
+        cpu_family: 6
+        generation: 7
+        intel_generation: 7
+        release_year: 2016
+        microarchitectures:
+          - name: Kaby Lake
+            patterns:
+              - "Intel\\(R\\) Core\\(TM\\) i\\d-7\\d{3}:alpha:{0,2}"
+            release_year: 2016
+            features:
+              - increased clock speeds
+              - improved GPU performance
+      - name: 8th Generation
+        cpu_family: 6
+        generation: 8
+        intel_generation: 8
+        release_year: 2017
+        microarchitectures:
+          - name: Coffee Lake
+            models: [ "158" ]
+            patterns:
+              - "Intel\\(R\\) Core\\(TM\\) i\\d-8\\d{3}:alpha:{0,2}"
+            release_year: 2017
+            features:
+              - more cores
+              - significantly improved multi-threaded performance
+      - name: 9th Generation
+        cpu_family: 6
+        generation: 9
+        intel_generation: 9
+        release_year: 2018
+        microarchitectures:
+          - name: Coffee Lake Refresh
+            patterns:
+              - "9th Gen Intel.+"
+              - "Intel\\(R\\) Core\\(TM\\) i\\d-9\\d{3}:alpha:{0,2}"
+            release_year: 2018
+            features:
+              - higher clock speeds
+              - integrated Wi-Fi 6 support
+      - name: 10th Generation
+        cpu_family: 6
+        generation: 10
+        intel_generation: 10
+        release_year: 2019
+        microarchitectures:
+          - name: Comet Lake
+            patterns:
+              - "10th Gen Intel.+"
+              - "Intel\\(R\\) Core\\(TM\\) i\\d-10\\d{3}:alpha:{0,2}"
+            release_year: 2019
+            features:
+              - higher core counts
+          - name: Ice Lake
+            patterns:
+              - "10th Gen Intel.+"
+              - "Intel\\(R\\) Core\\(TM\\) i\\d-10\\d{3}:alpha:{0,2}"
+            release_year: 2019
+            features:
+              - 10nm manufacturing process
+              - improved integrated graphics
+              - AI performance improvements
+      - name: 11th Generation
+        cpu_family: 6
+        generation: 11
+        intel_generation: 11
+        release_year: 2020
+        microarchitectures:
+          - name: Rocket Lake
+            release_year: 2020
+            patterns:
+              - "11th Gen Intel.+"
+              - "Intel\\(R\\) Core\\(TM\\) i\\d-11\\d{3}:alpha:{0,2}"
+            features:
+              - Cypress Cove cores
+          - name: Tiger Lake
+            release_year: 2020
+            features:
+              - improved integrated graphics
+              - AI performance improvements
+      - name: 12th Generation
+        cpu_family: 6
+        generation: 12
+        intel_generation: 12
+        release_year: 2021
+        microarchitectures:
+          - name: Alder Lake
+            patterns:
+              - "12th Gen Intel.+"
+              - "Intel\\(R\\) Core\\(TM\\) i\\d-12\\d{3}:alpha:{0,2}"
+            release_year: 2021
+            features:
+              - hybrid architecture with performance and efficiency cores
+      - name: 13th Generation
+        cpu_family: 6
+        generation: 13
+        intel_generation: 13
+        release_year: 2022
+        microarchitectures:
+          - name: Raptor Lake
+            models: [ "183" ]
+            patterns:
+              - "13th Gen Intel.+"
+              - "Intel\\(R\\) Core\\(TM\\) i\\d-13\\d{3}:alpha:{0,2}"
+            release_year: 2022
+            features:
+              - more E-cores
+              - higher clock speeds
+      - name: 14th Generation
+        cpu_family: 6
+        generation: 14
+        intel_generation: 14
+        release_year: 2023
+        microarchitectures:
+          - name: Meteor Lake
+            patterns:
+              - "14th Gen Intel.+"
+              - "Intel\\(R\\) Core\\(TM\\) i\\d-14\\d{3}:alpha:{0,2}"
+            release_year: 2023
+            features:
+              - further refinement of hybrid architecture
