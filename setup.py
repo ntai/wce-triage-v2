@@ -37,9 +37,15 @@ setuptools.setup(
             'wce_triage.setup'],
   include_package_data=True,
   install_requires=[
-    'python-socketio==5.6.0',
     'aiohttp==3.6.2',
-    'aiohttp_cors==0.7.0'
+    'aiohttp-cors==0.7.0',
+    'Flask==3.0.0',
+    'Flask-CLI==0.4.0',
+    'Flask-Cors==3.0.10',
+    'Flask-SocketIO==5.3.3',
+    'python-engineio==4.8.1',
+    'python-socketio==5.10.0',
+    'typing_extensions==4.9.0',
   ],
   classifiers=[
     "Programming Language :: Python :: 3",

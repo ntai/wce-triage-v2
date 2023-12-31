@@ -154,16 +154,30 @@ class task_image_sync_copy(op_task_process_simple, task_image_sync):
         self.argv.append("%s:%s" % (disk.device_name, os.path.join(dir, self.source["restoreType"], src_fname)))
         self.scoreboard[disk.device_name]["total_size"] += self.source["size"]
         pass
+      else:
+        no_copy = {"key": disk.device_name,
+                              "verdict": "No copy",
+                              "runMessage": "No copy",
+                              "runStatus": RunState.Success.value,
+                              "totalBytes": 0,
+                              "runTime": 1,
+                              "runEstimate": 1,
+                              "remainingBytes": 0,
+                              "timeRemaining": 0,
+                              "progress": 100}
+        cmd = f'import sys, json; json.dump({repr(no_copy)}, sys.stderr); print("",file=sys.stderr)'
+        self.argv = ["python3", "-c", cmd]
+        pass
       pass
     super().setup()
     pass
 
   def poll(self):
     self._poll_process()
-    self.parse_fanout_copy_progess()
+    self.pares_fanout_copy_progress()
     pass
 
-  def parse_fanout_copy_progess(self):
+  def pares_fanout_copy_progress(self):
     #
     if len(self.err) == 0:
       return
@@ -204,7 +218,8 @@ class task_image_sync_copy(op_task_process_simple, task_image_sync):
           scoreboard["inflight_seconds"] = report["runTime"]
           pass
 
-        scoreboard["bps"] = (scoreboard["completed_size"] + scoreboard["inflight_size"]) / (scoreboard["completed_seconds"] + scoreboard["inflight_seconds"])
+        scoreboard["bps"] = 1
+        #scoreboard["bps"] = (scoreboard["completed_size"] + scoreboard["inflight_size"]) / (scoreboard["completed_seconds"] + scoreboard["inflight_seconds"])
         pass
       except Exception as exc:
         msg = "Output line: '" + line + "'\n" + traceback.format_exc()

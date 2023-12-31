@@ -18,8 +18,10 @@ class SyncCommandRunner(SimpleProcessRunner):
   def __init__(self,
                stdout_dispatch: Optional[ModelDispatch] = None,
                stderr_dispatch: Optional[ModelDispatch] = None,
-               _meta=None):
-    super().__init__(stdout_dispatch=stdout_dispatch, stderr_dispatch=stderr_dispatch, meta = {"tag": "syncing"})
+               meta=None):
+    if not meta:
+      meta = {"tag": "syncing"}
+    super().__init__(stdout_dispatch=stdout_dispatch, stderr_dispatch=stderr_dispatch, meta=meta)
     pass
 
   def queue_sync(self, image_files: list, target_disks: str, clean=False):

@@ -307,26 +307,6 @@ def route_mount_disk(request):
     pass
   return {}, HTTPStatus.OK
 
-def stop_runner(runner_class):
-  runner = server.get_runner(runner_class, create=False)
-  if runner:
-    runner.terminate()
-    pass
-  return {}
-
-@dispatch_bp.route("/stop-load", methods=["POST"])
-def route_stop_load_image(_request):
-  return stop_runner(LoadCommandRunner)
-
-
-@dispatch_bp.route("/stop-save", methods=["POST"])
-def route_stop_save_image(_request):
-  return stop_runner(SaveCommandRunner)
-
-@dispatch_bp.route("/stop-wipe", methods=["POST"])
-def route_stop_disk_wipe(_request):
-  return stop_runner(WipeCommandRunner)
-
 @dispatch_bp.route("/wipe", methods=["POST"])
 def route_wipe_disks():
   devname = request.args.get("deviceName")
@@ -341,6 +321,31 @@ def route_wipe_disks():
   wipe_command_runner = server.get_runner(WipeCommandRunner)
   (result, code) = wipe_command_runner.queue_save(devices)
   return result, code
+
+
+def stop_runner(runner_class):
+  runner = server.get_runner(runner_class, create=False)
+  if runner:
+    runner.terminate()
+    pass
+  return {}
+
+@dispatch_bp.route("/stop-load", methods=["POST"])
+def route_stop_load_image():
+  return stop_runner(LoadCommandRunner)
+
+
+@dispatch_bp.route("/stop-save", methods=["POST"])
+def route_stop_save_image():
+  return stop_runner(SaveCommandRunner)
+
+@dispatch_bp.route("/stop-wipe", methods=["POST"])
+def route_stop_disk_wipe():
+  return stop_runner(WipeCommandRunner)
+
+@dispatch_bp.route("/stop-sync", methods=["POST"])
+def route_stop_sync():
+  return stop_runner(SyncCommandRunner)
 
 
 @dispatch_bp.route("/shutdown", methods=["POST"])

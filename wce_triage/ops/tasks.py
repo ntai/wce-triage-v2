@@ -546,13 +546,13 @@ class task_mkswap(op_task_process_simple):
 #
 class task_unmount(op_task_process_simple):
   def __init__(self, description, disk=None, partition_id='Linux', force_unmount=False, **kwargs):
-    kwargs["time_estimate"] = kwargs.get("time_estimate", 2)
+    kwargs["time_estimate"] = kwargs.get("time_estimate", 1)
     self.disk = disk
     self.partition_id = partition_id
     self.force = force_unmount
     self.part = None
     self.partition_is_mounted = False
-    super().__init__(description, argv=["/bin/umount"], time_estimate=1, **kwargs)
+    super().__init__(description, argv=["/bin/umount"], **kwargs)
     pass
 
 
@@ -598,7 +598,7 @@ class task_mount(op_task_process_simple):
     self.partition_id = partition_id
     self.part = None
     self.add_mount_point = add_mount_point
-    super().__init__(description, argv = ["/bin/mount"], time_estimate=2, **kwargs)
+    super().__init__(description, argv = ["/bin/mount"], **kwargs)
     pass
   
 

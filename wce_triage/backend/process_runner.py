@@ -88,8 +88,12 @@ class ProcessRunner(threading.Thread):
       self.error_message("%s: %s" % (tag, traceback.format_exc()))
       pass
 
-    if self.process.returncode != 0:
-      self.error_message("Process '%s' failed with error code %d" % (" ".join(args), self.process.returncode))
+    if self.process:
+      if self.process.returncode != 0:
+        self.error_message("Process '%s' failed with error code %d" % (" ".join(args), self.process.returncode))
+      pass
+    else:
+      self.error_message("Process is gone")
       pass
 
     self.stdout.join()
@@ -115,9 +119,7 @@ class ProcessRunner(threading.Thread):
   def terminate(self):
     if not self.is_process_running():
       return
-    process = self.process
-    self.process = None
-    process.terminate()
+    self.process.terminate()
     pass
 
   pass
