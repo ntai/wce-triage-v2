@@ -306,8 +306,8 @@ def route_wipe_disks():
   else:
     return {}, HTTPStatus.BAD_REQUEST
 
-  wipe_command_runner = server.get_runner(WipeCommandRunner)
-  (result, code) = wipe_command_runner.queue_save(devices)
+  wipe_command_runner:WipeCommandRunner = server.get_runner(WipeCommandRunner)
+  (result, code) = wipe_command_runner.queue_wipe(devices)
   return result, code
 
 

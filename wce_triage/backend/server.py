@@ -68,13 +68,13 @@ class TriageServer(threading.Thread):
 
     self._load_image = ImageRunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskRestroing": False, "device": ""}, meta={"tag": "loadimage"}), view=self._socketio_view)
     self._save_image = ImageRunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskSaving": False, "device": ""}, meta={"tag": "saveimage"}), view=self._socketio_view)
-    self._wipe_disk = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskWiping": False, "device": ""}, meta={"tag": "wipe"}), view=self._socketio_view)
+    self._wipe_disk = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskWiping": False, "device": ""}, meta={"tag": "zerowipe"}), view=self._socketio_view)
     self._sync_image = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "device": ""}, meta={"tag": "diskimage"}), view=self._socketio_view)
 
-    self.dispatches = {"load": (self._load_image, None),
-                       "save": (self._save_image, None),
-                       "wipe": (self._wipe_disk, None),
-                       "sync": (self._sync_image, None)}
+    self.dispatches = {"load": (self._load_image, UserMessages),
+                       "save": (self._save_image, UserMessages),
+                       "wipe": (UserMessages, self._wipe_disk),
+                       "sync": (self._sync_image, UserMessages)}
 
     self._cpu_info = ModelDispatch(CpuInfoModel())
     self._disk_portal = None
@@ -281,6 +281,7 @@ class TriageServer(threading.Thread):
     if isinstance(message, dict):
       message['_sequence_'] = self.emit_count
       pass
+    get_triage_logger().debug("send_to_ui: %s %s" % (event, repr(message)))
     self.socketio.emit(event, message)
     pass
 

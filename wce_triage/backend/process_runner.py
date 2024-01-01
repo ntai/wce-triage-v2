@@ -75,8 +75,8 @@ class ProcessRunner(threading.Thread):
     self.stdout_dispatch.start(tag, context)
     self.stderr_dispatch.start(tag, context)
 
-    self.stdout = ProcessPipeReader(self.process, self.process.stdout, dispatch=self.stdout_dispatch)
-    self.stderr = ProcessPipeReader(self.process, self.process.stderr, dispatch=self.stderr_dispatch)
+    self.stdout = ProcessPipeReader(self.process, self.process.stdout, dispatch=self.stdout_dispatch, tag=tag)
+    self.stderr = ProcessPipeReader(self.process, self.process.stderr, dispatch=self.stderr_dispatch, tag=tag)
 
     self.stdout.start()
     self.stderr.start()

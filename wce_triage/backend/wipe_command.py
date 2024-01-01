@@ -15,8 +15,10 @@ class WipeCommandRunner(SimpleProcessRunner):
   def class_name(cls):
     return "wipe"
 
-  def __init__(self, dispatch: ModelDispatch):
-    super().__init__(stdout_dispatch=dispatch, meta = {"tag": "wipe"})
+  def __init__(self, stdout_dispatch: ModelDispatch = None, stderr_dispatch: ModelDispatch = None, meta=None):
+    if not meta:
+      meta = {"tag": "zerowipe"}
+    super().__init__(stdout_dispatch=stdout_dispatch, stderr_dispatch=stderr_dispatch, meta=meta)
     pass
 
   def queue_wipe(self, devices):

@@ -82,7 +82,7 @@ class ModelDispatch(object):
     self.view = view
     pass
 
-  def start(self, tag, args):
+  def start(self, tag, context):
     pass
 
   def dispatch(self, update):
