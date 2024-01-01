@@ -54,7 +54,7 @@ class PartitionDiskRunner(Runner):
       # Skip MBR
       if part.no == 0:
         continue
-      argv = argv + [ arg for arg in [ 'mkpart', 'primary', part.filesys, str(part.start), str(part.start + part.size) ] if arg is not None ]
+      argv = argv + [arg for arg in ['mkpart', 'primary', part.filesys, str(part.start), str(part.start + part.size)] if arg is not None]
       # Assign name
       if part.name:
         argv = argv + [ 'name', str(part.no), part.name ]

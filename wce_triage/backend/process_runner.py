@@ -1,4 +1,6 @@
+import errno
 import shlex
+import signal
 import threading
 import traceback
 from queue import SimpleQueue
@@ -38,6 +40,7 @@ class ProcessRunner(threading.Thread):
     self.meta = {} if meta is None else meta.copy()
     self._queue = SimpleQueue()
     self.logger = get_triage_logger()
+    self._kill_count = 0
     pass
 
   def queue(self, args: list, context: dict):
@@ -89,8 +92,14 @@ class ProcessRunner(threading.Thread):
       pass
 
     if self.process:
-      if self.process.returncode != 0:
-        self.error_message("Process '%s' failed with error code %d" % (" ".join(args), self.process.returncode))
+      cmd = shlex.join(args)
+      if self.process.returncode == -15:
+        self.error_message("Process '%s' killed", cmd)
+        self.logger.info("Process '%s' killed." % cmd)
+      elif self.process.returncode != 0:
+        self.error_message("Process '%s' failed with error code %d" % (cmd, self.process.returncode))
+        self.logger.warning("Process '%s' failed with error code %d", cmd, self.process.returncode)
+        pass
       pass
     else:
       self.error_message("Process is gone")
@@ -119,7 +128,14 @@ class ProcessRunner(threading.Thread):
   def terminate(self):
     if not self.is_process_running():
       return
-    self.process.terminate()
+    self._kill_count += 1
+    if self._kill_count > 2:
+      self.process.kill()
+    elif self._kill_count > 1:
+      self.process.terminate()
+    else:
+      self.process.send_signal(signal.SIGINT)
+      pass
     pass
 
   pass

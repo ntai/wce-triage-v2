@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 #
+import typing
+
 from ..components.disk import Partition
 from ..const import const
 
@@ -41,9 +43,9 @@ def _ext4_version_to_mkfs_opts(ext4_version):
   
 
 #
-def size_partitions(pplan, diskmbsize):
+def size_partitions(pplan: typing.List[Partition], diskmbsize):
   """Do simple math on partitions and figure out the size of partitions."""
-  part0 = None
+  part0: typing.Optional[Partition] = None
   for part in pplan:
     if part.size == 0:
       if part0 is not None:

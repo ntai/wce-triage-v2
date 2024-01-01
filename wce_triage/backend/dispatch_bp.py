@@ -91,6 +91,7 @@ def save_disk_image():
 
 
 @dispatch_bp.route("/stop-save", methods=["POST"])
+@dispatch_bp.route("/save/stop", methods=["POST"])
 def stop_save():
   runner_name = "save"
   save_command_runner = server.get_runner(runner_name)
@@ -107,6 +108,7 @@ def disk_save_status():
 
 @dispatch_bp.route("/disk-load-status.json")
 @dispatch_bp.route("/disk-load-status")
+@dispatch_bp.route("/load/status")
 def disk_load_status():
   tlog = get_triage_logger()
   tlog.debug(repr(server._load_image.model.data))
@@ -207,7 +209,7 @@ def route_sync_image():
 
 
 @dispatch_bp.route("/sync-status.json")
-@dispatch_bp.route("/sync-status")
+@dispatch_bp.route("/sync/status")
 def route_sync_status():
   return server._sync_image.model.data
 
@@ -318,20 +320,32 @@ def stop_runner(runner_class):
     pass
   return {}
 
+@dispatch_bp.route("/wipe/status")
+def disk_wipe_status():
+  #tlog = get_triage_logger()
+  #tlog.debug(repr(server._load_image.model.data))
+  #return server._load_image.model.data
+  return server._wipe_disk.model.data
+
+
 @dispatch_bp.route("/stop-load", methods=["POST"])
+@dispatch_bp.route("/load/stop", methods=["POST"])
 def route_stop_load_image():
   return stop_runner(LoadCommandRunner)
 
 
 @dispatch_bp.route("/stop-save", methods=["POST"])
+@dispatch_bp.route("/save/stop", methods=["POST"])
 def route_stop_save_image():
   return stop_runner(SaveCommandRunner)
 
 @dispatch_bp.route("/stop-wipe", methods=["POST"])
+@dispatch_bp.route("/wipe/stop", methods=["POST"])
 def route_stop_disk_wipe():
   return stop_runner(WipeCommandRunner)
 
 @dispatch_bp.route("/stop-sync", methods=["POST"])
+@dispatch_bp.route("/sync/stop", methods=["POST"])
 def route_stop_sync():
   return stop_runner(SyncCommandRunner)
 

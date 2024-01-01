@@ -173,7 +173,7 @@ def run_load_image(ui, devname, imagefile, imagefile_size, efisrc, newhostname, 
      :wipe: 0: no wipe, 1: quick wipe, 2: full wipe
   '''
   # Should the restore type be json or the file?
-  
+
   disk = create_storage_instance(devname)
   
   id = restore_type.get("id")

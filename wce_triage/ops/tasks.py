@@ -8,11 +8,14 @@
 #
 
 import datetime, re, subprocess, abc, os, select, uuid, json, traceback, shutil
+import signal
 import struct
 import errno
 import sys
 from typing import Optional
+import io
 
+from .run_state import RunState
 from ..components.pci import find_pci_device_node
 from ..components.disk import Partition, PartitionLister, canonicalize_file_system_name
 from ..components.network import detect_net_devices, get_router_ip_address
@@ -239,16 +242,28 @@ class op_task_python_simple(op_task_python):
 
 # Base class for subprocess based task
 class op_task_process(op_task):
+
+  argv: list
+  process: subprocess.Popen
+  stdout: io.BufferedReader
+  stderr: io.BufferedReader
+  _kill_count: int
+  select_timeout: float
+  good_returncode: list
+  read_set: list
+  out: str
+  err: str
+
   def __init__(self, description, argv=None, select_timeout=1, **kwargs):
     super().__init__(description, **kwargs)
 
     self.argv = argv
     self.process = None
-    self.select_timeout = select_timeout
-    self.good_returncode = [0]
-    self.process = None
     self.stdout = None
     self.stderr = None
+    self._kill_count = 0
+    self.select_timeout = select_timeout
+    self.good_returncode = [0]
     self.read_set = []
     self.out = ""
     self.err = ""
@@ -287,6 +302,17 @@ class op_task_process(op_task):
 
 
   def _poll_process(self):
+    #
+    if self.runner and self.runner.state != RunState.Running:
+      if self._kill_count == 0:
+        self._kill_count += 1
+        if self.process:
+          tlog.info("Sending SIGINT to %s" % self.description)
+          self.process.send_signal(signal.SIGINT)
+          pass
+        pass
+      pass
+
     # check the process but not be blocked.
     self.process.poll()
 
@@ -348,8 +374,13 @@ class op_task_process(op_task):
         pass
       pass
     else:  # failed
-      self.set_progress(999, "Failed with return code %d" % (self.process.returncode))
-      log_msg = "%s failed with return code %d" % (self.description, self.process.returncode)
+      if self._kill_count > 0:
+        self.set_progress(999, "Task %s killed" % self.description)
+        log_msg = "%s is killed." % (self.description)
+      else:
+        self.set_progress(999, "Failed with return code %d" % (self.process.returncode))
+        log_msg = "%s failed with return code %d" % (self.description, self.process.returncode)
+        pass
       if self.out:
         log_msg = log_msg + "\nstdout\n" + self.out
         pass

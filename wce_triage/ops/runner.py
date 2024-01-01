@@ -10,6 +10,8 @@
 #
 
 import datetime, traceback
+import signal
+
 from .run_state import RunState, RUN_STATE
 from ..lib.timeutil import in_seconds
 from .tasks import op_task
@@ -38,6 +40,7 @@ class Runner:
 
     # runner's current time
     self.current_time = None
+
     pass
 
   def prepare(self):
@@ -116,6 +119,11 @@ class Runner:
     if self.state != RunState.Preflight:
       raise Exception("Run state is not Preflight")
     self.state = RunState.Running
+    def kill_handler(signum, frame):
+      self.ui.log(self.runner_id, "Received signal %d" % signum)
+      self.state = RunState.Failed
+      pass
+    signal.signal(signal.SIGINT, kill_handler)
 
     self.start_time = datetime.datetime.now()
     while self.task_step < len(self.tasks):
@@ -127,7 +135,7 @@ class Runner:
         try:
           self._run_task(task, self.ui)
         except Exception as exc:
-          self.state = RunState.Failed;
+          self.state = RunState.Failed
           tb = traceback.format_exc()
           fail_msg = "Task: " + task.description + "\n" + tb
           self.ui.log(self.runner_id, fail_msg)
@@ -153,7 +161,7 @@ class Runner:
     pass
 
 
-  def _run_task(self, task, ui):
+  def _run_task(self, task: op_task, ui):
     task.pre_setup()
     task.setup()
     current_time = task.start_time
