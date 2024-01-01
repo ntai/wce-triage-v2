@@ -45,10 +45,6 @@ def route_music():
   """Send mp3 stream to chrome"""
   # For now, return the first mp3 file. Triage usually has only one
   # mp3 file for space reason.
-  tlog = get_triage_logger()
-  if server.computer is None:
-    server.triage()
-    pass
 
   music_file = None
   asset_path = server.asset_path
@@ -60,17 +56,9 @@ def route_music():
 
   if music_file:
     res = send_file(music_file, mimetype="audio/" + music_file[-3:])
-
     if detect_sound_device():
-      computer = server.computer
-      updated = computer.update_decision({"component": "Sound"},
-                                         {"result": True,
-                                          "message": "Sound is tested."},
-                                         overall_changed=server.overall_changed)
-      # FIXME: Do something meaningful, like send a wock message.
-      if updated:
-        tlog.info("updated")
-        pass
+      server.update_component_decision({"component": "Sound"},
+                                       {"result": True, "message": "Sound is tested."})
       pass
     return res
   return {}, HTTPStatus.NOT_FOUND
@@ -365,18 +353,13 @@ def route_shutdown():
 @dispatch_bp.route("/network-device-status")
 def route_network_device_status():
   """Network status"""
-  if server.computer is None:
-    server.triage()
-    pass
   netstat = []
-  computer = server.computer
   for netdev in _network.detect_net_devices():
     netstat.append({"device": netdev.device_name, "carrier": netdev.is_network_connected()})
-    computer.update_decision({"component": "Network",
-                              "device": netdev.device_name},
-                             {"result": netdev.is_network_connected(),
-                              "message": "Connection detected." if netdev.is_network_connected() else "Not conntected."},
-                             overall_changed=server.overall_changed)
+    server.update_component_decision(
+      {"component": "Network", "device": netdev.device_name},
+      {"result": netdev.is_network_connected(),
+       "message": "Connection detected." if netdev.is_network_connected() else "Not conntected."})
     pass
   return netstat, HTTPStatus.OK
 

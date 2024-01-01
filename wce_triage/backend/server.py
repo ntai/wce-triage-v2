@@ -359,6 +359,10 @@ A triaging person can decide whether not sound playing. Also, if you plug in Eth
     # FIXME
     pass
 
+  @property
+  def asset_path(self):
+    return os.path.join(self.config.WCEDIR, "triage", "assets")
+
   pass
 
 
