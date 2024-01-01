@@ -83,7 +83,7 @@ class TriageServer(threading.Thread):
     self._emit_counter = itertools.count()
     self._runners = {}
     self._computer = None
-    self._triage = ModelDispatch(Model(meta={"tag": "triage"}, default=[]), view=self._socketio_view)
+    self._triage = ModelDispatch(Model(meta={"tag": "triageupdate"}, default=[]), view=self._socketio_view)
     self.triage_timestamp = None
     self.target_disks = []
     self.locks = {}

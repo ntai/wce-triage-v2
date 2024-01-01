@@ -330,7 +330,7 @@ cpus:
         release_year: 2015
         microarchitectures:
           - name: Skylake
-            models: [ "94" ]
+            models: [ "78", "94" ]
             patterns:
               - "Intel\\(R\\) Core\\(TM\\) i\\d-6\\d{3}:alpha:{0,2}"
             release_year: 2015
