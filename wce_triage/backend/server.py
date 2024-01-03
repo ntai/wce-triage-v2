@@ -328,13 +328,7 @@ When a status/decision of component changes, this is called to update the decisi
 Since there is no way to listen to audio, only way to confirm the functionality of component is to listen to the sound played on the computer.
 A triaging person can decide whether not sound playing. Also, if you plug in Ethernet to a router, the network status changes (such as detecting carrier) so it's done through this.
     """
-    computer: Computer  = self._computer
-    updated = computer.update_decision(descriptors, updates, overall_changed=self.overall_changed)
-    if updated:
-      # join the key and value and send it
-      updates.update(descriptors)
-      self._triage.dispatch(updates)
-      pass
+    self._computer.update_decision(descriptors, updates, overall_changed=self.overall_changed)
     pass
 
 

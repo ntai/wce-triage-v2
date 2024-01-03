@@ -5,7 +5,9 @@
 
 import re, sys, traceback
 
-from .tasks import task_fetch_partitions, task_refresh_partitions, task_mount, task_remove_persistent_rules, task_remove_logs, task_fsck, task_shrink_partition, task_expand_partition, task_unmount
+from .tasks import (task_fetch_partitions, task_refresh_partitions, task_mount, task_remove_persistent_rules,
+                    task_remove_logs, task_fsck, task_shrink_partition, task_expand_partition, task_unmount,
+                    task_remove_triage_home_cache)
 from .partclone_tasks import task_create_disk_image
 from .ops_ui import console_ui
 from ..components.disk import create_storage_instance
@@ -50,6 +52,7 @@ For now, this is only dealing with the EXT4 linux partition.
     self.tasks.append(task_refresh_partitions("Refresh partition information", self.disk))
 
     self.tasks.append(task_mount("Mount the target disk", disk=self.disk, partition_id=self.partition_id))
+    self.tasks.append(task_remove_triage_home_cache("Remove persistent rules", disk=self.disk, partition_id=self.partition_id))
     self.tasks.append(task_remove_persistent_rules("Remove persistent rules", disk=self.disk, partition_id=self.partition_id))
     self.tasks.append(task_remove_logs("Remove/Clean Logs", disk=self.disk, partition_id=self.partition_id))
     task = task_unmount("Unmount target", disk=self.disk, partition_id=self.partition_id)

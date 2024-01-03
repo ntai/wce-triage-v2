@@ -35,7 +35,6 @@ setuptools.setup(
             'wce_triage.http',
             'wce_triage.ops',
             'wce_triage.setup'],
-  include_package_data=True,
   install_requires=[
     'aiohttp==3.6.2',
     'aiohttp-cors==0.7.0',
@@ -52,5 +51,6 @@ setuptools.setup(
     "License :: OSI Approved :: MIT License",
     "Operating System :: POSIX :: Linux",
   ],
+  include_package_data=True,
 )
 

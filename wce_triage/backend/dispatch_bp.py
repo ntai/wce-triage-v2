@@ -209,6 +209,7 @@ def route_sync_image():
 
 
 @dispatch_bp.route("/sync-status.json")
+@dispatch_bp.route("/sync-status")
 @dispatch_bp.route("/sync/status")
 def route_sync_status():
   return server._sync_image.model.data

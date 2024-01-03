@@ -37,16 +37,20 @@ manifest:
 	echo include Makefile >> MANIFEST.in
 	find wce_triage/setup/patches -type f -print |sort | sed -e 's/^/include /' >> MANIFEST.in
 	find wce_triage/setup/share -type f -print |sort | sed -e 's/^/include /' >> MANIFEST.in
-	echo "recursive-include wce_triage/ui" >> MANIFEST.in
+	echo "include wce_triage/components/cpu_meta.yaml" >> MANIFEST.in
+	echo "recursive-include wce_triage/setup/patches *" >> MANIFEST.in
+	echo "recursive-include wce_triage/setup/share *" >> MANIFEST.in
+	echo "recursive-include wce_triage/ui *" >> MANIFEST.in
 
 local:
-	sudo rsync -av --delete /home/ntai/sand/wce-triage-v2/build/lib/wce_triage/ /var/lib/wcetriage/wcetriage_2004/usr/local/lib/python3.8/dist-packages/wce_triage/
+	#sudo rsync -av --delete /home/ntai/sand/wce-triage-v2/build/lib/wce_triage/ /var/lib/wcetriage/wcetriage_2004/usr/local/lib/python3.8/dist-packages/wce_triage/
+	sudo rsync -av --delete /home/ntai/sand/wce-triage-v2/wce_triage/ /var/lib/wcetriage/wcetriage_2004/usr/local/lib/python3.8/dist-packages/wce_triage/
 
 run:
 	. ./venv/bin/activate && PYTHONPATH=${PWD} sudo ./venv/bin/python3 -m wce_triage.backent
 
 flask:
-	. ./venv/bin/activate && PYTHONPATH=${PWD} FLASK_APP=wce_triage.backend.app:create_app sudo -E --preserve-env=PYTHONPATH,FLASK_DEBUG,FLASK_APP ${PWD}/venv/bin/flask run
+	. ./venv/bin/activate && PYTHONPATH=${PWD} FLASK_ENVIRONMENT=development FLASK_DEBUG=true FLASK_APP=wce_triage.backend.app:create_app sudo -E --preserve-env=PYTHONPATH,FLASK_DEBUG,FLASK_APP,FLASK_ENVIRONMENT ${PWD}/venv/bin/flask run --host 0.0.0.0 --port 10600
 
 ui:
 	rsync -av --delete ../wce-triage-ui/build/ ./wce_triage/ui/

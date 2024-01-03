@@ -9,7 +9,7 @@
 # By calling into diskop, it creates the plan - which is the sequence of tasks.
 # exec runs through the tasks.
 #
-
+import os.path
 import sys
 
 from .tasks import op_task_wipe_disk, op_task_process, task_sync_partitions, task_mkfs, task_mkswap
@@ -25,6 +25,8 @@ tlog = init_triage_logger()
 # create a new gpt partition from partition plan
 #
 class PartitionDiskRunner(Runner):
+  disk: Disk
+
   def __init__(self, ui, runner_id, disk, partition_plan, partition_map='gpt', efi_boot=False, wipe=None, media=None):
     super().__init__(ui, runner_id)
     self.partition_map = partition_map # label is the parted's partition map type

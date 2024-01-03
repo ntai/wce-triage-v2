@@ -851,6 +851,16 @@ class task_remove_files(op_task_python_simple):
   pass
 
 
+# Purge the /home/triage/.cache
+class task_remove_triage_home_cache(task_remove_files):
+    #
+  def __init__(self, description, disk=None, partition_id='Linux', **kwargs):
+    files = ["home/triage/.cache"]
+    super().__init__(description, disk=disk, partition_id=partition_id, files=files, time_estimate=1, **kwargs)
+    pass
+  pass
+
+
 # This is to purge the persistent rules for network and cd devices so that the clone
 # installation will have correct device names
 class task_remove_persistent_rules(task_remove_files):
