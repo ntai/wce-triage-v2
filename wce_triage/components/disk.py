@@ -382,52 +382,64 @@ class Disk:
 
     if out:
       self.is_disk = True
+      props = {}
       for line in out.splitlines():
         try:
           elems = line.split('=')
           tag = elems[0].strip()
           value = elems[1].strip()
-          if tag == "ID_BUS":
-            if value.lower() == "ata" or value.lower() == "scsi":
-              self.is_ata_or_scsi = True
-              pass
-            elif value.lower() == "usb":
-              self.is_usb = True
-              pass
+          props[tag] = value
+        except:
+          pass
+        pass
+
+      for tag in ["ID_BUS", "DEVPATH", "ID_VENDOR", "ID_MODEL", "ID_SERIAL", "ID_USB_DRIVER", "ID_ATA_FEATURE_SET_SMART", "ID_ATA_FEATURE_SET_SMART_ENABLED"]:
+        value = props.get(tag)
+        if value is None:
+          continue
+        if tag == "ID_BUS":
+          if value.lower() == "ata" or value.lower() == "scsi":
+            self.is_ata_or_scsi = True
             pass
-          elif tag == "ID_TYPE":
-            if value.lower() == "disk":
-              self.is_disk = True
-              pass
-            pass
-          elif tag == "ID_VENDOR":
-            self.vendor = value
-            pass
-          elif tag == "ID_MODEL":
-            self.model_name = value
-            pass
-          elif tag == "ID_SERIAL":
-            self.serial_no = value
-            pass
-          elif tag == "ID_USB_DRIVER":
-            self.usb_driver = value
+          elif value.lower() == "usb":
             self.is_usb = True
             pass
-          elif tag == "ID_ATA_FEATURE_SET_SMART":
-            self.smart = (value == '1')
-            pass
-          elif tag == "ID_ATA_FEATURE_SET_SMART_ENABLED":
-            self.smart_enabled = (value == '1')
+          pass
+        elif tag == "DEVPATH":
+          if value.find('/usb') >= 0:
+            self.is_usb = True
+          pass
+        elif tag == "ID_TYPE":
+          if value.lower() == "disk":
+            self.is_disk = True
             pass
           pass
-        except:
-          tlog.debug(traceback.format_exc())
+        elif tag == "ID_VENDOR":
+          self.vendor = value
+          pass
+        elif tag == "ID_MODEL":
+          self.model_name = value
+          pass
+        elif tag == "ID_SERIAL":
+          self.serial_no = value
+          pass
+        elif tag == "ID_USB_DRIVER":
+          self.usb_driver = value
+          self.is_usb = True
+          pass
+        elif tag == "ID_ATA_FEATURE_SET_SMART":
+          self.smart = (value == '1')
+          pass
+        elif tag == "ID_ATA_FEATURE_SET_SMART_ENABLED":
+          self.smart_enabled = (value == '1')
           pass
         pass
       pass
     else:
       self.is_disk = False
       pass
+
+
 
     if err.strip():
       tlog.info(" ".join(cmd) + ":\n" + err)

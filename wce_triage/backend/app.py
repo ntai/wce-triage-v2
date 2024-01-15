@@ -7,6 +7,7 @@ and webscoket server
 
 """
 import logging
+import sys
 
 from flask import Flask
 from flask_cors import CORS
@@ -40,9 +41,16 @@ def init_socketio(app: Flask, socketio: SocketIO):
 
 
 def create_app(wcedir=None, rootdir=None, wce_share=None, live_triage=False, payload=None):
+  """Creates a flask app for the triage server.
+  wcedor: /usr/local/share/wce
+  rootdir: UI Root. The package includes UI, used when None, eg. /usr/local/share/wce/wce-triage-ui
+  wce_share: http://localhost:10600, or /usr/local/share/wce
+  live_triage: True if this is a live triage
+  payload: payload for auto load
+  """
   from ..lib.util import set_triage_logger
   ui_dir = os.path.join(os.path.split((os.path.split(__file__)[0]))[0], "ui")
-  app = Flask(__name__, root_path=ui_dir)
+  app = Flask('wcetriage', root_path=ui_dir)
   set_triage_logger(app.logger, log_level=logging.DEBUG)
   app.url_map.strict_slashes = False
 
@@ -78,5 +86,9 @@ def create_app(wcedir=None, rootdir=None, wce_share=None, live_triage=False, pay
 
   from .server import server
   server.set_app(app, socketio, DevConfig)
-
+  logging.info("WCE Triage Server")
+  print("WCE Triage Server", file=sys.stderr)
+  print(repr(app), file=sys.stderr)
   return app
+
+app = create_app()

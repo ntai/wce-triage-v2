@@ -8,8 +8,7 @@ wce_triage_sh = open(tmpfile, 'w')
 wce_triage_sh.write('''#!/bin/bash
 #
 python3 -m wce_triage.bin.start_network
-cd /usr/local/share/wce/wce-triage-ui
-python3 -m wce_triage.http.httpserver
+FLASK_ENVIRONMENT=development FLASK_DEBLG=true FLASK_APP=wce_triage.backend.app:create_app flask run --port 8312 --host 0.0.0.0
 ''')
 wce_triage_sh.close()
 

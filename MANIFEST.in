@@ -130,6 +130,7 @@ include wce_triage/setup/share/wce/wce-disk-images/ubuntu-18/.disk_image_type.js
 include wce_triage/setup/share/wce/wce-disk-images/wce-16/.disk_image_type.json
 include wce_triage/setup/share/wce/wce-disk-images/wce-18/.disk_image_type.json
 include wce_triage/setup/share/wce/wce-disk-images/wce-lubuntu-18-x32/.disk_image_type.json
+include wce_triage/components/cpu_meta.yaml
 recursive-include wce_triage/setup/patches *
 recursive-include wce_triage/setup/share *
 recursive-include wce_triage/ui *

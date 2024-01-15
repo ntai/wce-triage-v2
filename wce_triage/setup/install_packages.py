@@ -97,6 +97,7 @@ base_packages = {
     'xdg-utils',
     'build-essential',
     'overlayroot',
+    'ubuntu-restricted-extras',
   ],
   '22.04': [
     'iw',                       # for seeing wifi device list
@@ -104,6 +105,8 @@ base_packages = {
     'xdg-utils',
     'build-essential',
     'overlayroot',
+    'firmware-sof-signed',
+    'ubuntu-restricted-extras',
   ],
   '24.04': [
     'iw',                       # for seeing wifi device list
@@ -111,6 +114,7 @@ base_packages = {
     'xdg-utils',
     'build-essential',
     'overlayroot',
+    'ubuntu-restricted-extras',
   ],
 }
 
