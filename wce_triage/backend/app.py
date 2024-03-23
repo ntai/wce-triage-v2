@@ -90,5 +90,3 @@ def create_app(wcedir=None, rootdir=None, wce_share=None, live_triage=False, pay
   print("WCE Triage Server", file=sys.stderr)
   print(repr(app), file=sys.stderr)
   return app
-
-app = create_app()

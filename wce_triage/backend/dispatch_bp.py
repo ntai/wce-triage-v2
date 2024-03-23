@@ -2,6 +2,7 @@ import os
 import subprocess
 import traceback
 
+from . import op_save
 from .formatters import jsoned_disk, jsoned_optical
 from .optical_drive import route_opticaldrivetest
 from .query_params import get_target_devices_from_request
@@ -93,7 +94,7 @@ def save_disk_image():
 @dispatch_bp.route("/stop-save", methods=["POST"])
 @dispatch_bp.route("/save/stop", methods=["POST"])
 def stop_save():
-  runner_name = "save"
+  runner_name = op_save
   save_command_runner = server.get_runner(runner_name)
   if save_command_runner is None:
     return {}, HTTPStatus.OK

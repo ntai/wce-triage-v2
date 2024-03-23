@@ -20,6 +20,7 @@ Flask-SocketIO==5.3.3
 gevent==23.9.1
 gevent-websocket==0.10.1
 greenlet==3.0.3
+gunicorn==21.2.0
 h11==0.14.0
 idna==3.4
 importlib-metadata==7.0.1
@@ -35,10 +36,13 @@ mdurl==0.1.2
 more-itertools==10.1.0
 multidict==4.7.6
 nh3==0.2.15
+packaging==24.0
 pkginfo==1.9.6
 pycparser==2.21
+Pygments==2.17.2
 python-engineio==4.8.1
 python-socketio==5.10.0
+readme-renderer==42.0
 requests==2.31.0
 requests-toolbelt==1.0.0
 rfc3986==2.0.0

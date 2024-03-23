@@ -1,4 +1,4 @@
-.PHONY: setup upload install manifest local run ui
+.PHONY: setup upload install manifest local run ui flask gu
 
 PYPI_USER := $(shell echo $$PYPI_USERNAME)
 PYPI_PASSWORD := $(shell echo $$PYPI_PASSWORD)
@@ -49,10 +49,11 @@ run:
 	. ./venv/bin/activate && PYTHONPATH=${PWD} sudo ./venv/bin/python3 -m wce_triage.http.httpserver
 
 flask:
-	. ./venv/bin/activate && PYTHONPATH=${PWD} FLASK_ENVIRONMENT=development FLASK_APP=wce_triage.backend.app:app sudo -E --preserve-env=PATH,PYTHONPATH,FLASK_DEBUG,FLASK_APP,FLASK_ENVIRONMENT ${PWD}/venv/bin/flask run --host 0.0.0.0 --port 10600
+	. ./venv/bin/activate && PYTHONPATH=${PWD} FLASK_ENVIRONMENT=development FLASK_APP=wce_triage.backend.app:create_app sudo -E --preserve-env=PATH,PYTHONPATH,FLASK_DEBUG,FLASK_APP,FLASK_ENVIRONMENT ${PWD}/venv/bin/flask run --host 0.0.0.0 --port 10600
 
-root:
-	. ./venv/bin/activate && PYTHONPATH=${PWD} FLASK_ENVIRONMENT=development FLASK_APP=wce_triage.backend.app:create_app sudo -E --preserve-env=PATH,PYTHONPATH,FLASK_DEBUG,FLASK_APP,FLASK_ENVIRONMENT bash
+gu:
+	. ./venv/bin/activate && PYTHONPATH=${PWD} FLASK_ENVIRONMENT=development FLASK_APP=wce_triage.backend.app:create_app sudo -E --preserve-env=PATH,PYTHONPATH,FLASK_DEBUG,FLASK_APP,FLASK_ENVIRONMENT ${PWD}/venv/bin/gunicorn -w 4 -b 0.0.0.0:10600 'wce_triage.backend.app:create_app()'
+
 
 ui:
 	rsync -av --delete ../wce-triage-ui/build/ ./wce_triage/ui/

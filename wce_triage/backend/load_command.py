@@ -1,6 +1,7 @@
 import sys
 from typing import Optional
 
+from . import op_load
 from .messages import UserMessages
 from .models import ModelDispatch
 from .process_runner import SimpleProcessRunner
@@ -20,7 +21,7 @@ class LoadCommandRunner(SimpleProcessRunner):
 
   @classmethod
   def class_name(cls):
-    return "load"
+    return op_load
 
   def __init__(self,
                stdout_dispatch: Optional[ModelDispatch] = None,

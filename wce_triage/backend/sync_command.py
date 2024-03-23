@@ -1,6 +1,7 @@
 import sys
 from typing import Optional
 
+from . import op_sync
 from .models import ModelDispatch
 from .process_runner import SimpleProcessRunner
 from http import HTTPStatus
@@ -14,7 +15,7 @@ from ..lib import get_triage_logger
 class SyncCommandRunner(SimpleProcessRunner):
   @classmethod
   def class_name(cls):
-    return "sync"
+    return op_sync
   
   def __init__(self,
                stdout_dispatch: Optional[ModelDispatch] = None,

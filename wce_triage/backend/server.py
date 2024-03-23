@@ -13,6 +13,7 @@ from typing import Optional
 from flask import Flask
 from flask_socketio import SocketIO
 
+from . import op_load, op_save, op_sync, op_wipe
 from .config import Config
 from .formatters import jsoned_disk
 from .messages import UserMessages, ErrorMessages
@@ -71,10 +72,10 @@ class TriageServer(threading.Thread):
     self._wipe_disk = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskWiping": False, "device": ""}, meta={"tag": "zerowipe"}), view=self._socketio_view)
     self._sync_image = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "device": ""}, meta={"tag": "diskimage"}), view=self._socketio_view)
 
-    self.dispatches = {"load": (self._load_image, UserMessages),
-                       "save": (self._save_image, UserMessages),
-                       "wipe": (UserMessages, self._wipe_disk),
-                       "sync": (self._sync_image, UserMessages)}
+    self.dispatches = {op_load: (self._load_image, UserMessages),
+                       op_save: (self._save_image, UserMessages),
+                       op_wipe: (UserMessages, self._wipe_disk),
+                       op_sync: (self._sync_image, UserMessages)}
 
     self._cpu_info = ModelDispatch(CpuInfoModel())
     self._disk_portal = None
@@ -259,6 +260,7 @@ class TriageServer(threading.Thread):
     name = runner_class.class_name()
     runner = self._runners.get(name)
     if runner is None and create:
+      assert name in self.dispatches
       out, err = self.dispatches.get(name)
       if stdout_dispatch:
         out = stdout_dispatch

@@ -1,6 +1,7 @@
 import sys
 from typing import Optional
 
+from . import op_save
 from .messages import UserMessages
 from .models import ModelDispatch
 from .process_runner import SimpleProcessRunner
@@ -21,7 +22,7 @@ class SaveCommandRunner(SimpleProcessRunner):
 
   @classmethod
   def class_name(cls):
-    return "save"
+    return op_save
 
   def __init__(self,
                stdout_dispatch: Optional[ModelDispatch] = None,

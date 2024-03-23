@@ -1,4 +1,6 @@
 import sys
+
+from . import op_wipe
 from .models import ModelDispatch
 from .process_runner import SimpleProcessRunner
 from http import HTTPStatus
@@ -13,7 +15,7 @@ class WipeCommandRunner(SimpleProcessRunner):
 
   @classmethod
   def class_name(cls):
-    return "wipe"
+    return op_wipe
 
   def __init__(self, stdout_dispatch: ModelDispatch = None, stderr_dispatch: ModelDispatch = None, meta=None):
     if not meta:
