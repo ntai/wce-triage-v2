@@ -10,9 +10,12 @@ default: setup
 setup: manifest
 	. ./venv/bin/activate && python3 setup.py sdist bdist_wheel
 
-bootstrap:
+
+venv:
 	sudo apt install python3 python3-venv
 	$(PY3) -m venv venv
+
+bootstrap: venv
 	. ./venv/bin/activate && $(PY3) -m pip install --upgrade pip setuptools wheel twine
 	-. ./venv/bin/activate && $(PY3) -m ensurepip --upgrade
 	. ./venv/bin/activate && pip install -r requirements.txt
