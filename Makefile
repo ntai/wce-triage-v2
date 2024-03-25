@@ -3,7 +3,7 @@
 PYPI_USER := $(shell echo $$PYPI_USERNAME)
 PYPI_PASSWORD := $(shell echo $$PYPI_PASSWORD)
 
-PY3 := /usr/bin/python3
+PY3 := python3
 
 default: setup
 
@@ -13,8 +13,8 @@ setup: manifest
 bootstrap:
 	sudo apt install python3 python3-venv
 	$(PY3) -m venv venv
-	. ./venv/bin/activate && $(PY3) -m pip install --upgrade setuptools wheel twine
-	. ./venv/bin/activate && $(PY3) -m ensurepip --upgrade
+	. ./venv/bin/activate && $(PY3) -m pip install --upgrade pip setuptools wheel twine
+	-. ./venv/bin/activate && $(PY3) -m ensurepip --upgrade
 	. ./venv/bin/activate && pip install -r requirements.txt
 	touch bootstrap
 
