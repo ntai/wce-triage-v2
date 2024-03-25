@@ -3,7 +3,7 @@
 PYPI_USER := $(shell echo $$PYPI_USERNAME)
 PYPI_PASSWORD := $(shell echo $$PYPI_PASSWORD)
 
-PY3 := python3.8
+PY3 := /usr/bin/python3
 
 default: setup
 
