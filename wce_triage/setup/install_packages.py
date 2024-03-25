@@ -76,7 +76,6 @@ base_packages = {
     'firmware-b43legacy-installer',
     'firmware-ath9k-htc',
     'linux-wlan-ng-firmware',   # wlan fw
-    'prism2-usb-firmware',
 
     # audio device firmware
     'alsa-firmware-loaders',
@@ -89,6 +88,7 @@ base_packages = {
   ],
   '18.04': [
     'iwconfig',                 # for seeing wifi device list
+    'prism2-usb-firmware',
   ],
   '20.04': [
     'iw',                       # for seeing wifi device list
@@ -98,23 +98,28 @@ base_packages = {
     'build-essential',
     'overlayroot',
     'ubuntu-restricted-extras',
+    'prism2-usb-firmware',
   ],
   '22.04': [
     'iw',                       # for seeing wifi device list
-    'nmcli',                    # connect to wifi through nmcli command
+    'network-manager',          # connect to wifi through nmcli command
     'xdg-utils',
     'build-essential',
     'overlayroot',
     'firmware-sof-signed',
     'ubuntu-restricted-extras',
+    'prism2-usb-firmware-installer',
+    'linux-wlan-ng',
   ],
   '24.04': [
     'iw',                       # for seeing wifi device list
-    'nmcli',                    # connect to wifi through nmcli command
+    'network-manager',          # connect to wifi through nmcli command
     'xdg-utils',
     'build-essential',
     'overlayroot',
     'ubuntu-restricted-extras',
+    'prism2-usb-firmware-installer',
+    'linux-wlan-ng',
   ],
 }
 
