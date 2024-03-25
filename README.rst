@@ -95,7 +95,11 @@ Similary for Network server, run `python3 -m wce_triage.setup.setup_network_serv
 
 Creating Bootable Triage App on Disk/USB stick
 ##############################################
-This is the insturctions of creating USB stick that runs Triage app. Since the Triage app can load the triage app disk image to USB stick, this is not often practiced. Bootstrapping is hard, and knowledge must be kept somewhere. In the future (very likely year 2020 for Ubuntu 20.04LTS), I have to do this again.
+This is the insturctions of creating USB stick that runs Triage app. This is **NOT** for setting up a general Ubuntu. 
+
+Since the Triage app can load the triage app disk image to USB stick, this is not often practiced. Bootstrapping is hard, and knowledge must be kept somewhere. In the future (very likely year 2020 for Ubuntu 20.04LTS), I have to do this again. 
+
+Ubuntu 22.04LTS stopped booting this method, and the server verion with minimal installation became small enough. There is not a lof of reason to use mini.iso. 
 
 Step 1: Acquire Ubuntu 18.04LTS mini.iso installer
 --------------------------------------------------
