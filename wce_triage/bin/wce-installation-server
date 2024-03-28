@@ -1,0 +1,4 @@
+#!/bin/bash
+cd /usr/local/share/wce/triage/wce-triage-v2
+#(sleep 3 && xdg-open http://localhost:10600) > /dev/null 2>&1 &
+. ./venv/bin/activate && PYTHONPATH=${PWD} FLASK_ENVIRONMENT=development FLASK_APP=wce_triage.backend.app:create_app sudo -E --preserve-env=PATH,PYTHONPATH,FLASK_DEBUG,FLASK_APP,FLASK_ENVIRONMENT ${PWD}/venv/bin/gunicorn -w 1 -b 127.0.0.1:10600 'wce_triage.backend.app:create_app()'
