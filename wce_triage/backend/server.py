@@ -19,7 +19,7 @@ from .formatters import jsoned_disk
 from .messages import UserMessages, ErrorMessages
 from .models import Model, ModelDispatch
 from .cpu_info import CpuInfoModel
-from .process_runner import ProcessRunner, RunnerOutputDispatch, ImageRunnerOutputDispatch
+from .process_runner import ProcessRunner, RunnerOutputDispatch, ImageRunnerOutputDispatch, JsonOutputDispatch
 from .view import View
 from ..components import DiskPortal
 from ..components import Computer
@@ -77,7 +77,7 @@ class TriageServer(threading.Thread):
                        op_wipe: (UserMessages, self._wipe_disk),
                        op_sync: (self._sync_image, UserMessages)}
 
-    self._cpu_info = ModelDispatch(CpuInfoModel())
+    self._cpu_info = JsonOutputDispatch(CpuInfoModel())
     self._disk_portal = None
     self.autoload = False
     self.load_disk_options = None
@@ -134,7 +134,13 @@ class TriageServer(threading.Thread):
     ErrorMessages.set_view(view)
 
     self.setup(config)
-    self.start()
+    if not self.is_alive():
+      try:
+        self.start()
+      except RuntimeError:
+        # ignore starting the thread multiple times
+        pass
+      pass
     pass
 
   def get_lock(self, lock_name) -> threading.Lock:

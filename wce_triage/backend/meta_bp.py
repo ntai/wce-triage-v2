@@ -2,9 +2,15 @@ import traceback
 from flask import jsonify, send_file, Blueprint
 from ..version import TRIAGE_VERSION, TRIAGE_TIMESTAMP
 import json
+import os
+from .config import DevConfig
 
+ui_dir = DevConfig.TRIAGE_UI_ROOTDIR
+if not os.path.exists(ui_dir):
+  ui_dir = "/ui"
+  pass
 
-meta_bp = Blueprint('meta', __name__, static_folder="/ui")
+meta_bp = Blueprint('meta', __name__, static_folder=ui_dir)
 
 @meta_bp.route("/")
 @meta_bp.route("/index.html")
