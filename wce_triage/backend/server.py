@@ -226,7 +226,7 @@ class TriageServer(threading.Thread):
     return self._cpu_info.model.data
 
   @property
-  def cpu_info(self):
+  def cpu_info(self) -> dict:
     lock = self.get_lock("cpu_info")
     lock.acquire()
     try:
@@ -241,8 +241,8 @@ class TriageServer(threading.Thread):
       lock.release()
       pass
     if self._cpu_info.model.model_state is True:
-      return self._cpu_info.model.data, 200
-    return {}, 202
+      return self._cpu_info.model.data
+    return {}
 
   @property
   def disk_portal(self) -> DiskPortal:
