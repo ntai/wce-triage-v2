@@ -55,6 +55,14 @@ def route_music():
       break
     pass
 
+  if not music_file:
+    for asset in os.listdir(asset_path):
+      if asset.endswith(".mp3"):
+        music_file = os.path.join(asset_path, asset)
+        break
+      pass
+    pass
+
   if music_file:
     res = send_file(music_file, mimetype="audio/" + music_file[-3:])
     if detect_sound_device():
