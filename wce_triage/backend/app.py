@@ -52,6 +52,7 @@ def create_app(wcedir=None, rootdir=None, wce_share=None, live_triage=False, pay
   ui_dir = os.path.join(os.path.split((os.path.split(__file__)[0]))[0], "ui")
   app = Flask('wcetriage', root_path=ui_dir)
   set_triage_logger(app.logger, log_level=logging.DEBUG)
+  app.logger.info(f"wcedir {wcedir}, rootdir {rootdir}, wce_share {wce_share}, live_triage {live_triage}, payload {payload}")
   app.url_map.strict_slashes = False
 
   Config.cmdline()
