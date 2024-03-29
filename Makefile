@@ -52,13 +52,13 @@ run:
 	. ./venv/bin/activate && PYTHONPATH=${PWD} sudo ./venv/bin/python3 -m wce_triage.http.httpserver
 
 flask:
-	. ./venv/bin/activate && PYTHONPATH=${PWD} FLASK_ENVIRONMENT=development FLASK_APP=wce_triage.backend.app:create_app sudo -E --preserve-env=PATH,PYTHONPATH,FLASK_DEBUG,FLASK_APP,FLASK_ENVIRONMENT ${PWD}/venv/bin/flask run --host 0.0.0.0 --port 10600
+	. ./venv/bin/activate && PYTHONPATH=${PWD} FLASK_ENVIRONMENT=development FLASK_APP=wce_triage.backend:create_app sudo -E --preserve-env=PATH,PYTHONPATH,FLASK_DEBUG,FLASK_APP,FLASK_ENVIRONMENT ${PWD}/venv/bin/flask run --host 0.0.0.0 --port 10600
 
 uflask:
-	. ./venv/bin/activate && PYTHONPATH=${PWD} FLASK_ENVIRONMENT=development FLASK_APP=wce_triage.backend.app:create_app ${PWD}/venv/bin/flask run --host 0.0.0.0 --port 10600
+	. ./venv/bin/activate && PYTHONPATH=${PWD} FLASK_ENVIRONMENT=development FLASK_APP=wce_triage.backend:create_app ${PWD}/venv/bin/flask run --host 0.0.0.0 --port 10600
 
 gu:
-	. ./venv/bin/activate && PYTHONPATH=${PWD} FLASK_ENVIRONMENT=development FLASK_APP=wce_triage.backend.app:app sudo -E --preserve-env=PATH,PYTHONPATH,FLASK_DEBUG,FLASK_APP,FLASK_ENVIRONMENT ${PWD}/venv/bin/gunicorn -w 4 -b 0.0.0.0:10600 'wce_triage.backend.app:create_app()'
+	. ./venv/bin/activate && PYTHONPATH=${PWD} FLASK_ENVIRONMENT=development sudo -E --preserve-env=PATH,PYTHONPATH,FLASK_DEBUG,FLASK_APP,FLASK_ENVIRONMENT ${PWD}/venv/bin/gunicorn -w 4 -b 0.0.0.0:10600 'wce_triage.backend:create_app()'
 
 
 ui:
