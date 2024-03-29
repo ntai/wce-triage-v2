@@ -254,6 +254,52 @@ cpus:
               - 32 threads
               - 4 memory channels
               - 40 PCIe lanes
+      - name: AMD EPYC series
+        generation: 7
+        release_year: 2017
+        microarchitectures:
+          - name: Zen gen1 Naples
+            release_year: 2017
+            pattern:
+              - "AMD EPYC 7\\d\\d1"
+            features:
+              - 7nm manufacturing process
+          - name: Zen gen2 Rome
+            release_year: 2019
+            pattern:
+              - "AMD EPYC 7\\d\\d2"
+            features:
+              - 7nm manufacturing process
+          - name: Zen gen3 Milan
+            release_year: 2021
+            pattern:
+              - "AMD EPYC 7\\d\\d3"
+            features:
+              - 7nm manufacturing process
+          - name: Zen gen4 Genoa/Bergamo
+            release_year: 2022
+            pattern:
+              - "AMD EPYC 9\\d\\d4"
+            features:
+              - 7nm manufacturing process
+          - name: Zen gen4 Siena
+            release_year: 2023
+            pattern:
+              - "AMD EPYC 8\\d\\d4"
+            features:
+              - 7nm manufacturing process
+          - name: Zen gen5 Turin
+            release_year: 2025
+            pattern:
+              - "AMD EPYC 9\\d\\d5"
+            features:
+              - 7nm manufacturing process
+          - name: Zen gen1 Snowy Owl
+            release_year: 2018
+            pattern:
+              - "AMD EPYC 3\\d\\d1"
+            features:
+              - 7nm manufacturing process
   intel:
     generations:
       - name: 1st Generation

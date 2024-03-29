@@ -6,7 +6,7 @@ import os
 from .config import DevConfig
 
 ui_dir = DevConfig.TRIAGE_UI_ROOTDIR
-if not os.path.exists(ui_dir):
+if not ui_dir or not os.path.exists(ui_dir):
   ui_dir = "/ui"
   pass
 
