@@ -1,13 +1,13 @@
 import sys
 import typing
 from typing import Optional
+from fastapi import status
 
-from wce_triage.api import op_sync
-from wce_triage.api.models import ModelDispatch
-from wce_triage.api.internal.process_runner import SimpleProcessRunner
-from http import HTTPStatus
+from .. import op_sync
+from ..models import ModelDispatch
+from ..internal.process_runner import SimpleProcessRunner
 
-from wce_triage.lib import get_triage_logger
+from ...lib import get_triage_logger
 
 
 #
@@ -31,7 +31,7 @@ class SyncCommandRunner(SimpleProcessRunner):
     tlog = get_triage_logger()
     if len(target_disks) == 0:
       tlog.debug("SYNC: Sync target disk is none.")
-      return {}, HTTPStatus.OK
+      return {}, status.HTTP_400_BAD_REQUEST
 
     if clean:
       # clean
@@ -40,6 +40,6 @@ class SyncCommandRunner(SimpleProcessRunner):
       args = [sys.executable, '-m', 'wce_triage.ops.sync_image_runner', ",".join(target_disks)] + image_files
       pass
     self.queue(args, {"args": args})
-    return {}, HTTPStatus.OK
+    return {}, status.HTTP_200_OK
 
   pass

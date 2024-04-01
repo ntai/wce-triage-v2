@@ -3,8 +3,8 @@ from collections import deque
 import subprocess
 import io
 from typing import Optional
-from wce_triage.backend.models import ModelDispatch
-from wce_triage.lib import get_triage_logger
+from ..models import ModelDispatch
+from ...lib import get_triage_logger
 
 
 class ProcessPipeReader(threading.Thread):

@@ -1,10 +1,10 @@
 import sys
 
-from wce_triage.api.models import Model, ModelDispatch
-from wce_triage.api.internal.process_runner import ProcessRunner
 from typing import Optional
 import io
 import json
+from ..models import Model, ModelDispatch
+from ..internal.process_runner import ProcessRunner
 
 class StreamModel(Model):
   _data: io.BytesIO
@@ -84,7 +84,7 @@ class CpuInfoCommandRunner(ProcessRunner):
 
 
 if __name__ == "__main__":
-  from wce_triage.backend.cpu_info import CpuInfoModel
+  from wce_triage.api.internal.cpu_info import CpuInfoModel
   model = CpuInfoModel()
   cpu_info = ModelDispatch(model)
   runner = CpuInfoCommandRunner(cpu_info)

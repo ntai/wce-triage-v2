@@ -1,10 +1,10 @@
 import sys
 import typing
 
-from wce_triage.api import op_wipe
-from wce_triage.api.models import ModelDispatch
-from wce_triage.api.internal.process_runner import SimpleProcessRunner
-from http import HTTPStatus
+from fastapi import status
+from .. import op_wipe
+from ..models import ModelDispatch
+from ..internal.process_runner import SimpleProcessRunner
 
 #
 #
@@ -27,6 +27,6 @@ class WipeCommandRunner(SimpleProcessRunner):
   def queue_wipe(self, devices: typing.List[str]):
     args = [sys.executable, '-m', 'wce_triage.bin.multiwipe'] + devices
     self.queue(args, {"args": args, "devnames": ",".join(devices)})
-    return {}, HTTPStatus.OK
+    return {}, status.HTTP_200_OK
 
   pass

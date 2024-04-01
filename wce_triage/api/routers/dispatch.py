@@ -13,7 +13,7 @@ from ..internal.unmount_command import UnmountCommandRunner
 from ..internal.wipe_command import WipeCommandRunner
 from ..internal.load_command import LoadCommandRunner
 from ..models import Model
-from ...backend.optical_drive import OpticalDriveTestRunner, OpticalDispatch
+from ..internal.optical_drive import OpticalDriveTestRunner, OpticalDispatch
 from ...lib.disk_images import read_disk_image_types, get_disk_images
 from ...lib import get_triage_logger
 from ...components import detect_sound_device, detect_optical_drives
@@ -176,7 +176,8 @@ def route_load_image(
   load_command_runner = server.get_runner(runner_class=LoadCommandRunner)
 
   for target_disk in target_disks:
-    load_command_runner.queue_load(target_disk, restore_type, imagefile, image_size, wipe_request, newhostname)
+    # FIXME: maybe report?
+    _reply, _code = load_command_runner.queue_load(target_disk, restore_type, imagefile, image_size, wipe_request, newhostname)
     pass
   return JSONResponse({})
 
@@ -188,8 +189,8 @@ def route_sync_image(
 ):
   target_disks = [disk.strip() for disk in devnames.split(",")]
   sync_command_runner: SyncCommandRunner = server.get_runner(runner_class=SyncCommandRunner)
-  sync_command_runner.queue_sync(sources.split(","), target_disks, clean=False)
-  return JSONResponse({})
+  reply, status_code = sync_command_runner.queue_sync(sources.split(","), target_disks, clean=False)
+  return JSONResponse(reply, status_code=status_code)
 
 @router.get("/sync-status")
 @router.get("/sync/status")
@@ -205,8 +206,8 @@ def route_clean_image(
   if not target_disks:
     return JSONResponse({"message": "No disk selected"}, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
   sync_command_runner: SyncCommandRunner = server.get_runner(runner_class=SyncCommandRunner)
-  sync_command_runner.queue_sync([], target_disks, clean=True)
-  return JSONResponse({})
+  reply, status_code = sync_command_runner.queue_sync([], target_disks, clean=True)
+  return JSONResponse(reply, status_code=status_code)
 
 
 @router.post("/delete")
@@ -298,8 +299,8 @@ def route_wipe_disks(
     return JSONResponse({"message": "No disks selected"}, status_code=status.HTTP_400_BAD_REQUEST)
 
   wipe_command_runner:WipeCommandRunner = server.get_runner(WipeCommandRunner)
-  (result, code) = wipe_command_runner.queue_wipe(target_disks)
-  return result, code
+  result, code = wipe_command_runner.queue_wipe(target_disks)
+  return JSONResponse(result, status_code=code)
 
 
 def stop_runner(runner_class) -> JSONResponse:
@@ -371,9 +372,9 @@ def route_unmount(
   devnames: str = Query(alias="deviceNames"),
 ):
   target_disks = [disk.strip() for disk in devnames.split(",")]
-  unmount_command_runner = server.get_runner(UnmountCommandRunner)
-  (result, code) = unmount_command_runner.queue_save(target_disks)
-  return result, code
+  unmount_command_runner: UnmountCommandRunner = server.get_runner(UnmountCommandRunner)
+  result, code = unmount_command_runner.queue_unmount(target_disks)
+  return JSONResponse(result, status_code=code)
 
 
 @router.post("/opticaldrive/test")

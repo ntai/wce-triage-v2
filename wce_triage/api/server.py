@@ -17,8 +17,8 @@ from .config import Config
 from .formatters import jsoned_disk
 from .messages import UserMessages, ErrorMessages
 from .models import Model, ModelDispatch
-from wce_triage.api.internal.cpu_info import CpuInfoModel
-from wce_triage.api.internal.process_runner import ProcessRunner, RunnerOutputDispatch, ImageRunnerOutputDispatch, JsonOutputDispatch
+from .internal.cpu_info import CpuInfoModel
+from .internal.process_runner import ProcessRunner, RunnerOutputDispatch, ImageRunnerOutputDispatch, JsonOutputDispatch
 from .view import View
 from ..components import DiskPortal
 from ..components import Computer
@@ -229,7 +229,7 @@ class TriageServer(threading.Thread):
     try:
       if self._cpu_info.model.model_state is None:
         self._cpu_info.model.set_model_state(False)
-        from wce_triage.api.internal.simple_process import CpuInfoCommandRunner
+        from .internal.simple_process import CpuInfoCommandRunner
         cpu_info = CpuInfoCommandRunner(self._cpu_info)
         cpu_info.start()
         pass

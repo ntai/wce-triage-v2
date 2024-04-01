@@ -1,9 +1,9 @@
 from typing import Optional
+from fastapi import status
 
-from wce_triage.api.models import ModelDispatch
-from wce_triage.api.internal.process_runner import SimpleProcessRunner
-from http import HTTPStatus
-from wce_triage.components.disk import PartitionLister, Disk
+from ..models import ModelDispatch
+from ..internal.process_runner import SimpleProcessRunner
+from ...components.disk import PartitionLister, Disk
 
 
 #
@@ -30,6 +30,6 @@ class UnmountCommandRunner(SimpleProcessRunner):
       args = ['umount'] + part_names
       self.queue(args, {"args": args, "devnames": ",".join(part_names)})
       pass
-    return {}, HTTPStatus.OK
+    return {}, status.HTTP_200_OK
 
   pass

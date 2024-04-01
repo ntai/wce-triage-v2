@@ -1,12 +1,9 @@
 import sys
 from typing import Optional
 
-from wce_triage.api.models import Model, ModelDispatch
-from wce_triage.api.internal.process_runner import SimpleProcessRunner, JsonOutputDispatch
-from wce_triage.components import detect_optical_drives
-from wce_triage.lib import get_triage_logger
-from wce_triage.api.server import server
-from http import HTTPStatus
+from ..models import ModelDispatch
+from ..internal.process_runner import SimpleProcessRunner, JsonOutputDispatch
+from ..server import server
 
 
 global optical_dispatch

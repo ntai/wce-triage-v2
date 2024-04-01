@@ -1,5 +1,5 @@
 
-from wce_triage.api.models import Model
+from ..models import Model
 
 class CpuInfoModel(Model):
   @property

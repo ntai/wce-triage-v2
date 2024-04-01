@@ -1,4 +1,3 @@
-import errno
 import shlex
 import signal
 import threading
@@ -7,11 +6,11 @@ from queue import SimpleQueue
 from typing import Optional
 import subprocess
 import logging
-from wce_triage.backend.view import ConsoleView
+from ..view import ConsoleView
 from .process_pipe_reader import ProcessPipeReader
-from wce_triage.api.models import ModelDispatch, Model
-from wce_triage.api.messages import UserMessages, ErrorMessages
-from wce_triage.lib import get_triage_logger
+from ..models import ModelDispatch, Model
+from ..messages import UserMessages, ErrorMessages
+from ...lib import get_triage_logger
 import json
 
 

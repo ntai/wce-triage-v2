@@ -1,15 +1,15 @@
 import sys
 from typing import Optional
+from fastapi import status
 
-from wce_triage.api import op_load
-from wce_triage.api.messages import UserMessages
-from wce_triage.api.models import ModelDispatch
-from wce_triage.api.internal.process_runner import SimpleProcessRunner
-from wce_triage.lib.disk_images import read_disk_image_types
-from wce_triage.lib import get_triage_logger
-from wce_triage.api.server import server
-from http import HTTPStatus
-from wce_triage.api.operations import WIPE_TYPES
+from .. import op_load
+from ..messages import UserMessages
+from ..models import ModelDispatch
+from ..internal.process_runner import SimpleProcessRunner
+from ...lib.disk_images import read_disk_image_types
+from ...lib import get_triage_logger
+from ..server import server
+from ..operations import WIPE_TYPES
 
 #
 #
@@ -64,7 +64,7 @@ class LoadCommandRunner(SimpleProcessRunner):
     if target is None:
       message = "No such disk " + devname
       tlog.info(message)
-      return {"message": message}, HTTPStatus.BAD_REQUEST
+      return {"message": message}, status.HTTP_400_BAD_REQUEST
 
     #disk = server.disk_portal.find_disk_by_device_name(devname)
 
@@ -79,16 +79,16 @@ class LoadCommandRunner(SimpleProcessRunner):
     if image_type is None:
       message = "Image type %s is not known." % load_type
       UserMessages.error(message)
-      return {"message": message}, HTTPStatus.BAD_REQUEST
+      return {"message": message}, status.HTTP_400_BAD_REQUEST
 
     destdir = image_type.get('catalogDirectory')
     if destdir is None:
       msg = UserMessages.error("Imaging type info %s does not include the catalog directory." % image_type.get("id"))
-      return {"message": msg}, HTTPStatus.BAD_REQUEST
+      return {"message": msg}, status.HTTP_400_BAD_REQUEST
 
     # Load image runs its own course, and output will be monitored by a call back
     self.queue(args, {"args": args, "devname": devname, "imagefile": imagefile, "wipe": wipe, "newhostname": newhostname })
-    return {}, HTTPStatus.OK
+    return {}, status.HTTP_200_OK
 
   pass
 

@@ -9,9 +9,9 @@ cli.py: WCE http server command line interface
 import re
 # from argparse import ArgumentParser
 
-from wce_triage.const import const
-from wce_triage.lib import get_triage_logger
-from wce_triage.lib.disk_images import get_disk_images
+from ..const import const
+from ..lib import get_triage_logger
+from ..lib.disk_images import get_disk_images
 
 class Config(object):
   """Base configuration."""
