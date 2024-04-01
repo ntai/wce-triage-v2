@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "wce-triage"
-version = "0.6.3"
+version = "0.6.4"
 description = "WCE Triage"
 authors = ["Naoyuki Tai <ntaigit@cleanwinner.com>"]
 license = "BSD-3"
