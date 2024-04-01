@@ -55,10 +55,7 @@ http:
 	. ./venv/bin/activate && PYTHONPATH=${PWD} sudo ./venv/bin/python3 -m wce_triage.http.httpserver
 
 run:
-	. ./venv/bin/activate && PYTHONPATH=${PWD} sudo ./venv/bin/uvicorn wce_triage.api.app:socket_app
+	. ./venv/bin/activate && PYTHONPATH=${PWD} sudo ./venv/bin/uvicorn wce_triage.api.app:socket_app  --host 0.0.0.0 --port 10600
 
 ui:
 	rsync -av --delete ../wce-triage-ui/build/ ./wce_triage/ui/
-
-user:
-	. ./venv/bin/activate && PYTHONPATH=${PWD} FLASK_ENVIRONMENT=development FLASK_APP=wce_triage.backend.app:app flask run --host 0.0.0.0 --port 10600
