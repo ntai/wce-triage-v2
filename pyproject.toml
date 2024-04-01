@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "wce-triage"
+version = "0.6.3"
+description = "WCE Triage"
+authors = ["Naoyuki Tai <ntaigit@cleanwinner.com>"]
+license = "BSD-3"
+readme = "README.rst"
+repository = "https://github.com/ntai/wce-triage-v2"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: POSIX :: Linux"
+]
+exclude = ["wce_triage/.idea", "wce_triage/backend"]
+include = ["wce_triage/ui/*",
+           "wce_triage/ui/**/*",
+           "wce_triage/setup/patches/**/*",
+           "wce_triage/setup/share/**/*",
+	   ]
+packages = [{include = "wce_triage"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastapi = "^0.110.0"
+uvicorn = "^0.29.0"
+python-socketio = {extras = ["asyncio"], version = "^5.11.2"}
+typing-extensions = "^4.10.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

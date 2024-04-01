@@ -7,19 +7,18 @@ server data storage
 """
 import logging
 import os, re
+import queue
 import sys
 import time
 from typing import Optional
-from flask import Flask
-from flask_socketio import SocketIO
 
 from . import op_load, op_save, op_sync, op_wipe
 from .config import Config
 from .formatters import jsoned_disk
 from .messages import UserMessages, ErrorMessages
 from .models import Model, ModelDispatch
-from .cpu_info import CpuInfoModel
-from .process_runner import ProcessRunner, RunnerOutputDispatch, ImageRunnerOutputDispatch, JsonOutputDispatch
+from wce_triage.api.internal.cpu_info import CpuInfoModel
+from wce_triage.api.internal.process_runner import ProcessRunner, RunnerOutputDispatch, ImageRunnerOutputDispatch, JsonOutputDispatch
 from .view import View
 from ..components import DiskPortal
 from ..components import Computer
@@ -39,9 +38,8 @@ wce_share_re = re.compile(const.wce_share + r'=([\w/.+\-_:?=@#*&\\%]+)')
 wce_payload_re = re.compile(const.wce_payload + r'=([\w.+\-_:?=@#*&\\%]+)')
 
 class TriageServer(threading.Thread):
-  # app: Flask
   config: Config
-  socketio: SocketIO
+  emit_queue: queue.SimpleQueue
   _disks: ModelDispatch
   _loading: ModelDispatch
   _save_image: ModelDispatch
@@ -61,7 +59,7 @@ class TriageServer(threading.Thread):
   locks: dict
 
   def __init__(self):
-    super().__init__()
+    super().__init__(name="TriageServer")
     self.tlog = get_triage_logger()
     self._socketio_view = SocketIOView()
     self._disks = ModelDispatch(DiskModel(default = {"disks": []}), view=self._socketio_view)
@@ -123,9 +121,12 @@ class TriageServer(threading.Thread):
       pass
     pass
 
-  def set_config(self, socketio: SocketIO, config):
+  def set_config(self, emit_queue: queue.SimpleQueue, config):
+    if self.is_alive():
+      return
+
     # self.app = app
-    self.socketio = socketio
+    self.emit_queue = emit_queue
     message_socketio_view = MessageSocketIOView("message")
     logging_view = LoggingView(self.tlog)
     view = MultiView(views=[message_socketio_view, logging_view])
@@ -133,12 +134,9 @@ class TriageServer(threading.Thread):
     ErrorMessages.set_view(view)
 
     self.setup(config)
-    if not self.is_alive():
-      try:
-        self.start()
-      except RuntimeError:
-        # ignore starting the thread multiple times
-        pass
+    try:
+      self.start()
+    except RuntimeError:
       pass
     pass
 
@@ -146,10 +144,17 @@ class TriageServer(threading.Thread):
     return self.locks.get(lock_name)
 
   def run(self):
-    while True:
-      self.periodic_task()
-      time.sleep(2)
+    def periodic_task():
+      while True:
+        if self.triage_timestamp is None:
+          self.initial_triage()
+          pass
+        self.update_triage()
+        self.check_autoload()
+        time.sleep(2)
+        pass
       pass
+    periodic_task()
     pass
 
   def overall_changed(self, new_decision):
@@ -183,13 +188,6 @@ class TriageServer(threading.Thread):
       pass
     pass
 
-  def periodic_task(self):
-    if self.triage_timestamp is None:
-      self.initial_triage()
-      pass
-    self.update_triage()
-    self.check_autoload()
-    pass
 
   @property
   def cpu_info_killer(self):
@@ -231,7 +229,7 @@ class TriageServer(threading.Thread):
     try:
       if self._cpu_info.model.model_state is None:
         self._cpu_info.model.set_model_state(False)
-        from .simple_process import CpuInfoCommandRunner
+        from wce_triage.api.internal.simple_process import CpuInfoCommandRunner
         cpu_info = CpuInfoCommandRunner(self._cpu_info)
         cpu_info.start()
         pass
@@ -260,7 +258,7 @@ class TriageServer(threading.Thread):
     pass
 
   def get_runner(self, runner_class:ProcessRunner=None, create=True,
-                 stdout_dispatch=None, stderr_dispatch=None, meta=None) -> Optional[ProcessRunner]:
+                 stdout_dispatch=None, stderr_dispatch=None, meta=None) -> ProcessRunner:
     runner_class = ProcessRunner if runner_class is None else runner_class
     name = runner_class.class_name()
     runner = self._runners.get(name)
@@ -289,10 +287,8 @@ class TriageServer(threading.Thread):
       message['_sequence_'] = self.emit_count
       pass
     get_triage_logger().debug("send_to_ui: %s %s" % (event, repr(message)))
-    try:
-      self.socketio.emit(event, message)
-    except:
-      pass
+    self.emit_queue.put((event, message))
+    # asyncio.run_coroutine_threadsafe(self.socketio.emit(event, message), asyncio.get_event_loop())
     pass
 
   @property
@@ -313,6 +309,8 @@ class TriageServer(threading.Thread):
 
   def update_triage(self):
     computer: Computer = self._computer
+    if computer is None:
+      return
     (added, changed, removed) = self.disk_portal.detect_disks()
 
     disks = {"disks": [jsoned_disk(disk) for disk in self.disk_portal.disks]}
@@ -343,11 +341,11 @@ A triaging person can decide whether not sound playing. Also, if you plug in Eth
 
 
   @property
-  def triage(self) -> list:
+  def triage(self) -> typing.List[dict]:
     return self._triage.model.data
 
   @property
-  def disk_images(self) -> list:
+  def disk_images(self) -> typing.List[dict]:
     return get_disk_images(wce_share_url=self.config.WCE_SHARE_URL)
 
   @property
@@ -375,8 +373,8 @@ class SocketIOView(View):
   def __init__(self):
     pass
 
-  async def updating(self, t0: dict, update: typing.Optional[any], meta):
-    await server.send_to_ui(meta.get("tag", "message"), update)
+  def updating(self, t0: dict, update: typing.Optional[any], meta):
+    server.send_to_ui(meta.get("tag", "message"), update)
     pass
   pass
 

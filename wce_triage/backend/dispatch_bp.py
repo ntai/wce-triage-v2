@@ -112,8 +112,10 @@ def stop_save():
 
 @dispatch_bp.route("/disk-save-status.json")
 @dispatch_bp.route("/disk-save-status")
+@dispatch_bp.route("/save/status")
 def disk_save_status():
   return server._save_image.model.data
+
 
 @dispatch_bp.route("/disk-load-status.json")
 @dispatch_bp.route("/disk-load-status")
@@ -136,9 +138,11 @@ def route_restore_types():
 @dispatch_bp.route("/disks")
 def route_disks():
   """Handles getting the list of disks"""
-  server.disk_portal.detect_disks()
-  disks = [jsoned_disk(disk) for disk in server.disk_portal.disks]
   tlog = get_triage_logger()
+  tlog.info("Starting detect_disks")
+  server.disk_portal.detect_disks()
+  tlog.info("Finished detect_disks")
+  disks = [jsoned_disk(disk) for disk in server.disk_portal.disks]
   tlog.debug(str(disks))
   return {"diskPages": 1, "disks": disks}
 

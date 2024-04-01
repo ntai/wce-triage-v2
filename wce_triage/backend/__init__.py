@@ -14,6 +14,7 @@ from flask_cors import CORS
 from flask_socketio import SocketIO
 import os
 from wce_triage.backend.config import Config
+from wce_triage.lib import get_triage_logger
 
 op_load = "load"
 op_save = "save"
@@ -40,11 +41,10 @@ def init_socketio(app: Flask, socketio: SocketIO):
         wockid = "foo"
         app.logger.debug("WOCK: %s disconnect" % (wockid))
         return None
-
     pass
 
 
-def create_app(wcedir=None, rootdir=None, wce_share=None, live_triage=False, payload=None):
+def create_app(environ = None, start_response = None):
   """Creates a flask app for the triage server.
   wcedor: /usr/local/share/wce
   rootdir: UI Root. The package includes UI, used when None, eg. /usr/local/share/wce/wce-triage-ui
@@ -53,10 +53,21 @@ def create_app(wcedir=None, rootdir=None, wce_share=None, live_triage=False, pay
   payload: payload for auto load
   """
   from ..lib.util import set_triage_logger
+
+  if environ is None:
+    environ = {"wcedir": "/usr/local/share/wce",
+               "rootdir": "/usr/local/share/wce/ui"}
+  wcedir = environ.get("wcedir")
+  rootdir = environ.get("rootdir")
+  wce_share = environ.get("wce_share")
+  live_triage = environ.get("live_triage", False)
+  payload = environ.get("payload")
   ui_dir = os.path.join(os.path.split((os.path.split(__file__)[0]))[0], "ui")
+
   app = Flask('wcetriage', root_path=ui_dir)
   set_triage_logger(app.logger, log_level=logging.DEBUG)
-  app.logger.info(f"wcedir {wcedir}, rootdir {rootdir}, wce_share {wce_share}, live_triage {live_triage}, payload {payload}")
+  # app.logger.info(f"wcedir {wcedir}, rootdir {rootdir}, wce_share {wce_share}, live_triage {live_triage}, payload {payload}")
+  app.logger.info(f"environ {environ}, start_response {repr(start_response)}")
   app.url_map.strict_slashes = False
 
   Config.cmdline()
@@ -77,9 +88,10 @@ def create_app(wcedir=None, rootdir=None, wce_share=None, live_triage=False, pay
   app.config.from_object(DevConfig)
 
   CORS(app)
-  socketio = SocketIO(app, cors_allowed_origins="*", engineio_logger=False, logger=False)
-  #                    async_mode="threading", transports=['websocket'])
+  socketio = SocketIO(app, cors_allowed_origins="*", engineio_logger=True, logger=True,
+                      async_mode="threading", transports=['websocket', 'polling'])
   init_socketio(app, socketio)
+
   from .meta_bp import meta_bp
   app.register_blueprint(meta_bp)
 
@@ -90,7 +102,8 @@ def create_app(wcedir=None, rootdir=None, wce_share=None, live_triage=False, pay
   app.register_blueprint(wce_bp)
 
   from .server import server
-  server.set_app(app, socketio, DevConfig)
+  server.set_config(socketio, DevConfig)
+  get_triage_logger().setLevel(logging.DEBUG)
   logging.info("WCE Triage Server")
   print("WCE Triage Server", file=sys.stderr)
   print(repr(app), file=sys.stderr)

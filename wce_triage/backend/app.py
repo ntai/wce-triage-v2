@@ -1,8 +1,3 @@
-"""
-The MIT License (MIT)
-Copyright (c) 2022 - Naoyuki Tai
+from . import create_app
 
-WCE Triage HTTP server -
-and webscoket server
-
-"""
+app = create_app()

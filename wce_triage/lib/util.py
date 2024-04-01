@@ -180,8 +180,8 @@ def setup_triage_logger(logger, log_level=None, filename=None):
   logging.basicConfig(level=log_level, handlers=[tlog_handler])
   if logger:
     while len(logger.handlers):
-      logger.removeHandler(logger.handlers[0])
-      pass
+     logger.removeHandler(logger.handlers[0])
+     pass
     logger.addHandler(tlog_handler)
   return logger
 
