@@ -163,12 +163,16 @@ def route_disk_images():
 @router.post("/load")
 def route_load_image(
   devnames: str = Query(alias="deviceNames"),
-  newhostname: str = Query(),
+  newhostname: str = Query(default=""),
   imagefile: str = Query(alias="source"),
-  image_size: str = Query(alias="size", description="Image file size, if known"),
+  image_size: str | None = Query(alias="size", default=None, description="Image file size, if known"),
   restore_type: str = Query(alias="restoretype", description="Disk restore type"),
-  wipe_request: bool = Query(),
+  wipe_request: str = Query(default="nowipe", description="Wipe request"),
 ):
+  # WIPE_TYPES = [{"id": "nowipe", "name": "No Wipe", "arg": ""},
+  #               {"id": "wipe", "name": "Full wipe", "arg": "-w"},
+  #               {"id": "shortwipe", "name": "Wipe first 1Mb", "arg": "--quickwipe"}];
+
   target_disks = [disk.strip() for disk in devnames.split(',')]
   if not target_disks:
     return JSONResponse({"message": "No disk selected"}, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)

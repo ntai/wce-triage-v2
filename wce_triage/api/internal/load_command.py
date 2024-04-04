@@ -35,11 +35,11 @@ class LoadCommandRunner(SimpleProcessRunner):
                      meta=meta)
     pass
 
-  def queue_load(self, devname, load_type, imagefile, image_size, wipe_request, newhostname):
+  def queue_load(self, devname: str, load_type: str, imagefile: str, image_size: str | None, wipe_request: str, newhostname: str) -> None:
     args = [sys.executable, '-m', 'wce_triage.ops.restore_image_runner', devname, imagefile, image_size, load_type]
     tlog = get_triage_logger()
 
-    if newhostname:
+    if newhostname and len(newhostname) > 1:
       args.append('-m')
       args.append(newhostname)
       pass
