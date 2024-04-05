@@ -12,7 +12,7 @@ import sys
 import time
 from typing import Optional
 
-from . import op_load, op_save, op_sync, op_wipe
+from . import op_load, op_save, op_sync, op_wipe, op_unmount, op_opticaldrive
 from .config import Config
 from .formatters import jsoned_disk
 from .messages import UserMessages, ErrorMessages
@@ -68,11 +68,16 @@ class TriageServer(threading.Thread):
     self._save_image = ImageRunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskSaving": False, "device": ""}, meta={"tag": "saveimage"}), view=self._socketio_view)
     self._wipe_disk = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskWiping": False, "device": ""}, meta={"tag": "zerowipe"}), view=self._socketio_view)
     self._sync_image = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "device": ""}, meta={"tag": "diskimage"}), view=self._socketio_view)
+    self._unmount_disk = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "device": ""}, meta={"tag": "unmount"}), view=self._socketio_view)
+    self._opticaldrive_test = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "device": ""}, meta={"tag": "opticaldrive"}), view=self._socketio_view)
 
     self.dispatches = {op_load: (self._load_image, UserMessages),
                        op_save: (self._save_image, UserMessages),
                        op_wipe: (UserMessages, self._wipe_disk),
-                       op_sync: (self._sync_image, UserMessages)}
+                       op_sync: (self._sync_image, UserMessages),
+                       op_unmount: (self._unmount_disk, UserMessages),
+                       op_opticaldrive: (self._opticaldrive_test, UserMessages)
+                       }
 
     self._cpu_info = JsonOutputDispatch(CpuInfoModel())
     self._disk_portal = None

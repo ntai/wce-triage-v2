@@ -177,7 +177,7 @@ def route_load_image(
   if not target_disks:
     return JSONResponse({"message": "No disk selected"}, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
-  load_command_runner = server.get_runner(runner_class=LoadCommandRunner)
+  load_command_runner = server.get_runner(LoadCommandRunner)
 
   for target_disk in target_disks:
     # FIXME: maybe report?
@@ -192,7 +192,7 @@ def route_sync_image(
   devnames: str = Query(alias="deviceNames"),
 ):
   target_disks = [disk.strip() for disk in devnames.split(",")]
-  sync_command_runner: SyncCommandRunner = server.get_runner(runner_class=SyncCommandRunner)
+  sync_command_runner: SyncCommandRunner = server.get_runner(SyncCommandRunner)
   reply, status_code = sync_command_runner.queue_sync(sources.split(","), target_disks, clean=False)
   return JSONResponse(reply, status_code=status_code)
 
@@ -209,7 +209,7 @@ def route_clean_image(
   target_disks = [disk.strip() for disk in devnames.split(",")]
   if not target_disks:
     return JSONResponse({"message": "No disk selected"}, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
-  sync_command_runner: SyncCommandRunner = server.get_runner(runner_class=SyncCommandRunner)
+  sync_command_runner: SyncCommandRunner = server.get_runner(SyncCommandRunner)
   reply, status_code = sync_command_runner.queue_sync([], target_disks, clean=True)
   return JSONResponse(reply, status_code=status_code)
 
@@ -397,7 +397,7 @@ def route_opticaldrive_test():
       pass
 
   tlog = get_triage_logger()
-  runner = server.get_runner(runner_class=OpticalDriveTestRunner, create=False)
+  runner = server.get_runner(OpticalDriveTestRunner, create=False)
   if runner is None:
     optical_dispatch = OpticalDispatch(Model())
     runner = OpticalDriveTestRunner(optical_dispatch)
