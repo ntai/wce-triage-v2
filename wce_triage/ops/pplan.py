@@ -7,6 +7,7 @@ from ..const import const
 
 EFI_NAME = 'EFI_System_Partition'
 EFI_PART_OPT ='boot,esp'
+BIOS_GRUB_OPT = 'bios_grub'
 
 
 class PartPlan:
@@ -93,7 +94,7 @@ def make_efi_partition_plan(disk, ext4_version=None, efi_boot=False, partition_i
     partition_id = 'Linux'
     pass
 
-  pplan = [PartPlan(0, None,         None,         0,        2, Partition.MBR,      None,          None),
+  pplan = [PartPlan(0, None, None, 0, 2, Partition.MBR, BIOS_GRUB_OPT, None),
            PartPlan(1, 'BOOT',       None,         0,       32, Partition.BIOSBOOT, bios_part_opt, None),
            PartPlan(2, EFI_NAME,     'fat32',      0,      512, Partition.UEFI,     efi_part_opt,  None),
            PartPlan(3, 'SWAP',       'linux-swap', 0, swapsize, Partition.SWAP,     None,          None),
@@ -115,7 +116,7 @@ def make_traditional_partition_plan(disk, ext4_version=None, partition_id=None):
   bios_part_opt = 'boot'
   #efi_part_opt = None
 
-  pplan = [PartPlan(0, None,         None,         0,        2, Partition.MBR,      None,          None),
+  pplan = [PartPlan(0, None,         None,         0,        2, Partition.MBR,      BIOS_GRUB_OPT,None),
            PartPlan(1, None,         'ext4',       0,        0, Partition.EXT4,     bios_part_opt, mkfs_opts),
            PartPlan(2, None,         'linux-swap', 0, swapsize, Partition.SWAP,     None,          None) ]
   return size_partitions(pplan, diskmbsize)
@@ -132,13 +133,13 @@ def make_usb_stick_partition_plan(disk, partition_id=None, ext4_version=None, ef
   mkfs_opts = _ext4_version_to_mkfs_opts(ext4_version)
 
   if efi_boot:
-    pplan = [PartPlan(0, None,         None,         0,        2, Partition.MBR,   None,         None),
+    pplan = [PartPlan(0, None,         None,         0,        2, Partition.MBR,   BIOS_GRUB_OPT,         None),
              # For desktop and Windows, etc., the EFI partition is 512MiB but for USB stick,
              # it's only for installation. 32MiB is plenty big.
              PartPlan(1, EFI_NAME,     'fat32',      0,       32, Partition.UEFI,  EFI_PART_OPT, None),
              PartPlan(2, partition_id, 'ext4',       0,        0, Partition.EXT4,  None,         mkfs_opts) ]
   else:
-    pplan = [PartPlan(0, None,         None,         0,        2, Partition.MBR,   None,  None),
+    pplan = [PartPlan(0, None,         None,         0,        2, Partition.MBR,   BIOS_GRUB_OPT,  None),
              PartPlan(1, partition_id, 'ext4',       0,        0, Partition.EXT4, 'boot', mkfs_opts) ]
     pass
   return size_partitions(pplan, diskmbsize)

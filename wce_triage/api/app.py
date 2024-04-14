@@ -34,7 +34,7 @@ from .config import DevConfig
 server.set_config(emit_queue, DevConfig)
 
 @app.get('/version')
-def route_version():
+def route_version() -> JSONResponse:
   """Get the version number of backend"""
   # FIXME: Front end version is in manifest.
   fversion = "1.0.0"
@@ -45,7 +45,7 @@ def route_version():
       pass
     pass
   except Exception as _exc:
-    from ..lib import get_triage_logger, init_triage_logger
+    from ..lib import get_triage_logger, get_triage_logger
     tlog = get_triage_logger()
     tlog.info(
       'Reading /usr/local/share/wce/wce-triage-ui/manifest.json failed with exception. ' + traceback.format_exc())
@@ -54,7 +54,7 @@ def route_version():
   return JSONResponse(jsonified)
 
 @app.get('/hello')
-def route_hello():
+def route_hello() -> JSONResponse:
   """Get the version number of backend"""
   # FIXME: Front end version is in manifest.
   return JSONResponse({"message": "world"})

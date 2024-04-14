@@ -175,7 +175,7 @@ def setup_triage_logger(logger, log_level=None, filename=None):
     log_level = logging.INFO
     pass
   tlog_handler = logging.handlers.RotatingFileHandler(filename, maxBytes=2**24, backupCount=3)
-  tlog_formatter = logging.Formatter('%(asctime)s %(processName)-10s %(name)s %(levelname)-8s %(message)s')
+  tlog_formatter = logging.Formatter('%(asctime)s %(processName)-10s/%(threadName)s %(name)s %(levelname)-8s %(message)s')
   tlog_handler.setFormatter(tlog_formatter)
   logging.basicConfig(level=log_level, handlers=[tlog_handler])
   if logger:
@@ -185,22 +185,12 @@ def setup_triage_logger(logger, log_level=None, filename=None):
     logger.addHandler(tlog_handler)
   return logger
 
-def init_triage_logger(log_level=None, filename=None):
-  global _logger_
-  _logger_ = logging.getLogger('triage')
-  setup_triage_logger(_logger_, log_level=log_level, filename=filename)
-  return _logger_
-
-def set_triage_logger(logger, log_level=None, filename=None):
-  global _logger_
-  _logger_ = logger
-  setup_triage_logger(logger, log_level=log_level, filename=filename)
-  pass
 
 def get_triage_logger() -> logging.Logger:
   global _logger_
   if _logger_ is None:
-    init_triage_logger()
+    _logger_ = logging.getLogger('triage')
+    setup_triage_logger(_logger_)
   return _logger_
 
 

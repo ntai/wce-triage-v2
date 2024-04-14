@@ -136,10 +136,6 @@ def detect_net_devices():
     out = ""
     pass
 
-  if ethernet_detected:
-    tlog.info("Ethernet detected.")
-    pass
-
   net_entry_re = re.compile(r"\d+: (\w+):")
   for line in out.splitlines():
     m = net_entry_re.match(line.strip())
@@ -147,6 +143,10 @@ def detect_net_devices():
       netdev = NetworkDevice(device_name = m.group(1))
       net_devices.append(netdev)
       pass
+    pass
+  if ethernet_detected:
+    devs = ",".join( [dev.device_name for dev in net_devices])
+    tlog.info(f"Ethernet detected. {devs}")
     pass
   return net_devices
 

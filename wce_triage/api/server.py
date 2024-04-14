@@ -11,6 +11,13 @@ import queue
 import sys
 import time
 from typing import Optional
+import itertools
+import datetime
+import threading
+import typing
+import subprocess
+import json
+import traceback
 
 from . import op_load, op_save, op_sync, op_wipe, op_unmount, op_opticaldrive
 from .config import Config
@@ -26,13 +33,6 @@ from ..components import OpticalDrives
 from ..lib.disk_images import get_disk_images
 from ..const import const
 from ..lib import get_triage_logger
-import itertools
-import datetime
-import threading
-import typing
-import subprocess
-import json
-import traceback
 
 wce_share_re = re.compile(const.wce_share + r'=([\w/.+\-_:?=@#*&\\%]+)')
 wce_payload_re = re.compile(const.wce_payload + r'=([\w.+\-_:?=@#*&\\%]+)')

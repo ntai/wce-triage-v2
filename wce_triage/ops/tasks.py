@@ -30,6 +30,8 @@ tlog = get_triage_logger()
 
 
 class op_task(object, metaclass=abc.ABCMeta):
+  """Task is a unit of oction"""
+
   def __init__(self, description, encoding='utf-8', time_estimate=None, estimate_factors=None, **kwargs):
     if not isinstance(description, str):
       raise Exception("Description must be a string")
@@ -58,8 +60,7 @@ class op_task(object, metaclass=abc.ABCMeta):
   # 1: started - running
   # 2: done - success
   # 3: done - fail
-  def _get_status(self):
-
+  def _get_status(self) -> int:
     if self.is_done:
       if self.progress > 100:
         return 3
@@ -70,30 +71,29 @@ class op_task(object, metaclass=abc.ABCMeta):
       pass
     elif self.is_started:
       return 1
-    else:
-      return 0
-    pass
+    return 0
+
   
   # preflight is called from runner's preflight
-  def preflight(self, tasks):
+  def preflight(self, tasks) -> None:
     """preflight is called from runner's preflight. you get to know
        other tasks. task number is given so you know where your 
        position is in the execution, and you can adjust your estimation."""
     pass
   
   # pre_setup is called right before setup()
-  def pre_setup(self):
+  def pre_setup(self) -> None:
     """pre_setup is called right before setup()."""
     self.start_time = datetime.datetime.now()
     pass
   
   # setup is called at the beginning of running.
-  def setup(self):
+  def setup(self) -> None:
     """setup is called at the beginning of running."""
     pass
   
   # setup failed
-  def _setup_failed(self, msg):
+  def _setup_failed(self, msg) -> None:
     """setup failed is called during setup."""
     self.progress = 999
     self.messages = msg
@@ -103,20 +103,21 @@ class op_task(object, metaclass=abc.ABCMeta):
     pass
   
   # teardown is called just after the run
-  def teardown(self):
+  def teardown(self) -> None:
     """teardown is called just after the run"""
     self._set_end_time_now()
     self.is_done = True
     pass
 
   # This is to declare the task is teardown task.
-  def _set_end_time_now(self):
+  def _set_end_time_now(self) -> None:
     self.end_time = datetime.datetime.now()
     self.time_estimate = in_seconds(self.end_time - self.start_time)
     pass
   
 
-  def set_teardown_task(self):
+  def set_teardown_task(self) -> None:
+    """Declare the task is a teardown task. Teardown task is always executed even in the failed run."""
     self.teardown_task = True
     pass
 

@@ -14,7 +14,7 @@ from ..components.disk import create_storage_instance
 from .runner import Runner
 from ..lib.disk_images import make_disk_image_name
 from .json_ui import json_ui
-from ..lib.util import init_triage_logger, is_block_device
+from ..lib.util import get_triage_logger, is_block_device
 
 # "Waiting", "Prepare", "Preflight", "Running", "Success", "Failed"]
 my_messages = { "Waiting":   "Saving disk is waiting.",
@@ -71,7 +71,7 @@ For now, this is only dealing with the EXT4 linux partition.
 
 
 if __name__ == "__main__":
-  tlog = init_triage_logger()
+  tlog = get_triage_logger()
 
   if len(sys.argv) == 1:
     print( 'Unloader: devicename part destdir')

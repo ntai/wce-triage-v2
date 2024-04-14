@@ -7,13 +7,13 @@ if __name__ == "__main__":
   sys.path.append(os.path.split(os.getcwd())[0])
   pass
 
-from ..lib.util import init_triage_logger
+from ..lib.util import get_triage_logger
 from ..lib.timeutil import in_seconds
 from ..lib.pipereader import PipeReader
 import os, signal
 
 
-tlog = init_triage_logger()
+tlog = get_triage_logger()
 
 from collections import namedtuple
 PipeInfo = namedtuple('PipeInfo', 'app, process, pipetag, pipe')

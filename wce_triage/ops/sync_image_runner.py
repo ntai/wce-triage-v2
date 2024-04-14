@@ -11,7 +11,7 @@ from ..lib.disk_images import get_disk_images
 from .json_ui import json_ui
 from .sync_image_tasks import task_image_sync_delete, task_image_sync_metadata, task_image_sync_copy
 from .tasks import task_fetch_partitions, task_refresh_partitions, task_mount, task_unmount
-from ..lib.util import is_block_device, init_triage_logger
+from ..lib.util import is_block_device, get_triage_logger
 from ..components.disk import create_storage_instance
 
 
@@ -121,7 +121,7 @@ For now, this is only dealing with the EXT4 linux partition.
 
 
 if __name__ == "__main__":
-  tlog = init_triage_logger(log_level=logging.DEBUG)
+  tlog = get_triage_logger(log_level=logging.DEBUG)
 
   if len(sys.argv) == 1:
     print( 'SYNC: devicenames [opt] image...')
