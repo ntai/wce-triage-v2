@@ -53,7 +53,8 @@ class PartitionDiskRunner(Runner):
     # Calling parted
     argv = ['parted', '-s', '-a', 'optimal', self.disk.device_name, 'unit', 'MiB', 'mklabel', self.partition_map]
     for part in self.pplan:
-      # Skip MBR
+      # Skip MBR - this is because, mbr takes 2MB of space at the beginning of disk. It is NOT a partition.
+      # It just pushes the beginning of first partition 2MB back
       if part.no == 0:
         continue
       argv = argv + [arg for arg in ['mkpart', 'primary', part.filesys, str(part.start), str(part.start + part.size)] if arg is not None]
