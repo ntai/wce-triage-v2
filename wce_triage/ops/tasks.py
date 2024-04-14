@@ -391,12 +391,13 @@ class op_task_process(op_task):
       tlog.info(log_msg)
       pass
 
-    if self.out:
-      self.verdict.append("stdout: " + self.out)
-      pass
-
-    if self.err:
-      self.verdict.append("stderr: " + self.err)
+    if completion is not None:
+      if self.out:
+        self.verdict.append("stdout: " + self.out)
+        pass
+      if self.err:
+        self.verdict.append("stderr: " + self.err)
+        pass
       pass
     pass
 
