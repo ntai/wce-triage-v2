@@ -14,9 +14,10 @@ class ProcessPipeReader(threading.Thread):
   big_buffer: bytearray
 
   def __init__(self, proc:subprocess.Popen, pipe: io.BytesIO,
+               name="Unnamed PipeReader",
                dispatch=None,
                tag=None, encoding='iso-8859-1'):
-    super().__init__()
+    super().__init__(name=name)
     self.encoding = encoding
     self.alive = True
     self.proc = proc

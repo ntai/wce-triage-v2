@@ -32,7 +32,7 @@ class ProcessRunner(threading.Thread):
                stdout_dispatch: Optional[ModelDispatch] = None,
                stderr_dispatch: Optional[ModelDispatch] = None,
                meta=None):
-    super().__init__()
+    super().__init__(name=f"{self.class_name()}")
     # when model/model_dispatch is not given, stub is created.
     self.stdout_dispatch = stdout_dispatch if stdout_dispatch else ModelDispatch(Model())
     self.stderr_dispatch = stderr_dispatch if stderr_dispatch else ModelDispatch(Model())
@@ -77,8 +77,10 @@ class ProcessRunner(threading.Thread):
     self.stdout_dispatch.start(tag, context)
     self.stderr_dispatch.start(tag, context)
 
-    self.stdout = ProcessPipeReader(self.process, self.process.stdout, dispatch=self.stdout_dispatch, tag=tag)
-    self.stderr = ProcessPipeReader(self.process, self.process.stderr, dispatch=self.stderr_dispatch, tag=tag)
+    self.stdout = ProcessPipeReader(self.process, self.process.stdout, dispatch=self.stdout_dispatch, tag=tag,
+                                    name=f"{self.class_name()}-stdout-{tag}")
+    self.stderr = ProcessPipeReader(self.process, self.process.stderr, dispatch=self.stderr_dispatch, tag=tag,
+                                    name=f"{self.class_name()}-stderr-{tag}")
 
     self.stdout.start()
     self.stderr.start()

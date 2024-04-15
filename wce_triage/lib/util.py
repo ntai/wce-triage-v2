@@ -186,11 +186,11 @@ def setup_triage_logger(logger, log_level=None, filename=None):
   return logger
 
 
-def get_triage_logger() -> logging.Logger:
+def get_triage_logger(log_level=None) -> logging.Logger:
   global _logger_
   if _logger_ is None:
     _logger_ = logging.getLogger('triage')
-    setup_triage_logger(_logger_)
+    setup_triage_logger(_logger_, log_level=log_level)
   return _logger_
 
 

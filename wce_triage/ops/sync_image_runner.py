@@ -11,7 +11,7 @@ from ..lib.disk_images import get_disk_images
 from .json_ui import json_ui
 from .sync_image_tasks import task_image_sync_delete, task_image_sync_metadata, task_image_sync_copy
 from .tasks import task_fetch_partitions, task_refresh_partitions, task_mount, task_unmount
-from ..lib.util import is_block_device, get_triage_logger
+from ..lib.util import is_block_device, get_triage_logger, setup_triage_logger
 from ..components.disk import create_storage_instance
 
 

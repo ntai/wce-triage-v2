@@ -10,6 +10,12 @@ class MessagesModel(Model):
     pass
 
 class MessageDispatch(ModelDispatch):
+  """ Message output
+
+  """
+  def dispatch(self, update):
+    return super().dispatch({"message": update, "severity": 1})
+
   def note(self, message):
     return self.dispatch({"message": message, "severity": 1})
 

@@ -1,6 +1,7 @@
 import os
 import socketio
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 import json
@@ -21,16 +22,32 @@ ui_dir = os.path.join(os.path.split((os.path.split(__file__)[0]))[0], "ui")
 app = FastAPI(docs_url="/docs")
 app.mount("/wce", StaticFiles(directory=wcedir), name="wce")
 
-from ..version import TRIAGE_VERSION, TRIAGE_TIMESTAMP
+from .config import DevConfig
 
+app.add_middleware(
+  CORSMiddleware,
+  allow_origins=DevConfig.CORS_ORIGIN_WHITELIST,
+  allow_credentials=True,
+  allow_methods=["*"],
+  allow_headers=["*"],
+)
 # Create a SocketIO instance
 # Note: 'async_mode' could be 'asgi' or 'aiohttp' depending on your preference
-sockio = socketio.AsyncServer(async_mode='asgi')
+sockio = socketio.AsyncServer(async_mode='asgi',
+                              cors_allowed_origins=DevConfig.CORS_ORIGIN_WHITELIST,
+                              cors_allowed_methods=["*"],
+                              cors_credentials=True,  # Allow credentials
+                              )
 socket_app = socketio.ASGIApp(sockio, other_asgi_app=app)
+
+from ..version import TRIAGE_VERSION, TRIAGE_TIMESTAMP
+
 emit_queue = start_emitter_thread(sockio)
 
 from .server import server
-from .config import DevConfig
+
+
+
 server.set_config(emit_queue, DevConfig)
 
 @app.get('/version')
