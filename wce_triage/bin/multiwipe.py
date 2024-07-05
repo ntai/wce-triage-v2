@@ -2,13 +2,13 @@
 
 import os, sys, datetime, json, traceback, signal, subprocess
 import threading
-from ..lib.util import init_triage_logger
+from ..lib.util import get_triage_logger
 from ..lib.timeutil import in_seconds
 from ..ops.run_state import RunState, RUN_STATE
 import time
 
 start_time = datetime.datetime.now()
-tlog = init_triage_logger()
+tlog = get_triage_logger()
 debugging = False
 
 zeros_size = 2 ** 22

@@ -296,19 +296,19 @@ desktop_packages = {
     'g++',
     'gcc',
     'libopenblas-base',
-    'libatlas3-base'
     'pstoedit',
     'epstool',
     'default-jre-headless',
   ],
   '18.04': [
+    'libatlas3-base'
     'ubuntu-edu-preschool',
     'ubuntu-edu-primary',
     'ubuntu-edu-secondary',
     'ubuntu-edu-tertiary',
   ],
   '20.04': [
-    
+    'libatlas3-base'
   ],
   '22.04': [
   ],
@@ -404,16 +404,18 @@ if __name__ == "__main__":
     os.chdir(cwd)
     pass
 
-  # install python packages.
+  # This should move to venv
+  #
+  # install python packages
   #  Why not use pip3? Ubuntu server is far more stable than pypi server.
   #  Also, the packages on pypi moves too fast and dependencies can be a headache.
 
-  python_packages = get_package_list(wce_triage_python_packages, release_version)
-  if os.environ.get('WCE_DESKTOP') == "true":
-    python_packages = python_packages + get_package_list(desktop_python_packages, release_version)
-    pass
+  # python_packages = get_package_list(wce_triage_python_packages, release_version)
+  # if os.environ.get('WCE_DESKTOP') == "true":
+  #   python_packages = python_packages + get_package_list(desktop_python_packages, release_version)
+  #   pass
   
-  for ppkg in python_packages:
-    subprocess.run([sudo, '-E', '-H', 'pip3', 'install', ppkg])
-    pass
+  # for ppkg in python_packages:
+  #   subprocess.run([sudo, '-E', '-H', 'pip3', 'install', ppkg])
+  #   pass
   pass

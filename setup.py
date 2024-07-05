@@ -38,12 +38,12 @@ setuptools.setup(
   install_requires=[
     'aiohttp==3.6.2',
     'aiohttp-cors==0.7.0',
-    'Flask==3.0.0',
+    'Flask==3.0.2',
     'Flask-CLI==0.4.0',
     'Flask-Cors==3.0.10',
-    'Flask-SocketIO==5.3.3',
-    'python-engineio==4.8.1',
-    'python-socketio==5.10.0',
+    'Flask-SocketIO==5.3.6',
+    'python-engineio==4.9.0',
+    'python-socketio==5.11.2',
     'typing_extensions==4.9.0',
   ],
   classifiers=[

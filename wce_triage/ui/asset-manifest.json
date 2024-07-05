@@ -1,0 +1,16 @@
+{
+  "files": {
+    "main.css": "/static/css/main.d2db7b36.css",
+    "main.js": "/static/js/main.192a297f.js",
+    "static/js/787.0f6cebba.chunk.js": "/static/js/787.0f6cebba.chunk.js",
+    "static/media/wcelogo.svg": "/static/media/wcelogo.605bb85a14ccacdf201b21101db70ad8.svg",
+    "index.html": "/index.html",
+    "main.d2db7b36.css.map": "/static/css/main.d2db7b36.css.map",
+    "main.192a297f.js.map": "/static/js/main.192a297f.js.map",
+    "787.0f6cebba.chunk.js.map": "/static/js/787.0f6cebba.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.d2db7b36.css",
+    "static/js/main.192a297f.js"
+  ]
+}

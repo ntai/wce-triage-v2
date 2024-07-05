@@ -1,6 +1,8 @@
 
 import re
 import sys
+import typing
+
 from .kernel_flags import kernel_flags
 from ..const import const
 
@@ -11,7 +13,9 @@ from ..const import const
 #
 
 class grub_variable:
-  def __init__(self, tag):
+  tag: str
+
+  def __init__(self, tag: str):
     self.tag = tag
     self.rex = '(export\s+){{0,1}}({tag})="([^"]*)"'.format(tag=tag)
     self.variable_re = re.compile(self.rex)
@@ -61,6 +65,7 @@ class grub_variable:
 
 
 class grub_config:
+  """grub.cfg manipulation"""
   def __init__(self, filename):
     self.filename = filename
     self.variables = {}
@@ -103,7 +108,7 @@ class grub_config:
     pass
 
 
-  def generate(self):
+  def generate(self) -> typing.Tuple[bool, str]:
     if not self.grubcfg:
       raise Exception("grub_file has not been open.")
 
@@ -122,7 +127,13 @@ class grub_config:
     return (updated, "\n".join(self.grubcfg_lines + [""]))
   pass
 
-  
+
+def grub_set_wce_share(filename = "/etc/default/grub", wce_share="/usr/local/share/wce") -> typing.Tuple[bool, str]:
+  grub = grub_config(filename)
+  grub.open()
+  grub.set_cmdline_option("wce_share", wce_share)
+  return grub.generate()
+
 
 if __name__ == "__main__":
   filename = "/etc/default/grub"

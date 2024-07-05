@@ -2,8 +2,8 @@
 #
 #
 import sys
-from ..lib.util import init_triage_logger
-tlog = init_triage_logger()
+from ..lib.util import get_triage_logger
+tlog = get_triage_logger()
 
 MiB = 2**20
 

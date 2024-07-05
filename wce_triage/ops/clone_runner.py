@@ -15,9 +15,9 @@ from .ops_ui import console_ui
 from .pplan import make_usb_stick_partition_plan
 from ..components.disk import create_storage_instance, Partition
 from .runner import Runner
-from ..lib.util import init_triage_logger
+from ..lib import get_triage_logger
 
-tlog = init_triage_logger()
+tlog = get_triage_logger()
 
 #
 # create a new gpt partition from partition plan

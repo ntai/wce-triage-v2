@@ -758,7 +758,11 @@ class DiskPortal(Component):
     for device_name, disk in existing_disks.items():
       if disk is not None:
         removed_disks.append(disk)
-        self.disks.remove(disk)
+        try:
+          self.disks.remove(disk)
+        except ValueError:
+          # Ignore non-existing disk
+          pass
         pass
       pass
     return (added_disks, updated_disks, removed_disks)

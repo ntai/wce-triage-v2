@@ -2,7 +2,7 @@
 import io
 import os, sys, datetime, json, traceback, signal, stat
 import threading
-from ..lib.util import init_triage_logger
+from ..lib.util import get_triage_logger
 from ..lib.timeutil import in_seconds
 from ..ops.run_state import RunState, RUN_STATE
 import queue
@@ -11,7 +11,7 @@ import multiprocessing as mp
 import typing
 
 start_time = datetime.datetime.now()
-tlog = init_triage_logger()
+tlog = get_triage_logger()
 debugging = False
 
 def handler_stop_signals(signum, frame):

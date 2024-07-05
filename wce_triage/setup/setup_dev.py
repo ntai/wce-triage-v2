@@ -21,7 +21,7 @@ env[const.PATCHES] = const.server
 # env[const.PATCHES] = const.workstation
 
 if __name__ == "__main__":
-  steps = [#'install_packages',
+  steps = ['install_packages',
            # Create triage account
            # 'config_triage_user',
            # Install triage software and services

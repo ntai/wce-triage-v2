@@ -3,7 +3,7 @@
 """disk_image scans the disk image candidate directories and returns availabe disk images for loading.
 """
 import os, datetime, json, traceback
-from ..lib.util import get_triage_logger, init_triage_logger
+from ..lib.util import get_triage_logger
 
 tlog = get_triage_logger()
 
@@ -287,7 +287,7 @@ def translate_disk_image_name_to_url(wce_share_url, disk_image_name):
 #
 if __name__ == "__main__":
   print("HELLO")
-  tlog = init_triage_logger(filename='/tmp/disk_images.log')
+  tlog = get_triage_logger(filename='/tmp/disk_images.log')
   
   print(read_disk_image_types(verbose=True))
   print(get_disk_images())

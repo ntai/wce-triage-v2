@@ -18,8 +18,8 @@ from argparse import ArgumentParser
 import json
 import os, re, subprocess, datetime, asyncio, traceback, queue
 import logging, logging.handlers
-from ..lib.util import get_triage_logger, init_triage_logger
-tlog = init_triage_logger(log_level=logging.DEBUG)
+from ..lib.util import get_triage_logger, get_triage_logger
+tlog = get_triage_logger(log_level=logging.DEBUG)
 
 from ..components.computer import Computer
 from ..components.disk import DiskPortal, PartitionLister
@@ -1333,7 +1333,7 @@ arguments = cli.parse_args()
 
 # If the module is invoked directly, initialize the application
 def my_main():
-  tlog = init_triage_logger(log_level=logging.DEBUG)
+  tlog = get_triage_logger(log_level=logging.DEBUG)
   
   # Create and configure the HTTP server instance
   the_root_url = u"{0}://{1}:{2}".format("http", arguments.host, arguments.port)
