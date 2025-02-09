@@ -4,7 +4,7 @@ PYPI_USER := $(shell echo $$PYPI_USERNAME)
 PYPI_PASSWORD := $(shell echo $$PYPI_PASSWORD)
 TESTPYPI_API_TOKEN := $(shell echo $$PYPI_PASSWORD)
 
-PY3 := python3.10
+PY3 := python3
 
 default: setup
 
@@ -13,7 +13,7 @@ setup: manifest
 
 
 venv:
-	sudo apt install python3.10 python3.10-venv
+	sudo apt install python3 python3-venv
 	$(PY3) -m venv venv
 
 bootstrap: venv

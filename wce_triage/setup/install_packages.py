@@ -63,8 +63,6 @@ base_packages = {
     'parted',                   # parted
     'pulseaudio',               # Ubuntu audio server
     'pulseaudio-utils',         # Ubuntu PA utils
-    'python3-aiohttp',          # for python http server
-    'python3-aiohttp-cors',     # for python http server
     'rfkill',                   # rfkill reports the wifi hardware/software switches
     'fonts-roboto',             # Google's fonts for UI.
     'wpasupplicant',            # wifi auth
@@ -75,7 +73,6 @@ base_packages = {
     'firmware-b43-installer',
     'firmware-b43legacy-installer',
     'firmware-ath9k-htc',
-    'linux-wlan-ng-firmware',   # wlan fw
 
     # audio device firmware
     'alsa-firmware-loaders',
@@ -89,6 +86,9 @@ base_packages = {
   '18.04': [
     'iwconfig',                 # for seeing wifi device list
     'prism2-usb-firmware',
+    'python3-aiohttp',          # for python http server
+    'python3-aiohttp-cors',     # for python http server
+    'linux-wlan-ng-firmware',   # wlan fw
   ],
   '20.04': [
     'iw',                       # for seeing wifi device list
@@ -99,6 +99,9 @@ base_packages = {
     'overlayroot',
     'ubuntu-restricted-extras',
     'prism2-usb-firmware',
+    'python3-aiohttp',          # for python http server
+    'python3-aiohttp-cors',     # for python http server
+    'linux-wlan-ng-firmware',   # wlan fw
   ],
   '22.04': [
     'iw',                       # for seeing wifi device list
@@ -110,6 +113,9 @@ base_packages = {
     'ubuntu-restricted-extras',
     'prism2-usb-firmware-installer',
     'linux-wlan-ng',
+    'python3-aiohttp',          # for python http server
+    'python3-aiohttp-cors',     # for python http server
+    'linux-wlan-ng-firmware',   # wlan fw
   ],
   '24.04': [
     'iw',                       # for seeing wifi device list
@@ -118,8 +124,11 @@ base_packages = {
     'build-essential',
     'overlayroot',
     'ubuntu-restricted-extras',
-    'prism2-usb-firmware-installer',
-    'linux-wlan-ng',
+    'firmware-realtek-rtl8723cs-bt',
+    'r8125-dkms',
+    'r8168-dkms',
+    'rtl8812au-dkms',
+    'broadcom-sta-dkms',
   ],
 }
 
