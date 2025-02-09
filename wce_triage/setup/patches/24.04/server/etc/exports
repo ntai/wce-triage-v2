@@ -1,0 +1,2 @@
+/var/lib/netclient  *(ro,sync,no_wdelay,insecure_locks,no_root_squash,insecure,no_subtree_check,crossmnt,nohide)
+/usr/local/share/wce  *(ro,sync,no_wdelay,insecure_locks,no_root_squash,insecure,no_subtree_check,crossmnt,nohide)
