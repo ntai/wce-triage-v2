@@ -4,10 +4,10 @@ import threading
 
 
 class Model(object):
-  _model: dict | list
-  _meta: dict
-  model_state: Optional[bool]
-  cumulative: bool
+  _model: dict | list  # Data itself
+  _meta: dict  # Metadata about the model
+  model_state: Optional[bool]  # Whether or not the model is valid
+  cumulative: bool  # Data is cumlative
   key: str
   lock: threading.Lock
 

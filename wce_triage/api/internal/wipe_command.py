@@ -24,7 +24,7 @@ class WipeCommandRunner(SimpleProcessRunner):
     super().__init__(stdout_dispatch=stdout_dispatch, stderr_dispatch=stderr_dispatch, meta=meta)
     pass
 
-  def queue_wipe(self, devices: typing.List[str]):
+  def queue_wipe(self, devices: typing.List[str]) -> typing.Tuple[dict, int]:
     args = [sys.executable, '-m', 'wce_triage.bin.multiwipe'] + devices
     self.queue(args, {"args": args, "devnames": ",".join(devices)})
     return {}, status.HTTP_200_OK
