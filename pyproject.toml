@@ -28,6 +28,7 @@ typing-extensions = "^4.10.0"
 ruamel-yaml = "^0.18.6"
 aiohttp = "^3.9.4"
 aiohttp-cors = "^0.7.0"
+pydantic = "^2.10.6"
 
 
 [tool.poetry.group.dev.dependencies]

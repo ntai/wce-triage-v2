@@ -55,8 +55,8 @@ class SaveCommandRunner(SimpleProcessRunner):
         for partition in disk.partitions:
           tlog.debug(str(partition))
           pass
-      UserMessages.error("Device %s has no EXT4 partition for imaging." % disk.device_name)
-      return {}, HTTPStatus.BAD_REQUEST
+        UserMessages.error("Device %s has no EXT4 partition for imaging." % disk.device_name)
+        return {}, HTTPStatus.BAD_REQUEST
 
     partition_id = disk.get_partition_id(part)
     if partition_id is None:

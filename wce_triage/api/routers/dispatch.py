@@ -5,6 +5,9 @@ from fastapi.requests import Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi import APIRouter, HTTPException, Query, status
 
+from pydantic import BaseModel
+from typing import List, Optional, Any
+
 from .. import op_save
 from ..formatters import jsoned_disk, jsoned_optical
 from ..internal.save_command import SaveCommandRunner
@@ -12,7 +15,7 @@ from ..internal.sync_command import SyncCommandRunner
 from ..internal.unmount_command import UnmountCommandRunner
 from ..internal.wipe_command import WipeCommandRunner
 from ..internal.load_command import LoadCommandRunner
-from ..messages import UserMessages
+# from ..messages import UserMessages
 from ..models import Model
 from ..internal.optical_drive import OpticalDriveTestRunner, OpticalDispatch
 from ...lib.disk_images import read_disk_image_types, get_disk_images
@@ -74,23 +77,25 @@ def route_music():
   return FileResponse(music_file, media_type=f"audio/{filetype}")
 
 
+class MessageDataType(BaseModel):
+  start: int
+  count: int
+  messages: Optional[List[str]] = None
+
+
 @router.api_route("/messages", methods=["GET", "HEAD"])
 def route_messages(
     request: Request,
     start: int = Query(default=0, ge=0),
     count: int = Query(default=100, ge=1)
-) -> JSONResponse:
+) -> MessageDataType:
   from ..messages import message_model
-  all_messages = message_model.data.get("message", [])
-  if request.method == "GET":
-    messages = [message.get("message") for message in all_messages[start:start + count]]
-    headers = {"Content-Length": str(len(messages))}
-    return JSONResponse(content={"messages": messages, "start": start,
-                                 "count": len(messages), "total": len(messages)},
-                        headers=headers)
-  headers = {"Content-Length": max(0, str(len(all_messages)) - start - count) }
-  return JSONResponse(content=None, headers=headers)
+  all_messages: List[Any] = message_model.data.get("message", [])
 
+  messages: List[str] = [message.get("message") for message in all_messages[start:start + count]]
+  if request.method == "HEAD":
+    return MessageDataType(start=start, count=count)
+  return MessageDataType(start=start, count=count, messages=messages)
 
 
 # get_cpu_info is potentially ver slow for older computers as this runs a
