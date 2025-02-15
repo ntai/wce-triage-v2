@@ -18,8 +18,11 @@ class UnmountCommandRunner(SimpleProcessRunner):
   def __init__(self,
                stdout_dispatch: Optional[ModelDispatch] = None,
                stderr_dispatch: Optional[ModelDispatch] = None,
-               _meta=None):
-    super().__init__(stdout_dispatch=stdout_dispatch, stderr_dispatch=stderr_dispatch, meta={"tag": "unmount"})
+               meta=None):
+    unmount_meta = {"tag": "unmount"}
+    if meta:
+      unmount_meta.update(meta)
+    super().__init__(stdout_dispatch=stdout_dispatch, stderr_dispatch=stderr_dispatch, meta=unmount_meta)
     pass
 
   def queue_unmount(self, devices):

@@ -104,7 +104,7 @@ if __name__ == "__main__":
     ui = json_ui(wock_event="saveimage", message_catalog=my_messages)
     pass
 
-  if re.match(part, '\d+'):
+  if re.match(part, r'\d+'):
     part = int(part)
     pass
 

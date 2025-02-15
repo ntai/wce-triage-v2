@@ -17,7 +17,7 @@ class grub_variable:
 
   def __init__(self, tag: str):
     self.tag = tag
-    self.rex = '(export\s+){{0,1}}({tag})="([^"]*)"'.format(tag=tag)
+    self.rex = r'(export\s+){{0,1}}({tag})="([^"]*)"'.format(tag=tag)
     self.variable_re = re.compile(self.rex)
     self.cmdline = None
     self.flags = None

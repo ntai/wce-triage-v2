@@ -950,7 +950,7 @@ class task_refresh_partitions(op_task_command):
            'PARTLABEL': 'partition_name',
            'UUID':      'fs_uuid'
            }
-  tagvalre = re.compile('\s*(\w+)="([^"]+)"')
+  tagvalre = re.compile(r'\s*(\w+)="([^"]+)"')
 
   def __init__(self, description, disk=None, **kwargs):
     super().__init__(description, encoding='iso-8859-1', **kwargs)
