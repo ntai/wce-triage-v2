@@ -16,7 +16,8 @@ rootdir = environ.get("rootdir")
 wce_share = environ.get("wce_share")
 live_triage = environ.get("live_triage", False)
 payload = environ.get("payload")
-ui_dir = os.path.join(os.path.split((os.path.split(__file__)[0]))[0], "ui")
+share_ui_dir = '/usr/local/share/wce/wce-triage-ui'
+ui_dir = share_ui_dir if os.path.exists(share_ui_dir) else os.path.join(os.path.split((os.path.split(__file__)[0]))[0], "ui") 
 
 # Create a FastAPI instance
 app = FastAPI(docs_url="/docs")
@@ -55,8 +56,9 @@ def route_version() -> JSONResponse:
   """Get the version number of backend"""
   # FIXME: Front end version is in manifest.
   fversion = "1.0.0"
+  manifest_path = os.path.join(ui_dir, 'manifest.json')
   try:
-    with open('/usr/local/share/wce/wce-triage-ui/manifest.json') as frontend_manifest:
+    with open(manifest_path) as frontend_manifest:
       manifest = json.load(frontend_manifest)
       fversion = manifest.get('version', "1.0.0")
       pass
@@ -64,8 +66,7 @@ def route_version() -> JSONResponse:
   except Exception as _exc:
     from ..lib import get_triage_logger, get_triage_logger
     tlog = get_triage_logger()
-    tlog.info(
-      'Reading /usr/local/share/wce/wce-triage-ui/manifest.json failed with exception. ' + traceback.format_exc())
+    tlog.info('Reading %sshare/wce/wce-triage-ui/manifest.json failed with exception. %s', manifest_path, traceback.format_exc())
     pass
   jsonified = {"version": {"backend": TRIAGE_VERSION + "-" + TRIAGE_TIMESTAMP, "frontend": fversion}}
   return JSONResponse(jsonified)
