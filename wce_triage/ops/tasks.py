@@ -1182,15 +1182,19 @@ class task_install_syslinux(op_task_process):
 class task_install_grub(op_task_process):
   script_path_template = "%s/tmp/bless.sh"
 
-  def __init__(self, description, disk=None, detected_videos=None, partition_id='Linux', **kwargs):
+  def __init__(self, description, disk=None, detected_videos=None, partition_id='Linux',
+               universal_boot=False, **kwargs):
     # Disk to bless
     self.disk = disk
     self.partition_id = partition_id
     (self.n_nvidia, self.n_ati, self.n_vga) = detected_videos
     self.linuxpart = None
     self.mount_dir = None
+    self.efi_part = None
+    self.efi_mount_dir = "/boot/efi" # relative location - not used
     self.script_path = None
     self.script = None
+    self.universal_boot = universal_boot
 
     # FIXME: Time estimate is very different between USB stick and hard disk.
     # grub copies a bunch of files
@@ -1219,6 +1223,9 @@ class task_install_grub(op_task_process):
     self.mount_dir = self.linuxpart.get_mount_point()
     self.script_path = self.script_path_template % self.mount_dir
 
+    # EFI should be there.
+    self.efi_part = self.disk.find_partition(EFI_NAME)
+
     #
     # grub-install doesn't work without chroot
     # For wifi and video drivers, it needs adding or removing packages.
@@ -1234,9 +1241,25 @@ class task_install_grub(op_task_process):
     # Things to do is installing grub
     # Only see the mounted disk, and no other device
     self.script.append("export GRUB_DISABLE_OS_PROBER=true")
+
+    # MBR Boot
     self.script.append("/usr/sbin/grub-install -v --target=i386-pc --force %s" % self.disk.device_name)
 
-    if self.n_ati > 0:
+    # EFI Boot
+    if self.efi_part:
+      self.script.append("mkdir -p /boot/efi")
+      self.script.append("chmod 700 /boot/efi")
+      self.script.append("mount %s /boot/efi" % self.efi_part.device_name)
+
+      if self.universal_boot:
+        # --removable installs GRUB to fallback place, not the normal /EFI/ubuntu, and thus no reason to update NVRam
+        grub_efi_cmd = "/usr/sbin/grub-install --target=x86_64-efi --efi-directory=/boot/efi --boot-directory=/boot --removable --no-nvram --force --recheck %s"
+        self.script.append(grub_efi_cmd % (self.disk.device_name))
+
+      grub_efi_cmd = "/usr/sbin/grub-install --target=x86_64-efi --efi-directory=/boot/efi --boot-directory=/boot --force %s"
+      self.script.append(grub_efi_cmd % (self.disk.device_name))
+
+    if (not self.universal_boot) and self.n_ati > 0:
       self.script.append('# If this machine has ATI video, get rid of other video drivers that can get in its way.')
       self.script.append("apt-get -q -y --force-yes purge `dpkg --get-selections | cut -f 1 | grep -v xorg | grep nvidia-`")
       pass
@@ -1246,6 +1269,8 @@ class task_install_grub(op_task_process):
     self.script.append('grub-mkconfig -o /boot/grub/grub.cfg')
 
     self.script.append('# clean up')
+    if self.efi_part:
+      self.script.append("umount /boot/efi")
     self.script.append('umount /proc || umount -lf /proc')
     self.script.append('umount /sys')
     self.script.append('umount /dev/pts')

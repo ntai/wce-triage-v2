@@ -137,7 +137,10 @@ class RestoreDiskRunner(PartitionDiskRunner):
       pass
 
     # Install GRUB
-    self.tasks.append(task_install_grub('Install GRUB boot manager', disk=disk, detected_videos=detected_videos, partition_id=partition_id))
+    universal_boot = self.restore_type.get(const.universal_boot, False)
+    self.tasks.append(task_install_grub('Install GRUB boot manager', disk=disk,
+                                        universal_boot=universal_boot,
+                                        detected_videos=detected_videos, partition_id=partition_id))
 
     # unmount so I can run fsck and expand partition
     if self.restore_type["id"] != const.clone:
@@ -145,9 +148,9 @@ class RestoreDiskRunner(PartitionDiskRunner):
       pass
 
     if self.efi_source:
-      self.tasks.append(task_mount("Mount the EFI parttion", disk=disk, partition_id=EFI_NAME))
+      self.tasks.append(task_mount("Mount the EFI partition", disk=disk, partition_id=EFI_NAME))
       self.tasks.append(task_finalize_efi("Finalize EFI", disk=disk, partition_id=partition_id, efi_id=EFI_NAME))
-      self.tasks.append(task_unmount("Unmount the EFI parttion", disk=disk, partition_id=EFI_NAME))
+      self.tasks.append(task_unmount("Unmount the EFI partition", disk=disk, partition_id=EFI_NAME))
       pass
     pass
 
