@@ -388,6 +388,8 @@ There is one thing however, needs to pay attention which is that the NFS mount n
 ONE VERY IMPORTANT INGREDIENTS FOR TRIAGE AND NETWORK BOOT - CUSTOM INITRD
 **************************************************************************
 
+(THIS IS OBSOLETE AND NOT TRUE ANYMORE. IT HAS BEEN REPLACED USING overlayroot - https://packages.ubuntu.com/jammy/overlayroot)
+
 For triage app to run on USB stick or NFS mounted root which is read-only, it needs to run using "unionfs" - aka aufs. What this does is to layer a file system over other file system. The base layer (read-only) is accesed if upper layer (writable and memory based tempfs) doesn't have the file, and if a file is modified or created, it stays on the upper layer. 
 
 To this to work, initrd file contains a script to set up the aufs by creating tempfs, moving read-only file system to "/ro", and mount the aufs as root "/" file system. If you do not recreate (aka update) the initrd without this script, this does not work. triage.setup.setup_FOO installs the script and updates initrd file. If you use a stock initrd, this brakes down. If you are curious, you can take a look at the script for initrd. `wce-triage-v2/wce_triage/setup/patches/server/etc/initramfs-tools/scripts/init-bottom/__rootaufs` is the shell script for this. Same copy is included for triage and workstation, but not in the desktop client for obvious reason. 
