@@ -6,10 +6,10 @@
 #
 import os, sys, subprocess, datetime, traceback
 
-from ..lib.util import init_triage_logger, is_block_device, get_test_password
+from ..lib.util import get_triage_logger, is_block_device, get_test_password
 from ..lib.timeutil import in_seconds
 
-tlog = init_triage_logger()
+tlog = get_triage_logger()
 
 import json
 

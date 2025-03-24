@@ -1,0 +1,8 @@
+#!/bin/sh
+. /etc/default/grub
+export GRUB_DISABLE_RECOVERY=true
+export GRUB_DISABLE_SUBMENU=y
+export GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT_ALT"
+export GRUB_PRIMARY_MENU_TITLE="$GRUB_MENU_TITLE_ALT"
+export PYTHONPATH=/usr/local/share/wce/triage/wce-triage-v2
+/etc/grub.d/10_linux | python3 -m wce_triage.setup.extract_menuentry

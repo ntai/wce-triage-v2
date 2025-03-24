@@ -7,8 +7,12 @@ tmpfile = '/tmp/wce-triage.sh'
 wce_triage_sh = open(tmpfile, 'w')
 wce_triage_sh.write('''#!/bin/bash
 #
-python3 -m wce_triage.bin.start_network
-FLASK_ENVIRONMENT=development FLASK_DEBLG=true FLASK_APP=wce_triage.backend.app:create_app flask run --port 8312 --host 0.0.0.0
+#python3 -m wce_triage.bin.start_network
+# FLASK_ENVIRONMENT=development FLASK_DEBLG=true FLASK_APP=wce_triage.backend.app:create_app flask run --port 8312 --host 0.0.0.0
+# Flask no longer in use. Using FastAPI in the github sandbox
+#
+cd /usr/local/share/wce/triage/wce-triage-v2/
+. ./venv/bin/activate && PYTHONPATH=${PWD} sudo ./venv/bin/uvicorn wce_triage.api.app:socket_app  --host 0.0.0.0 --port 10600
 ''')
 wce_triage_sh.close()
 

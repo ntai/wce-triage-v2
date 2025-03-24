@@ -83,7 +83,7 @@ class task_config_pxeboot(op_task_python_simple):
     # Set the wce_share_url to /etc/default/grub
     if self.wce_share_url is not None:
       grub_file = "%s/etc/default/grub" % self.mount_dir
-      updated, contents = grub_set_wce_share(grub_file, self.wce_share_url)
+      updated, contents = grub_set_wce_share(filename=grub_file, wce_share=self.wce_share_url)
       if updated:
         grub = open(grub_file, "w")
         grub.write(contents)

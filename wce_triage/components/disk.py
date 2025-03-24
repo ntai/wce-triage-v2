@@ -758,7 +758,11 @@ class DiskPortal(Component):
     for device_name, disk in existing_disks.items():
       if disk is not None:
         removed_disks.append(disk)
-        self.disks.remove(disk)
+        try:
+          self.disks.remove(disk)
+        except ValueError:
+          # Ignore non-existing disk
+          pass
         pass
       pass
     return (added_disks, updated_disks, removed_disks)
@@ -839,7 +843,7 @@ class PartitionLister:
   def parse_parted_output(self):
     self.disk.partitions = []
     partclone_output = self.out.splitlines()
-    while len(partclone_output) > 0 and len(partclone_output[0].strip()) == 0:
+    while len(partclone_output) > 0 and partclone_output[0].strip() != 'BYT;':
       partclone_output = partclone_output[1:]
       pass
     if len(partclone_output) == 0:

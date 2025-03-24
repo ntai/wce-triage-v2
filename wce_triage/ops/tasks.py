@@ -30,6 +30,8 @@ tlog = get_triage_logger()
 
 
 class op_task(object, metaclass=abc.ABCMeta):
+  """Task is a unit of oction"""
+
   def __init__(self, description, encoding='utf-8', time_estimate=None, estimate_factors=None, **kwargs):
     if not isinstance(description, str):
       raise Exception("Description must be a string")
@@ -58,8 +60,7 @@ class op_task(object, metaclass=abc.ABCMeta):
   # 1: started - running
   # 2: done - success
   # 3: done - fail
-  def _get_status(self):
-
+  def _get_status(self) -> int:
     if self.is_done:
       if self.progress > 100:
         return 3
@@ -70,30 +71,29 @@ class op_task(object, metaclass=abc.ABCMeta):
       pass
     elif self.is_started:
       return 1
-    else:
-      return 0
-    pass
+    return 0
+
   
   # preflight is called from runner's preflight
-  def preflight(self, tasks):
+  def preflight(self, tasks) -> None:
     """preflight is called from runner's preflight. you get to know
        other tasks. task number is given so you know where your 
        position is in the execution, and you can adjust your estimation."""
     pass
   
   # pre_setup is called right before setup()
-  def pre_setup(self):
+  def pre_setup(self) -> None:
     """pre_setup is called right before setup()."""
     self.start_time = datetime.datetime.now()
     pass
   
   # setup is called at the beginning of running.
-  def setup(self):
+  def setup(self) -> None:
     """setup is called at the beginning of running."""
     pass
   
   # setup failed
-  def _setup_failed(self, msg):
+  def _setup_failed(self, msg) -> None:
     """setup failed is called during setup."""
     self.progress = 999
     self.messages = msg
@@ -103,20 +103,21 @@ class op_task(object, metaclass=abc.ABCMeta):
     pass
   
   # teardown is called just after the run
-  def teardown(self):
+  def teardown(self) -> None:
     """teardown is called just after the run"""
     self._set_end_time_now()
     self.is_done = True
     pass
 
   # This is to declare the task is teardown task.
-  def _set_end_time_now(self):
+  def _set_end_time_now(self) -> None:
     self.end_time = datetime.datetime.now()
     self.time_estimate = in_seconds(self.end_time - self.start_time)
     pass
   
 
-  def set_teardown_task(self):
+  def set_teardown_task(self) -> None:
+    """Declare the task is a teardown task. Teardown task is always executed even in the failed run."""
     self.teardown_task = True
     pass
 
@@ -390,12 +391,13 @@ class op_task_process(op_task):
       tlog.info(log_msg)
       pass
 
-    if self.out:
-      self.verdict.append("stdout: " + self.out)
-      pass
-
-    if self.err:
-      self.verdict.append("stderr: " + self.err)
+    if completion is not None:
+      if self.out:
+        self.verdict.append("stdout: " + self.out)
+        pass
+      if self.err:
+        self.verdict.append("stderr: " + self.err)
+        pass
       pass
     pass
 
@@ -948,7 +950,7 @@ class task_refresh_partitions(op_task_command):
            'PARTLABEL': 'partition_name',
            'UUID':      'fs_uuid'
            }
-  tagvalre = re.compile('\s*(\w+)="([^"]+)"')
+  tagvalre = re.compile(r'\s*(\w+)="([^"]+)"')
 
   def __init__(self, description, disk=None, **kwargs):
     super().__init__(description, encoding='iso-8859-1', **kwargs)
@@ -1180,15 +1182,19 @@ class task_install_syslinux(op_task_process):
 class task_install_grub(op_task_process):
   script_path_template = "%s/tmp/bless.sh"
 
-  def __init__(self, description, disk=None, detected_videos=None, partition_id='Linux', **kwargs):
+  def __init__(self, description, disk=None, detected_videos=None, partition_id='Linux',
+               universal_boot=False, **kwargs):
     # Disk to bless
     self.disk = disk
     self.partition_id = partition_id
     (self.n_nvidia, self.n_ati, self.n_vga) = detected_videos
     self.linuxpart = None
     self.mount_dir = None
+    self.efi_part = None
+    self.efi_mount_dir = "/boot/efi" # relative location - not used
     self.script_path = None
     self.script = None
+    self.universal_boot = universal_boot
 
     # FIXME: Time estimate is very different between USB stick and hard disk.
     # grub copies a bunch of files
@@ -1217,6 +1223,9 @@ class task_install_grub(op_task_process):
     self.mount_dir = self.linuxpart.get_mount_point()
     self.script_path = self.script_path_template % self.mount_dir
 
+    # EFI should be there.
+    self.efi_part = self.disk.find_partition(EFI_NAME)
+
     #
     # grub-install doesn't work without chroot
     # For wifi and video drivers, it needs adding or removing packages.
@@ -1232,9 +1241,25 @@ class task_install_grub(op_task_process):
     # Things to do is installing grub
     # Only see the mounted disk, and no other device
     self.script.append("export GRUB_DISABLE_OS_PROBER=true")
+
+    # MBR Boot
     self.script.append("/usr/sbin/grub-install -v --target=i386-pc --force %s" % self.disk.device_name)
 
-    if self.n_ati > 0:
+    # EFI Boot
+    if self.efi_part:
+      self.script.append("mkdir -p /boot/efi")
+      self.script.append("chmod 700 /boot/efi")
+      self.script.append("mount %s /boot/efi" % self.efi_part.device_name)
+
+      if self.universal_boot:
+        # --removable installs GRUB to fallback place, not the normal /EFI/ubuntu, and thus no reason to update NVRam
+        grub_efi_cmd = "/usr/sbin/grub-install --target=x86_64-efi --efi-directory=/boot/efi --boot-directory=/boot --removable --no-nvram --force --recheck %s"
+        self.script.append(grub_efi_cmd % (self.disk.device_name))
+
+      grub_efi_cmd = "/usr/sbin/grub-install --target=x86_64-efi --efi-directory=/boot/efi --boot-directory=/boot --force %s"
+      self.script.append(grub_efi_cmd % (self.disk.device_name))
+
+    if (not self.universal_boot) and self.n_ati > 0:
       self.script.append('# If this machine has ATI video, get rid of other video drivers that can get in its way.')
       self.script.append("apt-get -q -y --force-yes purge `dpkg --get-selections | cut -f 1 | grep -v xorg | grep nvidia-`")
       pass
@@ -1244,6 +1269,8 @@ class task_install_grub(op_task_process):
     self.script.append('grub-mkconfig -o /boot/grub/grub.cfg')
 
     self.script.append('# clean up')
+    if self.efi_part:
+      self.script.append("umount /boot/efi")
     self.script.append('umount /proc || umount -lf /proc')
     self.script.append('umount /sys')
     self.script.append('umount /dev/pts')

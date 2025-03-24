@@ -65,3 +65,7 @@ const.cmdline = 'cmdline'
 
 # cmdline special value for removing vlaue
 const._REMOVE_ = '_REMOVE_'
+
+# Universal boot flag
+# This is for Triage USB stick to install GRUB differently from normal EFI.
+const.universal_boot = 'universal_boot'

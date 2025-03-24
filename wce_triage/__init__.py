@@ -35,7 +35,7 @@ debian_package_dependencies = (
 """A tuple of strings with required Debian packages."""
 
 
-def generate_stdeb_cfg():
+def generate_stdeb_cfg() -> None:
     """
     Generate the contents of the ``stdeb.cfg`` file used by stdeb_ and py2deb_.
 

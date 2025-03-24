@@ -6,6 +6,8 @@ If there is no partition, then this is no go.
 """
 
 import os, sys, datetime, json
+import typing
+
 from ..lib.timeutil import in_seconds
 from ..components.disk import DiskPortal, PartitionLister
 import threading
@@ -13,8 +15,9 @@ import io
 import queue
 import mmap
 
-def handler_stop_signals(signum, frame):
+def handler_stop_signals(signum: int, _frame: typing.Any) -> None:
   global running
+  running: bool
   running = False
   pass
 

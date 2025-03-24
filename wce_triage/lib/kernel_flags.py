@@ -7,7 +7,7 @@
 import re
 
 class kernel_flags:
-  tag_value_re = re.compile("(\w[\w_\.]+)=(.+)")
+  tag_value_re = re.compile(r"(\w[\w_\.]+)=(.+)")
 
   def __init__(self, cmdline):
     self.values = {}
