@@ -49,7 +49,7 @@ def load_disk(source, dest_dev, filesystem=None):
   pipes = []
 
   # So, for partclone, the source is whatever upstream hands down.
-  argv_partclone = [ partclone_path, "-f", "2", "-r", "-s", source, "-o", dest_dev ]
+  argv_partclone = [ partclone_path, "-f", "2", "-r", "-L", "-", "-s", source, "-o", dest_dev ]
 
   # wire up the apps
   if argv_wget:

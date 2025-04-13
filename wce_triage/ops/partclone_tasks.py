@@ -25,8 +25,8 @@ class task_partclone(op_task_process):
   t0 = datetime.datetime.strptime('00:00:00', '%H:%M:%S')
 
   # This needs to match with process driver's output format.
-  progress0_re = re.compile(r'partclone\.stderr:Elapsed: (\d\d:\d\d:\d\d), Remaining: (\d\d:\d\d:\d\d), Completed:\s+(\d+\.\d*)%,\s+[^\/]+/min,')
-  progress1_re = re.compile(r'partclone\.stderr:current block:\s+(\d+), total block:\s+(\d+), Complete:\s+(\d+\.\d*)%')
+  progress0_re = re.compile(r'partclone\.stderr:\w+: (\d\d:\d\d:\d\d), \w+: (\d\d:\d\d:\d\d), \w+:\s+(\d+\.\d*)%,\s+[^\/]+/min,')
+  progress1_re = re.compile(r'partclone\.stderr:\w+ block:\s+(\d+), \w+ block:\s+(\d+), \w+:\s+(\d+\.\d*)%')
   output_re = re.compile(r'^\w+: partclone\.stderr:(.*)')
   error_re = re.compile(r'^(\w+\.ERROR): (.*)')
 
@@ -60,6 +60,7 @@ class task_partclone(op_task_process):
       newline = self.err.find('\n')
       if newline < 0:
         break
+
       line = self.err[:newline]
       self.err = self.err[newline+1:]
       current_time = datetime.datetime.now()

@@ -72,7 +72,7 @@ def save_disk(source, dest, filesystem=None, encoding='iso-8859-1'):
     pass
 
   # partclone
-  argv_partclone = [ partclone_path, "-f", "2", "-c", "-s", source, "-o", partclone_output ]
+  argv_partclone = [ partclone_path, "-f", "2", "-c", "-L", "-", "-s", source, "-o", partclone_output ]
 
   # wire up the apps.
   pipes = []
