@@ -126,7 +126,8 @@ def get_disk_images(wce_share_url=None):
 
   # Sort image listing order
   result = []
-  for filename, image in images.items():
+  for filename in sorted(images.keys(), reverse=True):
+    image = images[filename]
     fname, subdir, fullpath = image
     filestat = os.stat(fullpath)
     mtime = datetime.datetime.fromtimestamp(filestat.st_mtime)
