@@ -222,7 +222,7 @@ class task_restore_disk_image(task_partclone):
               # destination.
               fudge = (1.05 + 0.1 * (1-sofar))
               # This will still overestimate a lot but probably okay
-              new_estimate = sum([self.time_estimate, (in_seconds(dt) / sofar) * fudge, self.initial_time_estimate])/3
+              new_estimate = sum([self.time_estimate, (in_seconds(dt) / sofar) * fudge])/2
               self.set_time_estimate(new_estimate)
               percent = self._estimate_progress_from_time_estimate(dt.total_seconds())
               pass
