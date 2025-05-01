@@ -9,7 +9,7 @@ from .ops_ui import console_ui
 from .runner import Runner
 from ..lib.disk_images import get_disk_images
 from .json_ui import json_ui
-from .sync_image_tasks import task_image_sync_delete, task_image_sync_metadata, task_image_sync_copy
+from .sync_image_tasks import task_image_sync_delete, task_image_sync_metadata, task_image_sync_copy, task_image_rsync
 from .tasks import task_fetch_partitions, task_refresh_partitions, task_mount, task_unmount
 from ..lib.util import is_block_device, get_triage_logger, setup_triage_logger
 from ..components.disk import create_storage_instance
@@ -65,7 +65,8 @@ For now, this is only dealing with the EXT4 linux partition.
 
     total_size = 0
     for source in self.sources:
-      sync_task = task_image_sync_copy("Copy %s" % source['name'], source=source, testflight=self.testflight, scoreboard=self.scoreboard)
+      # sync_task = task_image_sync_copy("Copy %s" % source['name'], source=source, testflight=self.testflight, scoreboard=self.scoreboard)
+      sync_task = task_image_rsync("Copy %s" % source['name'], source=source, testflight=self.testflight, scoreboard=self.scoreboard)
       self.tasks.append(sync_task)
       self.sync_tasks.append(sync_task)
       total_size += source["size"]

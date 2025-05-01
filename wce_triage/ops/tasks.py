@@ -428,7 +428,7 @@ class op_task_process_simple(op_task_process):
 
 
 # Base class for command based task
-# this is to run multipe quick command line commands
+# this is to run multiple quick command line commands
 # subprocess based on is for long-ish running process
 # like mkfs.
 # This is to run quick running commands like getting

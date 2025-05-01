@@ -79,7 +79,7 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
   printer = Printer(name)
   
   for proc_name, process in processes:
-    printer.print_progress("%s PID=%d" % (proc_name, process.pid))
+    printer.print_progress("%s PID=%d start" % (proc_name, process.pid))
     pass
   #
   drive_process_retcode = 0
@@ -115,27 +115,6 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
         report_time = current_time
         for proc_name, process in processes:
           printer.print_progress("%s PID=%d retcode %s" % (proc_name, process.pid, str(process.returncode)))
-          pass
-        pass
-
-      # deal with process
-      for proc_name, process in processes:
-        retcode = process.poll() # retcode should be 0 so test it against None
-        if retcode is not None:
-          if retcode == 0:
-            printer.print_progress("%s exited with %d" % (proc_name, retcode))
-          else:
-            printer.print_error("%s exited with %d" % (proc_name, retcode))
-            pass
-          processes.remove((proc_name, process))
-          driver_state = DriverState.Stopping if len(processes) == 0 else driver_state
-
-          # Something went wrong. Try to kill the rest.
-          if retcode != 0:
-            # retcode sucks. cannot tell much about the failier.
-            drive_process_retcode = retcode
-            _terminate_all(processes)
-            pass
           pass
         pass
 
@@ -176,6 +155,27 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
           del fd_map[fd]
           # I tried to del and seems to be not very happy.
           pipe_readers[pipe_name] = None
+          pass
+        pass
+
+      # deal with process
+      for proc_name, process in processes:
+        retcode = process.poll() # retcode should be 0 so test it against None
+        if retcode is not None:
+          if retcode == 0:
+            printer.print_progress("%s PID=%s exited with %d" % (proc_name, str(process.pid), retcode))
+          else:
+            printer.print_error("%s PID=%s exited with %d" % (proc_name, str(process.pid), retcode))
+            pass
+          processes.remove((proc_name, process))
+          driver_state = DriverState.Stopping if len(processes) == 0 else driver_state
+
+          # Something went wrong. Try to kill the rest.
+          if retcode != 0:
+            # retcode sucks. cannot tell much about the failier.
+            drive_process_retcode = retcode
+            _terminate_all(processes)
+            pass
           pass
         pass
 

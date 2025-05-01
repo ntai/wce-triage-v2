@@ -1,3 +1,4 @@
+import logging
 import os
 import socketio
 from fastapi import FastAPI
@@ -17,7 +18,10 @@ wce_share = environ.get("wce_share")
 live_triage = environ.get("live_triage", False)
 payload = environ.get("payload")
 share_ui_dir = '/usr/local/share/wce/wce-triage-ui'
-ui_dir = share_ui_dir if os.path.exists(share_ui_dir) else os.path.join(os.path.split((os.path.split(__file__)[0]))[0], "ui") 
+ui_dir = share_ui_dir if os.path.exists(share_ui_dir) else os.path.join(os.path.split((os.path.split(__file__)[0]))[0], "ui")
+
+tlog = get_triage_logger()
+tlog.setLevel(logging.DEBUG)
 
 # Create a FastAPI instance
 app = FastAPI(docs_url="/docs")
@@ -46,8 +50,6 @@ from ..version import TRIAGE_VERSION, TRIAGE_TIMESTAMP
 emit_queue = start_emitter_thread(sockio)
 
 from .server import server
-
-
 
 server.set_config(emit_queue, DevConfig)
 
@@ -82,7 +84,7 @@ app.include_router(dispatch_router, prefix='/dispatch')
 
 @sockio.event
 def connect(sid, _environ):
-  get_triage_logger().debug("connect ", sid)
+  get_triage_logger().debug("connect %s", sid)
 
 
 # UI static must be the last
