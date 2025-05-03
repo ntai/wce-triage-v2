@@ -319,8 +319,13 @@ class TriageServer(threading.Thread):
     (added, changed, removed) = self.disk_portal.detect_disks()
 
     disks = {"disks": [jsoned_disk(disk) for disk in self.disk_portal.disks]}
-    if len(self._disks.model.data["disks"]) != len(disks["disks"]) or max(
-      [0 if t0 == t1 else 1 for t0, t1 in zip(disks["disks"], self._disks.model.data["disks"])]) == 1:
+    changed = False
+    for t0, t1 in zip(disks["disks"], self._disks.model.data["disks"]):
+      if t0 != t1:
+        changed = True
+        break
+
+    if len(self._disks.model.data["disks"]) != len(disks["disks"]) or changed:
       self._disks.dispatch(disks)
       pass
 

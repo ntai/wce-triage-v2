@@ -1,0 +1,16 @@
+Opening User Interface mode.
+Partclone v0.3.27 http://partclone.org
+Starting to restore image (-) to device (/dev/sdc3)
+memory needed: 2353439 bytes
+bitmap 256283 bytes, blocks 2*1048576 bytes, checksum 4 bytes
+Calculating bitmap... Please wait...
+get device size 127965069312 by ioctl BLKGETSIZE64,
+done!
+File system:  EXTFS
+Device size:    8.4 GB = 2050258 Blocks
+Space in use:   6.2 GB = 1512691 Blocks
+Free Space:     2.2 GB = 537567 Blocks
+Block size:   4096 Byte
+Total Time: 00:02:18, Ave. Rate:   2.69GB/min, 100.00% completed!
+Syncing... OK!
+Partclone successfully restored the image (-) to the device (/dev/sdc3)
