@@ -1815,3 +1815,19 @@ new partitions and partition device file not read for the follwing mkks."""
 
   pass
 
+
+class task_fs_sync(op_task_process_simple):
+  """Run sync command to flush the fs cache"""
+
+  def __init__(self, description: str, **kwargs):
+
+    argv = ['sync']
+    super().__init__(description,
+                     argv=argv,
+                     time_estimate=10,
+                     progress_finished="File system synced",
+                     **kwargs)
+    pass
+
+  pass
+

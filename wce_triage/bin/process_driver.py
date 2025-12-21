@@ -2,6 +2,7 @@
 # Probably, I need to deal with signals. That's gonna be future project.
 #
 import os, sys, datetime, traceback, select
+import subprocess
 
 if __name__ == "__main__":
   sys.path.append(os.path.split(os.getcwd())[0])
@@ -159,6 +160,8 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
         pass
 
       # deal with process
+      proc_name: str
+      process: subprocess.Popen
       for proc_name, process in processes:
         retcode = process.poll() # retcode should be 0 so test it against None
         if retcode is not None:
@@ -177,10 +180,22 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
             _terminate_all(processes)
             pass
           pass
+        else:
+          try:
+            os.kill(process.pid, 0)  # This does not actually kill; it checks if PID exists.
+          except OSError:
+            # Process is gone even though poll() returned None
+            printer.print_error(f"{proc_name} PID={process.pid} appears to have exited unexpectedly.")
+            processes.remove((proc_name, process))
+            driver_state = DriverState.Stopping if len(processes) == 0 else driver_state
+            drive_process_retcode = -1
+            _terminate_all(processes)
+            pass
+          pass
         pass
 
       #
-      if len(fd_map) == 0:
+      if len(fd_map) == 0 or len(processes) == 0:
         driver_state = DriverState.Done
         pass
 

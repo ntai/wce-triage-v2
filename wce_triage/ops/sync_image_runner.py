@@ -10,7 +10,7 @@ from .runner import Runner
 from ..lib.disk_images import get_disk_images
 from .json_ui import json_ui
 from .sync_image_tasks import task_image_sync_delete, task_image_sync_metadata, task_image_sync_copy, task_image_rsync
-from .tasks import task_fetch_partitions, task_refresh_partitions, task_mount, task_unmount
+from .tasks import task_fetch_partitions, task_refresh_partitions, task_mount, task_unmount, task_fs_sync
 from ..lib.util import is_block_device, get_triage_logger, setup_triage_logger
 from ..components.disk import create_storage_instance
 
@@ -75,6 +75,8 @@ For now, this is only dealing with the EXT4 linux partition.
     for disk in self.disks:
       self.scoreboard[disk.device_name]["total_size"] = total_size
       pass
+
+    self.tasks.append(task_fs_sync("Flush file system cache"))
 
     for disk in self.disks:
       task = task_unmount("Unmount disk %s" % disk.device_name, disk=disk, partition_id=self.partition_id)
