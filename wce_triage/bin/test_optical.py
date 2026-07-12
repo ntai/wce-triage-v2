@@ -8,13 +8,14 @@ import os, sys, subprocess, datetime, traceback
 
 from ..lib.util import get_triage_logger, is_block_device, get_test_password
 from ..lib.timeutil import in_seconds
+from ..ops.protocol import OpticalTestResult, OpticalEnvelope
 
 tlog = get_triage_logger()
 
-import json
 
-def reply_result(result):
-  jata = json.dumps( { "event": "triageupdate", "message": result } )
+def reply_result(result: dict):
+  envelope = OpticalEnvelope(event="triageupdate", message=OpticalTestResult(**result))
+  jata = envelope.model_dump_json(exclude_none=True)
   tlog.debug(jata)
   print(jata)
   sys.stdout.flush()

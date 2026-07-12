@@ -10,7 +10,7 @@
 import abc
 import datetime
 from ..lib.timeutil import in_seconds
-from .run_state import RunState, RUN_STATE
+from .run_state import RunState
 
 class ops_ui(object):
   def __init__(self):
@@ -34,11 +34,11 @@ class ops_ui(object):
     pass
 
   @abc.abstractmethod
-  def report_task_failure(self, runner_id, current_time, run_time, task):
+  def report_task_failure(self, runner_id, current_time, run_time, task, tasks):
     pass
 
   @abc.abstractmethod
-  def report_task_success(self, runner_id, current_time, run_time, task):
+  def report_task_success(self, runner_id, current_time, run_time, task, tasks):
     pass
 
   @abc.abstractmethod
@@ -89,7 +89,7 @@ class console_ui(ops_ui):
     pass
 
 
-  def report_task_failure(self, runner_id, current_time, run_time, task):
+  def report_task_failure(self, runner_id, current_time, run_time, task, tasks):
     elapsed_time = in_seconds(task.end_time - task.start_time)
     print("%s %s failed in %d seconds. Aborting." % (runner_id, task.description, elapsed_time))
     print(task.message)
@@ -98,7 +98,7 @@ class console_ui(ops_ui):
       pass
     pass
 
-  def report_task_success(self, runner_id, current_time, run_time, task):
+  def report_task_success(self, runner_id, current_time, run_time, task, tasks):
     elapsed_time = in_seconds(task.end_time - task.start_time)
     print("%s %s finised in %d seconds." % (runner_id, task.description, in_seconds(elapsed_time)))
     for verdict in task.verdict:
@@ -109,7 +109,7 @@ class console_ui(ops_ui):
 
   def report_run_progress(self, runner_id, current_time, runner_state, run_estimate, run_time, step, tasks):
     print("%s %s %3d: (%d/%d) estimate %d seconds." % (runner_id,
-                                                       RUN_STATE[runner_state.value],
+                                                       runner_state.value,
                                                        in_seconds(run_time),
                                                        step, len(tasks),
                                                        in_seconds(run_estimate)))
@@ -139,11 +139,11 @@ class virtual_ui(ops_ui):
   def report_task_progress(self, runner_id, current_time, run_estimate, run_time, task, tasks):
     pass
 
-  def report_task_failure(self, runner_id, current_time, run_time, task):
+  def report_task_failure(self, runner_id, current_time, run_time, task, tasks):
     self.state = RunState.Failed
     pass
 
-  def report_task_success(self, runner_id, current_time, run_time, task):
+  def report_task_success(self, runner_id, current_time, run_time, task, tasks):
     pass
 
   def report_run_progress(self, runner_id, current_time, runner_state, run_estimate, run_time, step, tasks):

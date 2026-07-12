@@ -23,15 +23,17 @@ from . import op_load, op_save, op_sync, op_wipe, op_unmount, op_opticaldrive
 from .config import Config
 from .formatters import jsoned_disk
 from .messages import UserMessages, ErrorMessages
-from .models import Model, ModelDispatch
+from .models import Model, ModelDispatch, ModelMeta
 from .internal.cpu_info import CpuInfoModel
-from .internal.process_runner import ProcessRunner, RunnerOutputDispatch, ImageRunnerOutputDispatch, JsonOutputDispatch
+from .internal.process_runner import ProcessRunner, RunnerOutputDispatch, JsonOutputDispatch
 from .view import View
 from ..components import DiskPortal
 from ..components import Computer
 from ..components import OpticalDrives
 from ..lib.disk_images import get_disk_images
 from ..const import const
+from ..ops.protocol import idle_operation_progress
+from .socket_protocol import ComponentDecision, TriageUpdateEvent
 from ..lib import get_triage_logger
 
 wce_share_re = re.compile(const.wce_share + r'=([\w/.+\-_:?=@#*&\\%]+)')
@@ -64,16 +66,16 @@ class TriageServer(threading.Thread):
     self._socketio_view = SocketIOView()
     self._disks = ModelDispatch(DiskModel(default = {"disks": []}), view=self._socketio_view)
 
-    self._load_image = ImageRunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskRestroing": False, "device": ""}, meta={"tag": "loadimage"}), view=self._socketio_view)
-    self._save_image = ImageRunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskSaving": False, "device": ""}, meta={"tag": "saveimage"}), view=self._socketio_view)
-    self._wipe_disk = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "diskWiping": False, "device": ""}, meta={"tag": "zerowipe"}), view=self._socketio_view)
-    self._sync_image = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "device": ""}, meta={"tag": "diskimage"}), view=self._socketio_view)
-    self._unmount_disk = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "device": ""}, meta={"tag": "unmount"}), view=self._socketio_view)
-    self._opticaldrive_test = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "device": ""}, meta={"tag": "opticaldrive"}), view=self._socketio_view)
+    self._load_image = RunnerOutputDispatch(Model(default=idle_operation_progress(), meta=ModelMeta(tag="loadimage")), view=self._socketio_view)
+    self._save_image = RunnerOutputDispatch(Model(default=idle_operation_progress(), meta=ModelMeta(tag="saveimage")), view=self._socketio_view)
+    self._wipe_disk = RunnerOutputDispatch(Model(default=idle_operation_progress(), meta=ModelMeta(tag="zerowipe")), view=self._socketio_view)
+    self._sync_image = RunnerOutputDispatch(Model(default=idle_operation_progress(), meta=ModelMeta(tag="diskimage")), view=self._socketio_view)
+    self._unmount_disk = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "device": ""}, meta=ModelMeta(tag="unmount")), view=self._socketio_view)
+    self._opticaldrive_test = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "device": ""}, meta=ModelMeta(tag="opticaldrive")), view=self._socketio_view)
 
     self.dispatches = {op_load: (self._load_image, UserMessages),
                        op_save: (self._save_image, UserMessages),
-                       op_wipe: (UserMessages, self._wipe_disk),
+                       op_wipe: (self._wipe_disk, UserMessages),
                        op_sync: (self._sync_image, UserMessages),
                        op_unmount: (self._unmount_disk, UserMessages),
                        op_opticaldrive: (self._opticaldrive_test, UserMessages)
@@ -86,7 +88,7 @@ class TriageServer(threading.Thread):
     self._emit_counter = itertools.count()
     self._runners = {}
     self._computer = None
-    self._triage = ModelDispatch(Model(meta={"tag": "triageupdate"}, default=[]), view=self._socketio_view)
+    self._triage = ModelDispatch(Model(meta=ModelMeta(tag="triageupdate"), default={"components": []}), view=self._socketio_view)
     self.triage_timestamp = None
     self.target_disks = []
     self.locks = {}
@@ -165,7 +167,9 @@ class TriageServer(threading.Thread):
   def overall_changed(self, new_decision):
     """When the overall decision is changed, update the triage decisions and set it to the triage."""
     self.overall_decision = new_decision
-    self._triage.dispatch(self.triage_decisions)
+    decisions = [ComponentDecision(**decision) for decision in self.triage_decisions]
+    event = TriageUpdateEvent(components=decisions)
+    self._triage.dispatch(event.model_dump(exclude_none=True))
     pass
 
 
@@ -383,7 +387,7 @@ class SocketIOView(View):
   def __init__(self):
     pass
 
-  def updating(self, t0: dict, update: typing.Optional[any], meta):
+  def updating(self, t0: dict, update: typing.Optional[any], meta: ModelMeta):
     server.send_to_ui(meta.get("tag", "message"), update)
     pass
   pass
@@ -395,7 +399,7 @@ class MessageSocketIOView(View):
     self.event = event
     pass
 
-  def updating(self, t0: dict, update: typing.Optional[any], meta):
+  def updating(self, t0: dict, update: typing.Optional[any], meta: ModelMeta):
     if not isinstance(update, dict):
       raise Exception("message must be a dict")
     if not update.get("message"):
@@ -408,7 +412,7 @@ class MessageSocketIOView(View):
 
 class DiskModel(Model):
   def __init__(self, **kwargs):
-    super().__init__(meta={"tag": "disks"}, **kwargs)
+    super().__init__(meta=ModelMeta(tag="disks"), **kwargs)
     pass
 
   def refresh_disks(self):
@@ -425,7 +429,7 @@ class LoggingView(View):
     self.logger = logger
     pass
 
-  def updating(self, t0: dict, update: typing.Optional[any], meta):
+  def updating(self, t0: dict, update: typing.Optional[any], meta: ModelMeta):
     level = meta.get("level", logging.INFO)
     self.logger.log(level, update)
     pass
@@ -442,13 +446,13 @@ class MultiView(View):
     self.views.append(view)
     pass
 
-  def updating(self, t0: dict, update: typing.Optional[any], meta):
+  def updating(self, t0: dict, update: typing.Optional[any], meta: ModelMeta):
     for view in self.views:
       view.updating(t0, update, meta)
       pass
     pass
 
-  def updated(self, t1: dict, meta: dict):
+  def updated(self, t1: dict, meta: ModelMeta):
     for view in self.views:
       view.updated(t1, meta)
       pass

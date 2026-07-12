@@ -6,7 +6,7 @@ from http import HTTPStatus
 from .. import op_save
 from ..messages import UserMessages
 from ..models import ModelDispatch
-from ..internal.process_runner import SimpleProcessRunner
+from ..internal.process_runner import SimpleProcessRunner, ProcessRunnerMeta
 from ...lib.disk_images import read_disk_image_types
 from ...lib import get_triage_logger
 from ...components.disk import PartitionLister
@@ -25,7 +25,7 @@ class SaveCommandRunner(SimpleProcessRunner):
   def __init__(self,
                stdout_dispatch: Optional[ModelDispatch] = None,
                stderr_dispatch: Optional[ModelDispatch] = None,
-               meta=None):
+               meta: Optional[ProcessRunnerMeta] = None):
     meta = {"tag": "saveimage"}
     super().__init__(stdout_dispatch=stdout_dispatch, stderr_dispatch=stderr_dispatch, meta=meta)
     pass

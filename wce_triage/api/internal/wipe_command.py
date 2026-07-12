@@ -1,10 +1,11 @@
 import sys
 import typing
+from typing import Optional
 
 from fastapi import status
 from .. import op_wipe
 from ..models import ModelDispatch
-from ..internal.process_runner import SimpleProcessRunner
+from ..internal.process_runner import SimpleProcessRunner, ProcessRunnerMeta
 
 #
 #
@@ -18,14 +19,15 @@ class WipeCommandRunner(SimpleProcessRunner):
   def class_name(cls):
     return op_wipe
 
-  def __init__(self, stdout_dispatch: ModelDispatch = None, stderr_dispatch: ModelDispatch = None, meta=None):
+  def __init__(self, stdout_dispatch: ModelDispatch = None, stderr_dispatch: ModelDispatch = None,
+               meta: Optional[ProcessRunnerMeta] = None):
     if not meta:
       meta = {"tag": "zerowipe"}
     super().__init__(stdout_dispatch=stdout_dispatch, stderr_dispatch=stderr_dispatch, meta=meta)
     pass
 
   def queue_wipe(self, devices: typing.List[str]) -> typing.Tuple[dict, int]:
-    args = [sys.executable, '-m', 'wce_triage.bin.multiwipe'] + devices
+    args = [sys.executable, '-m', 'wce_triage.ops.wipe_runner', ",".join(devices)]
     self.queue(args, {"args": args, "devnames": ",".join(devices)})
     return {}, status.HTTP_200_OK
 

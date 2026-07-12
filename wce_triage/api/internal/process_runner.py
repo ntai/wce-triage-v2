@@ -3,7 +3,7 @@ import signal
 import threading
 import traceback
 from queue import SimpleQueue
-from typing import Optional
+from typing import Callable, Optional, TypedDict
 import subprocess
 import logging
 from ..view import ConsoleView
@@ -11,14 +11,23 @@ from .process_pipe_reader import ProcessPipeReader
 from ..models import ModelDispatch, Model
 from ..messages import UserMessages, ErrorMessages
 from ...lib import get_triage_logger
+from ...ops.protocol import OperationProgress
 import json
+
+
+class ProcessRunnerMeta(TypedDict, total=False):
+  """Keys read from ProcessRunner.meta: "tag" labels the process for
+  logging/reporting (defaults to "process"); "result" is an optional
+  callback invoked with the finished Popen once the process exits."""
+  tag: str
+  result: Callable[[Optional[subprocess.Popen]], None]
 
 
 class ProcessRunner(threading.Thread):
   process: Optional[subprocess.Popen]
   stdout_dispatch: ModelDispatch
   stderr_dispatch: ModelDispatch
-  meta: dict
+  meta: ProcessRunnerMeta
   _queue: SimpleQueue
   logger: logging.Logger
   stdout: ProcessPipeReader
@@ -31,12 +40,12 @@ class ProcessRunner(threading.Thread):
   def __init__(self,
                stdout_dispatch: Optional[ModelDispatch] = None,
                stderr_dispatch: Optional[ModelDispatch] = None,
-               meta=None):
+               meta: Optional[ProcessRunnerMeta] = None):
     super().__init__(name=f"{self.class_name()}")
     # when model/model_dispatch is not given, stub is created.
     self.stdout_dispatch = stdout_dispatch if stdout_dispatch else ModelDispatch(Model())
     self.stderr_dispatch = stderr_dispatch if stderr_dispatch else ModelDispatch(Model())
-    self.meta = {} if meta is None else meta.copy()
+    self.meta = ProcessRunnerMeta(**meta) if meta else ProcessRunnerMeta()
     self._queue = SimpleQueue()
     self.logger = get_triage_logger()
     self._kill_count = 0
@@ -143,66 +152,28 @@ class ProcessRunner(threading.Thread):
 
 
 class SimpleProcessRunner(ProcessRunner):
-  meta: dict
-
   def __init__(self,
                stdout_dispatch: Optional[ModelDispatch] = None,
                stderr_dispatch: Optional[ModelDispatch] = ErrorMessages,
-               meta=None):
+               meta: Optional[ProcessRunnerMeta] = None):
     super().__init__(stdout_dispatch, stderr_dispatch, meta)
     pass
   pass
 
 
 class RunnerOutputDispatch(ModelDispatch):
-  """ops/runner output dispatch """
+  """ops/runner + json_ui output dispatch. Every report is a complete,
+  self-sufficient OperationProgress (report/device/runStatus/runMessage/
+  runEstimate/runTime/tasks) - there's no delta to reconstruct, unlike the
+  old per-step "task" + "step" patching this used to need."""
   def dispatch(self, update):
-    json_data = None
     try:
       json_data = json.loads(update)
-    except:
-      pass
-    if json_data:
-      # json_data["event"] should match with the event.
-      super().dispatch(json_data["message"])
-    else:
-      raise Exception("not json")
-      pass
-    pass
-  pass
-
-class ImageRunnerOutputDispatch(ModelDispatch):
-  def dispatch(self, update):
-    json_data = None
-    try:
-      json_data = json.loads(update)
-    except:
-      pass
-    if json_data:
-      message = json_data["message"]
-      # report_type = message.get('report') # 'task_progress' | 'task_success'
-      # device = message.get('device')
-      # runState = message.get('runState') # 'Running'
-      step = message.get('step') # integer
-      task = message.get('task') # dict
-      tasks = message.get('tasks') # array of task
-      if tasks is None:
-        if self.model.data:
-          tasks = self.model.data.get("tasks")
-          if tasks:
-            tasks = tasks.copy()
-            if task and tasks and step < len(tasks):
-              tasks[step] = task
-              message["tasks"] = tasks
-              pass
-            pass
-          pass
-        pass
-      super().dispatch(message)
-    else:
+    except Exception:
       get_triage_logger().debug(update)
       raise Exception("not json")
-      pass
+    message = OperationProgress.model_validate(json_data["message"])
+    super().dispatch(message.model_dump(mode="json"))
     pass
   pass
 
@@ -234,7 +205,7 @@ if __name__ == "__main__":
   stderr = ErrorMessages
   stdout.set_view(view)
   stderr.set_view(view)
-  pr = ProcessRunner(stdout_dispatch=stdout, stderr_dispatch=stderr, meta={"tag": "test"})
+  pr = ProcessRunner(stdout_dispatch=stdout, stderr_dispatch=stderr, meta=ProcessRunnerMeta(tag="test"))
   pr.start()
   # pr.queue.put(["/bin/sh", "-c", "echo Hello, world 1"])
   # pr.queue.put(["/bin/sh", "echo Hello, world 2"])

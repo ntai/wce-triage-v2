@@ -12,7 +12,7 @@
 import datetime, traceback
 import signal
 
-from .run_state import RunState, RUN_STATE
+from .run_state import RunState
 from ..lib.timeutil import in_seconds
 from .tasks import op_task
 
@@ -112,7 +112,7 @@ class Runner:
 
   #
   def get_run_state_name(self):
-    return RUN_STATE[self.state.value]
+    return self.state.value
       
   #
   def run(self):
@@ -195,7 +195,7 @@ class Runner:
       if task.progress > 100:
         # something went wrong.
         self.state = RunState.Failed
-        ui.report_task_failure(self.runner_id, self.current_time, run_time, task)
+        ui.report_task_failure(self.runner_id, self.current_time, run_time, task, self.tasks)
         if task.verdict:
           self.ui.log(self.runner_id, "%s failed.\n%s" % (task.description, "\n".join(task.verdict)))
           pass
@@ -203,7 +203,7 @@ class Runner:
 
       if task.progress == 100:
         # done
-        ui.report_task_success(self.runner_id, self.current_time, run_time, task)
+        ui.report_task_success(self.runner_id, self.current_time, run_time, task, self.tasks)
         pass
       pass
     pass

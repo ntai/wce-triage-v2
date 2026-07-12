@@ -3,13 +3,13 @@ import sys
 from typing import Optional
 import io
 import json
-from ..models import Model, ModelDispatch
-from ..internal.process_runner import ProcessRunner
+from ..models import Model, ModelDispatch, ModelMeta
+from ..internal.process_runner import ProcessRunner, ProcessRunnerMeta
 
 class StreamModel(Model):
   _data: io.BytesIO
 
-  def __init__(self, key="stream", meta=None, default=None):
+  def __init__(self, key="stream", meta: Optional[ModelMeta] = None, default=None):
     self._data = io.StringIO()
     self._model = {"data": self._data}
     super().__init__(cumulative=True, key=key, meta=meta, default=default)
@@ -52,7 +52,7 @@ class CpuInfoCommandRunner(ProcessRunner):
     self._cpu_info = cpu_info
     super().__init__(stdout_dispatch=self._cpu_info,
                      stderr_dispatch=None,
-                     meta={"tag": "cpu_info"})
+                     meta=ProcessRunnerMeta(tag="cpu_info"))
     pass
 
   def start(self):

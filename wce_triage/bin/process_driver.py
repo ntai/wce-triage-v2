@@ -11,6 +11,7 @@ if __name__ == "__main__":
 from ..lib.util import get_triage_logger
 from ..lib.timeutil import in_seconds
 from ..lib.pipereader import PipeReader
+from ..ops.protocol import DriverEvent, DriverEventType, emit_line
 import os, signal
 
 
@@ -33,27 +34,39 @@ def _terminate_all(processes):
     pass
   pass
 
-class Printer:
-  def __init__(self, name):
-    self.name = name
-    self.prefix = name + ": "
-    self.error_prefix = name + ".ERROR: "
-    pass
-  
-  def print_progress(self, msg):
-    msg = msg.strip()
-    if len(msg) == 0:
-      return
-    tlog.debug(self.prefix + msg)
-    print(self.prefix + msg, file=sys.stderr, flush=True)
+
+class DriverEmitter:
+  """Emits process_driver's per-line events as NDJSON (DriverEvent) on stderr,
+  replacing the old '<name>: <proc>.<pipetag>:<text>' plain-text framing."""
+
+  def start(self, proc, pid):
+    tlog.debug("%s PID=%d start" % (proc, pid))
+    emit_line(DriverEvent(type=DriverEventType.start, proc=proc, pid=pid), stream=sys.stderr)
     pass
 
-  def print_error(self, msg):
-    msg = msg.strip()
-    if len(msg) == 0:
+  def line(self, proc, stream, text):
+    text = text.strip()
+    if not text:
       return
-    tlog.debug(self.error_prefix + msg)
-    print('\n'.join([ self.error_prefix + line for line in msg.split('\n') ]), file=sys.stderr, flush=True)
+    tlog.debug("%s.%s: %s" % (proc, stream, text))
+    emit_line(DriverEvent(type=DriverEventType.line, proc=proc, stream=stream, line=text), stream=sys.stderr)
+    pass
+
+  def exit(self, proc, pid, returncode):
+    tlog.debug("%s PID=%s exited with %s" % (proc, pid, returncode))
+    emit_line(DriverEvent(type=DriverEventType.exit, proc=proc, pid=pid, returncode=returncode), stream=sys.stderr)
+    pass
+
+  def error(self, proc, text, pid=None):
+    text = text.strip()
+    if not text:
+      return
+    for one_line in text.split('\n'):
+      if not one_line:
+        continue
+      tlog.debug("%s.ERROR: %s" % (proc, one_line))
+      emit_line(DriverEvent(type=DriverEventType.error, proc=proc, pid=pid, line=one_line), stream=sys.stderr)
+      pass
     pass
   pass
 
@@ -77,14 +90,14 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
   signal.signal(signal.SIGTERM, handler_stop_signals)
 
   #
-  printer = Printer(name)
-  
+  printer = DriverEmitter()
+
   for proc_name, process in processes:
-    printer.print_progress("%s PID=%d start" % (proc_name, process.pid))
+    printer.start(proc_name, process.pid)
     pass
   #
   drive_process_retcode = 0
-  
+
   # gatherer gathers pipe outs
   gatherer = select.poll()
   fd_map = {}
@@ -108,27 +121,27 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
         driver_state = DriverState.Done
         break
       pass
-    
+
     try:
       current_time = datetime.datetime.now()
       dt = in_seconds(current_time - report_time)
       if dt > 5:
         report_time = current_time
         for proc_name, process in processes:
-          printer.print_progress("%s PID=%d retcode %s" % (proc_name, process.pid, str(process.returncode)))
+          printer.line(proc_name, "driver", "PID=%d retcode %s" % (process.pid, str(process.returncode)))
           pass
         pass
 
       receiving = gatherer.poll(timeout)
-    
+
       for fd, event in receiving:
-        (proc_name, process, pipe_name, pipe) = fd_map.get(fd)
-        pipe_name = proc_name + "." + pipe_name
+        (proc_name, process, pipetag, pipe) = fd_map.get(fd)
+        reader_key = proc_name + "." + pipetag
         if event & (select.POLLIN | select.POLLPRI):
-          reader = pipe_readers.get(pipe_name)
+          reader = pipe_readers.get(reader_key)
           if reader is None:
-            reader = PipeReader(pipe, tag=pipe_name)
-            pipe_readers[pipe_name] = reader
+            reader = PipeReader(pipe, tag=reader_key)
+            pipe_readers[reader_key] = reader
             pass
 
           line = reader.readline()
@@ -137,25 +150,25 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
             tlog.debug("driver closing fd %d fo reading empty" % fd)
             gatherer.unregister(fd)
             del fd_map[fd]
-            pipe_readers[pipe_name] = None
+            pipe_readers[reader_key] = None
             pass
           elif line is not None:
             line = line.strip()
             if line:
               # This is the real progress.
-              printer.print_progress(pipe_name + ":" + line)
+              printer.line(proc_name, pipetag, line)
               pass
             pass
           # Skip checking the closed fd until nothing to read
           continue
-      
-        # 
+
+        #
         if event & (select.POLLHUP | select.POLLNVAL | select.POLLERR):
           pipe.close()
           gatherer.unregister(fd)
           del fd_map[fd]
           # I tried to del and seems to be not very happy.
-          pipe_readers[pipe_name] = None
+          pipe_readers[reader_key] = None
           pass
         pass
 
@@ -165,11 +178,7 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
       for proc_name, process in processes:
         retcode = process.poll() # retcode should be 0 so test it against None
         if retcode is not None:
-          if retcode == 0:
-            printer.print_progress("%s PID=%s exited with %d" % (proc_name, str(process.pid), retcode))
-          else:
-            printer.print_error("%s PID=%s exited with %d" % (proc_name, str(process.pid), retcode))
-            pass
+          printer.exit(proc_name, process.pid, retcode)
           processes.remove((proc_name, process))
           driver_state = DriverState.Stopping if len(processes) == 0 else driver_state
 
@@ -185,7 +194,7 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
             os.kill(process.pid, 0)  # This does not actually kill; it checks if PID exists.
           except OSError:
             # Process is gone even though poll() returned None
-            printer.print_error(f"{proc_name} PID={process.pid} appears to have exited unexpectedly.")
+            printer.error(proc_name, "PID=%d appears to have exited unexpectedly." % process.pid, pid=process.pid)
             processes.remove((proc_name, process))
             driver_state = DriverState.Stopping if len(processes) == 0 else driver_state
             drive_process_retcode = -1
@@ -202,7 +211,7 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
       pass
 
     except KeyboardInterrupt as exc:
-      printer.print_progress("Stop requested.")
+      printer.line(name, "driver", "Stop requested.")
       drive_process_retcode = 0
       exit_request_time = datetime.datetime.now() + datetime.timedelta(0, 10, 0)
       driver_state = DriverState.Stopping
@@ -210,7 +219,7 @@ def drive_process(name, processes, pipes, encoding='iso-8859-1', timeout=0.25):
       pass
 
     except Exception as exc:
-      printer.print_error("Aborting due to exception. -- %s" % (traceback.format_exc()))
+      printer.error(name, "Aborting due to exception. -- %s" % (traceback.format_exc()))
       drive_process_retcode = 1
       # Wait max of 10 seconds
       exit_request_time = datetime.datetime.now() + datetime.timedelta(0, 10, 0)

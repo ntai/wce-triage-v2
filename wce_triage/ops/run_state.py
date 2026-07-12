@@ -1,12 +1,16 @@
 from enum import Enum
 
-class RunState(Enum):
-  Initial = 0
-  Prepare = 1
-  Preflight = 2
-  Running = 3
-  Success = 4
-  Failed = 5
+class RunState(str, Enum):
+  """Run state of a runner/task. Values double as the wire representation
+  used in NDJSON progress reports (the `runStatus` field)."""
+  Initial = "Waiting"
+  Prepare = "Prepare"
+  Preflight = "Preflight"
+  Running = "Running"
+  Success = "Success"
+  Failed = "Failed"
   pass
 
-RUN_STATE = ["Waiting", "Prepare", "Preflight", "Running", "Success", "Failed"]
+# Kept for backward compatibility with any external code indexing by ordinal.
+RUN_STATE = [RunState.Initial.value, RunState.Prepare.value, RunState.Preflight.value,
+             RunState.Running.value, RunState.Success.value, RunState.Failed.value]

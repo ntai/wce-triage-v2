@@ -12,6 +12,7 @@ import datetime, re
 import sys
 
 from .tasks import op_task_process
+from .protocol import DriverEvent, DriverEventType, split_lines
 from ..lib.timeutil import in_seconds
 from ..lib.util import get_triage_logger
 from ..lib.disk_images import get_file_system_from_source
@@ -24,11 +25,11 @@ tlog = get_triage_logger()
 class task_partclone(op_task_process):
   t0 = datetime.datetime.strptime('00:00:00', '%H:%M:%S')
 
-  # This needs to match with process driver's output format.
-  progress0_re = re.compile(r'partclone\.stderr:\w+: (\d\d:\d\d:\d\d), \w+: (\d\d:\d\d:\d\d), \w+:\s+(\d+\.\d*)%,\s+[^\/]+/min,')
-  progress1_re = re.compile(r'partclone\.stderr:\w+ block:\s+(\d+), \w+ block:\s+(\d+), \w+:\s+(\d+\.\d*)%')
-  output_re = re.compile(r'^\w+: partclone\.stderr:(.*)')
-  error_re = re.compile(r'^(\w+\.ERROR): (.*)')
+  # partclone's own progress text, carried verbatim in DriverEvent.line
+  # (process_driver.py no longer embeds a "<proc>.<stream>:" text prefix - proc/stream
+  # are structured fields on the event instead)
+  progress0_re = re.compile(r'\w+: (\d\d:\d\d:\d\d), \w+: (\d\d:\d\d:\d\d), \w+:\s+(\d+\.\d*)%,\s+[^\/]+/min,')
+  progress1_re = re.compile(r'\w+ block:\s+(\d+), \w+ block:\s+(\d+), \w+:\s+(\d+\.\d*)%')
 
   def __init__(self, description, **kwargs):
     #
@@ -50,20 +51,36 @@ class task_partclone(op_task_process):
 
   def parse_partclone_progress(self):
     #
-    # Check the progress. driver prints everything to stderr
+    # Check the progress. driver prints everything to stderr, as DriverEvent NDJSON.
     #
     if len(self.err) == 0:
       return
-    
-    # look for a line
-    while True:
-      newline = self.err.find('\n')
-      if newline < 0:
-        break
 
-      line = self.err[:newline]
-      self.err = self.err[newline+1:]
+    lines, self.err = split_lines(self.err)
+    for raw_line in lines:
+      if not raw_line:
+        continue
       current_time = datetime.datetime.now()
+
+      try:
+        event = DriverEvent.model_validate_json(raw_line)
+      except Exception:
+        continue
+
+      # Other processes in the pipeline (wget, decompressor) are not partclone's own progress.
+      if event.proc != "partclone":
+        continue
+
+      if event.type == DriverEventType.error:
+        if event.line:
+          self.verdict.append(event.line)
+          pass
+        continue
+
+      if event.type != DriverEventType.line:
+        continue
+
+      line = event.line or ""
 
       # Look for the EXT parition cloning start marker
       while len(self.start_re) > 0:
@@ -94,16 +111,8 @@ class task_partclone(op_task_process):
           dt = current_time - self.start_time
           self.set_progress(self._estimate_progress_from_time_estimate(dt.total_seconds()), "elapsed: %s remaining: %s" % (elapsed, remaining))
           pass
-        else:
-          m = self.output_re.match(line)
-          if m:
-            self.message = m.group(1)
-            pass
-
-          m = self.error_re.match(line)
-          if m:
-            self.verdict.append(m.group(2))
-            pass
+        elif line.strip():
+          self.message = line.strip()
           pass
         pass
       pass
@@ -177,21 +186,37 @@ class task_restore_disk_image(task_partclone):
   # ignore parsing partclone progress. for restore, it is 100$ wrong.
   def parse_partclone_progress(self):
     #
-    # Check the progress.
+    # Check the progress. driver prints everything to stderr, as DriverEvent NDJSON.
     #
     if len(self.err) == 0:
       return
-    
-    # look for a line
-    while True:
-      newline = self.err.find('\n')
-      if newline < 0:
-        break
-      line = self.err[:newline]
-      self.err = self.err[newline+1:]
+
+    lines, self.err = split_lines(self.err)
+    for raw_line in lines:
+      if not raw_line:
+        continue
       current_time = datetime.datetime.now()
 
+      try:
+        event = DriverEvent.model_validate_json(raw_line)
+      except Exception:
+        continue
+
+      if event.proc != "partclone":
+        continue
+
+      if event.type == DriverEventType.error:
+        if event.line:
+          self.verdict.append(event.line.strip())
+          pass
+        continue
+
+      if event.type != DriverEventType.line:
+        continue
+
+      line = event.line or ""
       tlog.debug("partclone: %s" % line)
+
       # Look for the EXT parition cloning start marker
       while len(self.start_re) > 0:
         m = self.start_re[0].search(line)
@@ -234,24 +259,8 @@ class task_restore_disk_image(task_partclone):
           block_percent = round(float(current_block) / float(total_blocks) * 100.0, 1)
           self.set_progress(percent, "{progress}% done - {current} of {total} blocks completed.".format(progress=block_percent, current=current_block, total=total_blocks))
           pass
-
-        m = self.progress0_re.search(line)
-        if m:
+        elif line.strip():
           tlog.debug(line.strip())
-          pass
-        else:
-          m = self.output_re.match(line)
-          if m:
-            msg = m.group(1).strip()
-            if msg:
-              tlog.debug(msg)
-              pass
-            pass
-
-          m = self.error_re.match(line)
-          if m:
-            self.verdict.append(m.group(2).strip())
-            pass
           pass
         pass
       pass

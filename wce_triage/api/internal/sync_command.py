@@ -5,7 +5,7 @@ from fastapi import status
 
 from .. import op_sync
 from ..models import ModelDispatch
-from ..internal.process_runner import SimpleProcessRunner
+from ..internal.process_runner import SimpleProcessRunner, ProcessRunnerMeta
 
 from ...lib import get_triage_logger
 
@@ -21,7 +21,7 @@ class SyncCommandRunner(SimpleProcessRunner):
   def __init__(self,
                stdout_dispatch: Optional[ModelDispatch] = None,
                stderr_dispatch: Optional[ModelDispatch] = None,
-               meta=None):
+               meta: Optional[ProcessRunnerMeta] = None):
     if not meta:
       meta = {"tag": "syncing"}
     super().__init__(stdout_dispatch=stdout_dispatch, stderr_dispatch=stderr_dispatch, meta=meta)

@@ -5,7 +5,7 @@ from fastapi import status
 from .. import op_load
 from ..messages import UserMessages
 from ..models import ModelDispatch
-from ..internal.process_runner import SimpleProcessRunner
+from ..internal.process_runner import SimpleProcessRunner, ProcessRunnerMeta
 from ...lib.disk_images import read_disk_image_types
 from ...lib import get_triage_logger
 from ..server import server
@@ -26,7 +26,7 @@ class LoadCommandRunner(SimpleProcessRunner):
   def __init__(self,
                stdout_dispatch: Optional[ModelDispatch] = None,
                stderr_dispatch: Optional[ModelDispatch] = None,
-               meta=None):
+               meta: Optional[ProcessRunnerMeta] = None):
     if meta is None:
       meta = {"tag": "loadimage"}
       pass

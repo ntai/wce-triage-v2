@@ -7,13 +7,15 @@
 # exec runs through the tasks.
 #
 import datetime
-import os, json, traceback
+import os, traceback
 import re
 import sys
+from typing import Optional
 
 from ..lib import in_seconds
 from ..lib.util import get_triage_logger
-from .run_state import RUN_STATE, RunState
+from .run_state import RunState
+from .protocol import ProgressReport, ProgressEnvelope, DriverEvent, DriverEventType, split_lines
 from ..lib.disk_images import list_image_files
 from .tasks import op_task_process_simple
 
@@ -159,17 +161,12 @@ class task_image_sync_copy(op_task_process_simple, task_image_sync):
         self.scoreboard[disk.device_name]["total_size"] += self.source["size"]
         pass
       else:
-        no_copy = {"key": disk.device_name,
-                              "verdict": "No copy",
-                              "runMessage": "No copy",
-                              "runStatus": RunState.Success.value,
-                              "totalBytes": 0,
-                              "runTime": 1,
-                              "runEstimate": 1,
-                              "remainingBytes": 0,
-                              "timeRemaining": 0,
-                              "progress": 100}
-        cmd = f'import sys, json; json.dump({repr(no_copy)}, sys.stderr); print("",file=sys.stderr)'
+        no_copy = ProgressReport(key=disk.device_name, verdict="No copy", runMessage="No copy",
+                                  runStatus=RunState.Success, totalBytes=0, runTime=1, runEstimate=1,
+                                  remainingBytes=0, progress=100)
+        envelope = ProgressEnvelope(event="fanoutcopy", message=no_copy)
+        payload = envelope.model_dump_json(exclude_none=True)
+        cmd = f'import sys; print({payload!r}, file=sys.stderr)'
         self.argv = [sys.executable, "-c", cmd]
         pass
       pass
@@ -186,40 +183,36 @@ class task_image_sync_copy(op_task_process_simple, task_image_sync):
     if len(self.err) == 0:
       return
 
-    # look for a line
-    last_report = None
-    while True:
-      newline = self.err.find('\n')
-      if newline < 0:
-        break
-      line = self.err[:newline]
-      self.err = self.err[newline+1:]
-      #current_time = datetime.datetime.now()
+    lines, self.err = split_lines(self.err)
+    last_report: Optional[ProgressReport] = None
+    for line in lines:
+      if not line:
+        continue
 
-      # each line is a json record
+      # each line is an NDJSON envelope: {"event": "fanoutcopy", "message": ProgressReport}
       try:
-        report = json.loads(line)
-        device_name = report['key']
+        report = ProgressEnvelope.model_validate_json(line).message
+        device_name = report.key
         self.scoreboard[device_name]["report"] = report
         last_report = report
 
-        if "verdict" in report:
-          self.verdict.append("%s: %s" % (device_name, report["verdict"]))
+        if report.verdict:
+          self.verdict.append("%s: %s" % (device_name, report.verdict))
           pass
 
         scoreboard = self.scoreboard[device_name]
-        if report["runStatus"] == RUN_STATE[RunState.Running.value]:
-          scoreboard["inflight_size"] = report["totalBytes"]
-          scoreboard["inflight_seconds"] = report["runTime"]
-        elif report["runStatus"] == RUN_STATE[RunState.Success.value]:
+        if report.runStatus == RunState.Running:
+          scoreboard["inflight_size"] = report.totalBytes
+          scoreboard["inflight_seconds"] = report.runTime
+        elif report.runStatus == RunState.Success:
           scoreboard["inflight_size"] = 0
           scoreboard["inflight_seconds"] = 0
 
-          scoreboard["completed_size"] += report["totalBytes"]
-          scoreboard["completed_seconds"] += report["runTime"]
-        elif report["runStatus"] == RUN_STATE[RunState.Failed.value]:
+          scoreboard["completed_size"] += report.totalBytes
+          scoreboard["completed_seconds"] += report.runTime
+        elif report.runStatus == RunState.Failed:
           scoreboard["inflight_size"] = 0
-          scoreboard["inflight_seconds"] = report["runTime"]
+          scoreboard["inflight_seconds"] = report.runTime
           pass
 
         scoreboard["bps"] = 1
@@ -234,8 +227,8 @@ class task_image_sync_copy(op_task_process_simple, task_image_sync):
 
     if last_report:
       report = last_report
-      self.set_progress(report['progress'], report['runMessage'])
-      self.set_time_estimate(report['runEstimate'])
+      self.set_progress(report.progress, report.runMessage)
+      self.set_time_estimate(report.runEstimate)
       pass
     pass
 
@@ -353,17 +346,11 @@ class task_image_rsync(op_task_process_simple, task_image_sync):
         self.scoreboard[disk.device_name]["total_size"] += self.source["size"]
         pass
       else:
-        no_copy = {"key": disk.device_name,
-                              "verdict": "No copy",
-                              "runMessage": "No copy",
-                              "runStatus": RUN_STATE[RunState.Success.value],
-                              "totalBytes": 0,
-                              "runTime": 1,
-                              "runEstimate": 1,
-                              "remainingBytes": 0,
-                              "timeRemaining": 0,
-                              "progress": 100}
-        cmd = f'import sys, json; json.dump({repr(no_copy)}, sys.stderr); print("",file=sys.stderr)'
+        no_copy = ProgressReport(key=disk.device_name, verdict="No copy", runMessage="No copy",
+                                  runStatus=RunState.Success, totalBytes=0, runTime=1, runEstimate=1,
+                                  remainingBytes=0, progress=100)
+        payload = no_copy.model_dump_json(exclude_none=True)
+        cmd = f'import sys; print({payload!r}, file=sys.stderr)'
         self.argv = [sys.executable, "-c", cmd]
         pass
       pass
@@ -375,171 +362,108 @@ class task_image_rsync(op_task_process_simple, task_image_sync):
     self.parse_rsync_copy_progress()
     pass
 
+  def _parse_rsync_line(self, line: str, dt_elapsed: float, source_size: int) -> Optional[ProgressReport]:
+    # The synthetic "no copy needed" line is a bare ProgressReport (no envelope).
+    try:
+      return ProgressReport.model_validate_json(line)
+    except Exception:
+      pass
+
+    # Everything else is a DriverEvent from process_driver.py: proc is "<device>:<dest>[:]",
+    # rsync's own "--info=progress2" text is carried verbatim in .line.
+    event = DriverEvent.model_validate_json(line)
+    device_name = event.proc.split(":")[0]
+
+    if event.type == DriverEventType.start:
+      self.pids.append(event.pid)
+      tlog.info(f"rsync start {self.pids!r}")
+      return ProgressReport(key=device_name, runTime=dt_elapsed, runStatus=RunState.Running,
+                             progress=0, runMessage=f"copy to {device_name} started",
+                             totalBytes=0, runEstimate=self.time_estimate)
+
+    if event.type == DriverEventType.exit:
+      tlog.info("rsync exited")
+      if event.pid in self.pids:
+        self.pids.remove(event.pid)
+        pass
+      tlog.info(f"rsync exited {self.pids!r}")
+      if event.returncode == 0:
+        msg = "%s: complete" % device_name
+        self.verdict.append(msg)
+        if len(self.pids) == 0:
+          self.progress = 100
+          pass
+        return ProgressReport(key=device_name, runTime=dt_elapsed, runEstimate=dt_elapsed,
+                               runStatus=RunState.Success, progress=100, totalBytes=source_size, runMessage=msg)
+      else:
+        msg = "%s: failed" % device_name
+        self.verdict.append(msg)
+        self.progress = 999
+        return ProgressReport(key=device_name, runTime=dt_elapsed, runEstimate=dt_elapsed,
+                               runStatus=RunState.Failed, progress=999, totalBytes=0, runMessage=msg)
+
+    if event.type == DriverEventType.line and event.stream and event.stream.startswith("stdout"):
+      destination = event.proc.split(":")[1] if len(event.proc.split(":")) > 1 else None
+      progress = re.match(r"([\d,]+)\s+(\d+)%\s+([^\s]+)\s+([^\s]+)", event.line or "")
+      if not progress:
+        return None
+      tlog.info(f"rsync progress {progress!r}")
+      copied = progress.group(1)
+      copied_bytes = int(copied.replace(",", ""))
+      percent = int(progress.group(2))
+      speed = progress.group(3)
+      time_remaining = progress.group(4)
+      remaining_bytes = source_size - copied_bytes
+      run_message = f"{destination} {copied_bytes}/{source_size} {percent}% at {speed}"
+      report = ProgressReport(key=device_name, runTime=dt_elapsed, destination=destination,
+                               totalBytes=copied_bytes, runStatus=RunState.Running, runMessage=run_message,
+                               progress=max(0, min(99, percent)), remainingBytes=remaining_bytes,
+                               runEstimate=round(time_string_to_seconds(time_remaining) + dt_elapsed))
+      self.scoreboard[device_name]["report"] = report
+      return report
+
+    # rsync's stderr, or a driver error - nothing that maps to a progress report.
+    tlog.info(f"rsync ??? {event!r}")
+    return None
+
   def parse_rsync_copy_progress(self):
     #
     if len(self.err) == 0:
       return
 
-    # look for a line
-    last_report = None
     source_size = self.source["size"]
-    prefix = "RSYNC-COPY: "
-    while True:
-      newline = self.err.find('\n')
-      if newline < 0:
-        break
-      line = self.err[:newline]
-      self.err = self.err[newline+1:]
+    lines, self.err = split_lines(self.err)
+    last_report: Optional[ProgressReport] = None
+
+    for line in lines:
+      if not line:
+        continue
       current_time = datetime.datetime.now()
-      device_name = ""
+      dt_elapsed = in_seconds(current_time - self.start_time)
 
-      # each line
-      # RSYNC-COPY: devicename:./foo:.stdout:2,950,004,736   7%  703.86MB/s    0:00:48
-      #  or
-      # RSYNC-COPY: rsync PID=349073 retcode None
       try:
-        dt_elapsed = in_seconds(current_time - self.start_time)
-        report = None
-        if not line.startswith(prefix):
-          try:
-            report = json.loads(line)
-            device_name = report['key']
-            self.scoreboard[device_name]["report"] = report
-
-            if "verdict" in report:
-              self.verdict.append("%s: %s" % (device_name, report["verdict"]))
-              pass
-
-            scoreboard = self.scoreboard[device_name]
-            if report["runStatus"] == RUN_STATE[RunState.Running.value]:
-              scoreboard["inflight_size"] = report["totalBytes"]
-              scoreboard["inflight_seconds"] = report["runTime"]
-            elif report["runStatus"] == RUN_STATE[RunState.Success.value]:
-              scoreboard["inflight_size"] = 0
-              scoreboard["inflight_seconds"] = 0
-
-              scoreboard["completed_size"] += report["totalBytes"]
-              scoreboard["completed_seconds"] += report["runTime"]
-            elif report["runStatus"] == RUN_STATE[RunState.Failed.value]:
-              scoreboard["inflight_size"] = 0
-              scoreboard["inflight_seconds"] = report["runTime"]
-              pass
-
-            scoreboard["bps"] = 1
-          except:
-            pass
-        else:
-          line = line[len(prefix):]
-
-          chunks = line.split(":", maxsplit=4)
-          device_name = chunks[0]
-
-          report = None
-
-          if line.find("PID=") >= 0:
-            started = re.match(r"([^\s]+) PID=(\d+) start", chunks[1])
-            exited = re.match(r"([^\s]+) PID=(\d+)\s+exited with (\d+)", chunks[1])
-
-            if exited:
-              report = {
-                "key": device_name,
-                "runTime": dt_elapsed,
-                "runEstimate": dt_elapsed
-              }
-              tlog.info("rsync exited")
-              pid = exited.group(2)
-              self.pids.remove(pid)
-              tlog.info(f"rsync exited {self.pids!r}")
-              if exited.group(3) == "0":
-                msg = "%s: complete" % (device_name)
-                self.verdict.append(msg)
-                report["runStatus"] = RUN_STATE[RunState.Success.value]
-                report["progress"] = 100
-                report["totalBytes"] = source_size
-                report["runMessage"] = msg
-                if len(self.pids) == 0:
-                  self.progress = 100
-              else:
-                msg = "%s: failed" % (device_name)
-                self.verdict.append(msg)
-                report["runStatus"] = RUN_STATE[RunState.Failed.value]
-                report["progress"] = 999
-                report["runMessage"] = msg
-                self.progress = 999
-                pass
-              pass
-
-            if started:
-              pid = started.group(2)
-              self.pids.append(pid)
-              tlog.info(f"rsync start {self.pids!r}")
-              report = {
-                "key": device_name,
-                "runTime": dt_elapsed,
-                "runStatus": RUN_STATE[RunState.Running.value],
-                "progress": 0,
-                "runMessage": f"copy to {device_name} started",
-                "totalBytes": 0,
-                "runEstimate": self.time_estimate
-              }
-              pass
-            pass
-          else:
-            filename = chunks[1]
-            which = chunks[2]
-            # pid = chunks[3]
-            rsync_progress = chunks[4]
-            tlog.info(f"rsync poll {chunks!r}")
-
-            if which == ".stdout":
-              progress = re.match(r"([\d,])+\s+(\d+)%\s+([^\s]+)\s+([^\s]+)", rsync_progress)
-              if progress:
-                tlog.info(f"rsync progress {progress!r}")
-                copied = progress.group(1)
-                copied_bytes = int(copied.replace(",", ""))
-                percent = int(progress.group(2))
-                speed = progress.group(3)
-                time_remaining = progress.group(4)
-                remaining_bytes = source_size - copied_bytes
-                run_message = f"{filename} {copied_bytes}/{source_size} {percent}% at {speed}"
-                report = {
-                  "key": device_name,
-                  "runTime": dt_elapsed,
-                  "destination": filename,
-                  "totalBytes": int(copied.replace(",", "")),
-                  "runStatus": RUN_STATE[RunState.Running.value],
-                  "runMessage": run_message,
-                  "progress": max(0, min(99, percent)),
-                  "remainingBytes": remaining_bytes,
-                  "runEstimate": round(time_string_to_seconds(time_remaining) + in_seconds(dt_elapsed))
-                }
-                self.scoreboard[device_name]["report"] = report
-                pass
-              pass
-            else:
-              tlog.info(f"rsync ??? {chunks!r}")
-            pass
+        report = self._parse_rsync_line(line, dt_elapsed, source_size)
 
         if report:
           last_report = report
+          device_name = report.key
 
           scoreboard = self.scoreboard[device_name]
-          if report["runStatus"] == RUN_STATE[RunState.Running.value]:
-            scoreboard["inflight_size"] = report["totalBytes"]
-            scoreboard["inflight_seconds"] = report["runTime"]
-          elif report["runStatus"] == RUN_STATE[RunState.Success.value]:
+          if report.runStatus == RunState.Running:
+            scoreboard["inflight_size"] = report.totalBytes
+            scoreboard["inflight_seconds"] = report.runTime
+          elif report.runStatus == RunState.Success:
             scoreboard["inflight_size"] = 0
             scoreboard["inflight_seconds"] = 0
 
-            scoreboard["completed_size"] += report["totalBytes"]
-            scoreboard["completed_seconds"] += report["runTime"]
-          elif report["runStatus"] == RUN_STATE[RunState.Failed.value]:
+            scoreboard["completed_size"] += report.totalBytes
+            scoreboard["completed_seconds"] += report.runTime
+          elif report.runStatus == RunState.Failed:
             scoreboard["inflight_size"] = 0
-            scoreboard["inflight_seconds"] = report["runTime"]
+            scoreboard["inflight_seconds"] = report.runTime
             pass
 
           scoreboard["bps"] = 1
-        #scoreboard["bps"] = (scoreboard["completed_size"] + scoreboard["inflight_size"]) / (scoreboard["completed_seconds"] + scoreboard["inflight_seconds"])
         pass
       except Exception as exc:
         msg = "Output line: '" + line + "'\n" + traceback.format_exc()
@@ -550,8 +474,8 @@ class task_image_rsync(op_task_process_simple, task_image_sync):
 
     if last_report:
       report = last_report
-      self.set_progress(report['progress'], report['runMessage'])
-      self.set_time_estimate(report['runEstimate'])
+      self.set_progress(report.progress, report.runMessage)
+      self.set_time_estimate(report.runEstimate)
       pass
     pass
 

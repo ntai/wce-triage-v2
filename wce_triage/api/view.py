@@ -1,8 +1,11 @@
 import typing
 import sys
 
+if typing.TYPE_CHECKING:
+  from .models import ModelMeta
+
 class View(object):
-  def updating(self, t0: dict, update: typing.Optional[any], meta: dict):
+  def updating(self, t0: dict, update: typing.Optional[any], meta: "ModelMeta"):
     # if t0:
     #   point_a = set(t0.items())
     #   point_b = set(t1.items())
@@ -13,12 +16,12 @@ class View(object):
     #   pass
     pass
 
-  def updated(self, t1: dict, meta: dict):
+  def updated(self, t1: dict, meta: "ModelMeta"):
     pass
 
 
 class ConsoleView(View):
-  def updating(self, t0: dict, update: typing.Optional[any], meta: dict):
+  def updating(self, t0: dict, update: typing.Optional[any], meta: "ModelMeta"):
     if update.get("severity", 0) > 1:
       sys.stderr.write("#2: " + update.get("message", ""))
       sys.stderr.flush()

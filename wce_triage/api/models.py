@@ -1,19 +1,28 @@
 from .view import View
-from typing import Optional
+from typing import Optional, TypedDict
 import threading
+
+
+class ModelMeta(TypedDict, total=False):
+  """Keys read from Model.meta: "tag" labels the model for the socketio
+  view's event name (SocketIOView, defaults to "message"); "level" is the
+  logging level used when the model is fed to a LoggingView (defaults to
+  logging.INFO)."""
+  tag: str
+  level: int
 
 
 class Model(object):
   _model: dict | list  # Data itself
-  _meta: dict  # Metadata about the model
+  _meta: ModelMeta  # Metadata about the model
   model_state: Optional[bool]  # Whether or not the model is valid
   cumulative: bool  # Data is cumlative
   key: str
   lock: threading.Lock
 
-  def __init__(self, cumulative=False, key="message", meta=None, default=None):
+  def __init__(self, cumulative=False, key="message", meta: Optional[ModelMeta] = None, default=None):
     self.lock = threading.Lock()
-    self._meta = {} if meta is None else meta
+    self._meta = ModelMeta(**meta) if meta else ModelMeta()
     self.key = key
     self.cumulative = cumulative
     self.model_state = None
@@ -55,7 +64,7 @@ class Model(object):
     return self._model
 
   @property
-  def meta(self):
+  def meta(self) -> ModelMeta:
     return self._meta
 
   def set_model_state(self, state: bool):

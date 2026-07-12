@@ -16,6 +16,7 @@ from typing import Optional
 import io
 
 from .run_state import RunState
+from .protocol import ProgressEnvelope, TaskStatus, split_lines
 from ..components.pci import find_pci_device_node
 from ..components.disk import Partition, PartitionLister, canonicalize_file_system_name
 from ..components.network import detect_net_devices, get_router_ip_address
@@ -128,6 +129,13 @@ class op_task(object, metaclass=abc.ABCMeta):
 
   def get_description(self):
     return self.description
+
+  def describe_subtasks(self, current_time):
+    """Override when one task represents several parallel logical operations
+    (e.g. one process wiping several disks at once). Returning a non-None list
+    of protocol.TaskStatus makes the runner report expand this task into that
+    list instead of describing it as a single TaskStatus."""
+    return None
 
   def set_progress(self, progress, msg):
     self.is_started = True
@@ -1710,7 +1718,7 @@ class op_task_wipe_disk(op_task_process):
   #
   def __init__(self, description, disk=None, short=False, **kwargs):
     self.disk = disk
-    argv = [sys.executable, "-m", "wce_triage.bin.zerowipe"]
+    argv = [sys.executable, "-m", "wce_triage.bin.multiwipe"]
 
     estimate = 2
     if short:
@@ -1729,24 +1737,15 @@ class op_task_wipe_disk(op_task_process):
     if len(self.err) == 0:
       return
 
-    # look for a line
-    while True:
-      newline = self.err.find('\n')
-      if newline < 0:
-        break
-      line = self.err[:newline]
-      self.err = self.err[newline+1:]
-
-      # what's coming out from zerowipe is json.
-      report = None
+    # what's coming out from multiwipe is NDJSON: {"event": "zerowipe", "message": ProgressReport}
+    lines, self.err = split_lines(self.err)
+    for line in lines:
+      if not line:
+        continue
       try:
-        # From wiper, this is a complete "event" + "message", but I don't need the event
-        # part for a task.
-        report = json.loads(line)
-        # it's a bit confusing but this message is the payload for status
-        message = report.get("message") 
-        self.set_progress(message.get('progress', 50), message.get('message', 'Wipe is running.'))
-        self.time_estimate = message.get("runEstimate")
+        report = ProgressEnvelope.model_validate_json(line).message
+        self.set_progress(report.progress, report.runMessage)
+        self.time_estimate = report.runEstimate
         pass
       except Exception as exc:
         msg = "bad wipe ouptut? " + traceback.format_exc() + "\n" + line
@@ -1755,15 +1754,130 @@ class op_task_wipe_disk(op_task_process):
         pass
       pass
 
-    while True:
-      newline = self.out.find('\n')
-      if newline < 0:
-        break
-      line = self.out[:newline]
-      self.out = self.out[newline+1:]
+    out_lines, self.out = split_lines(self.out)
+    for line in out_lines:
       self.verdict.append(line)
       pass
     pass
+  pass
+
+
+#
+# Wipes several disks in parallel with a single bin/multiwipe.py process
+# (same process that op_task_wipe_disk drives for one disk), and reports
+# one TaskStatus per disk via describe_subtasks() so the Runner-level
+# "tasks" list can show per-disk progress even though it's all one op_task.
+#
+class task_multiwipe(op_task_process):
+  def __init__(self, description, devices=None, short=False, disks=None, **kwargs):
+    self.devices = devices or []
+    self.short = short
+    self.device_reports = {}
+
+    argv = [sys.executable, "-m", "wce_triage.bin.multiwipe"]
+    if short:
+      argv.append("-s")
+      pass
+    argv = argv + self.devices
+
+    estimate = 2
+    if not short and disks:
+      estimate += sum(disk.get_byte_size() for disk in disks) / 40000000
+      pass
+    kwargs["time_estimate"] = kwargs.get("time_estimate", estimate)
+    super().__init__(description, argv=argv, **kwargs)
+    pass
+
+  def poll(self):
+    super().poll()
+    self._parse_wipe_progress()
+    self._update_aggregate_progress()
+    pass
+
+  def _parse_wipe_progress(self):
+    if len(self.err) == 0:
+      return
+
+    lines, self.err = split_lines(self.err)
+    for line in lines:
+      if not line:
+        continue
+      try:
+        report = ProgressEnvelope.model_validate_json(line).message
+        self.device_reports[report.key] = report
+        pass
+      except Exception as exc:
+        msg = "bad wipe ouptut? " + traceback.format_exc() + "\n" + line
+        self.verdict.append(msg)
+        tlog.info(msg)
+        pass
+      pass
+
+    out_lines, self.out = split_lines(self.out)
+    for line in out_lines:
+      self.verdict.append(line)
+      pass
+    pass
+
+  def _update_aggregate_progress(self):
+    # bin/multiwipe.py always exits 0 once every wiper thread stops, whether
+    # or not a given disk actually finished - so completion/failure has to be
+    # read from the per-disk reports, not the process return code.
+    if not self.device_reports:
+      return
+
+    progresses = {key: report.progress for key, report in self.device_reports.items()}
+    heard_from_all = len(self.device_reports) >= len(self.devices)
+
+    failed = [key for key, progress in progresses.items() if progress == 999]
+    if failed:
+      self.set_progress(999, "Failed to wipe: %s" % ", ".join(failed))
+      return
+
+    if heard_from_all and all(progress == 100 for progress in progresses.values()):
+      self.set_progress(100, "All disks wiped.")
+      return
+
+    still_running = [progress for progress in progresses.values() if progress < 100]
+    overall = min(still_running) if still_running else 99
+    self.set_progress(overall, "Wiping %d of %d disks." % (len(still_running), len(self.devices)))
+    estimates = [report.runEstimate for report in self.device_reports.values() if report.runEstimate]
+    if estimates:
+      self.time_estimate = max(estimates)
+      pass
+    pass
+
+  def describe_subtasks(self, current_time):
+    elapsed = round(in_seconds(current_time - self.start_time), 1) if self.start_time else 0
+    result = []
+    for device in self.devices:
+      report = self.device_reports.get(device)
+      if report is None:
+        result.append(TaskStatus(step=self.task_number if self.task_number is not None else 0,
+                                 taskCategory="Wipe %s" % device,
+                                 taskProgress=0,
+                                 taskEstimate=self.time_estimate,
+                                 taskElapse=elapsed,
+                                 taskStatus="waiting",
+                                 taskExplain="Wipe %s" % device))
+        continue
+
+      task_status = {RunState.Running: "running", RunState.Success: "done", RunState.Failed: "fail"}.get(report.runStatus, "running")
+      result.append(TaskStatus(step=self.task_number if self.task_number is not None else 0,
+                               taskCategory="Wipe %s" % device,
+                               taskProgress=report.progress,
+                               taskEstimate=report.runEstimate,
+                               taskElapse=elapsed,
+                               taskStatus=task_status,
+                               taskMessage=report.runMessage,
+                               taskExplain="Wipe %s" % device,
+                               taskVerdict=[report.verdict] if report.verdict else []))
+      pass
+    return result
+
+  def explain(self):
+    return "Wipe disks: " + ", ".join(self.devices)
+
   pass
 
 

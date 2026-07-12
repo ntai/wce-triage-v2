@@ -2,7 +2,7 @@ import sys
 from typing import Optional
 
 from ..models import ModelDispatch
-from ..internal.process_runner import SimpleProcessRunner, JsonOutputDispatch
+from ..internal.process_runner import SimpleProcessRunner, JsonOutputDispatch, ProcessRunnerMeta
 from ..server import server
 
 
@@ -16,7 +16,7 @@ class OpticalDriveTestRunner(SimpleProcessRunner):
   def __init__(self,
                stdout_dispatch: Optional[ModelDispatch] = None,
                stderr_dispatch: Optional[ModelDispatch] = None,
-               meta=None):
+               meta: Optional[ProcessRunnerMeta] = None):
     if meta is None:
       meta = {"tag": "opticaldrive"}
       pass

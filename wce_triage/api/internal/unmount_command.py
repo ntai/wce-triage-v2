@@ -2,7 +2,7 @@ from typing import Optional
 from fastapi import status
 
 from ..models import ModelDispatch
-from ..internal.process_runner import SimpleProcessRunner
+from ..internal.process_runner import SimpleProcessRunner, ProcessRunnerMeta
 from ...components.disk import PartitionLister, Disk
 
 
@@ -18,7 +18,7 @@ class UnmountCommandRunner(SimpleProcessRunner):
   def __init__(self,
                stdout_dispatch: Optional[ModelDispatch] = None,
                stderr_dispatch: Optional[ModelDispatch] = None,
-               meta=None):
+               meta: Optional[ProcessRunnerMeta] = None):
     unmount_meta = {"tag": "unmount"}
     if meta:
       unmount_meta.update(meta)
