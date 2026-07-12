@@ -1,6 +1,6 @@
 import sys
 from typing import Optional
-from fastapi import status
+from fastapi import HTTPException, status
 
 from .. import op_load
 from ..messages import UserMessages
@@ -10,6 +10,8 @@ from ...lib.disk_images import read_disk_image_types
 from ...lib import get_triage_logger
 from ..server import server
 from ..operations import WIPE_TYPES
+from ...ops.protocol import OperationProgress
+
 
 #
 #
@@ -35,7 +37,7 @@ class LoadCommandRunner(SimpleProcessRunner):
                      meta=meta)
     pass
 
-  def queue_load(self, devname: str, load_type: str, imagefile: str, image_size: str | None, wipe_request: str, newhostname: str) -> None:
+  def queue_load(self, devname: str, load_type: str, imagefile: str, image_size: str | None, wipe_request: str, newhostname: str) -> OperationProgress:
     args = [sys.executable, '-m', 'wce_triage.ops.restore_image_runner', devname, imagefile, image_size, load_type]
     tlog = get_triage_logger()
 
@@ -64,7 +66,7 @@ class LoadCommandRunner(SimpleProcessRunner):
     if target is None:
       message = "No such disk " + devname
       tlog.info(message)
-      return {"message": message}, status.HTTP_400_BAD_REQUEST
+      raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
 
     #disk = server.disk_portal.find_disk_by_device_name(devname)
 
@@ -79,16 +81,17 @@ class LoadCommandRunner(SimpleProcessRunner):
     if image_type is None:
       message = "Image type %s is not known." % load_type
       UserMessages.error(message)
-      return {"message": message}, status.HTTP_400_BAD_REQUEST
+      raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
 
     destdir = image_type.get('catalogDirectory')
     if destdir is None:
-      msg = UserMessages.error("Imaging type info %s does not include the catalog directory." % image_type.get("id"))
-      return {"message": msg}, status.HTTP_400_BAD_REQUEST
+      msg = "Imaging type info %s does not include the catalog directory." % image_type.get("id")
+      UserMessages.error(msg)
+      raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
 
     # Load image runs its own course, and output will be monitored by a call back
     self.queue(args, {"args": args, "devname": devname, "imagefile": imagefile, "wipe": wipe, "newhostname": newhostname })
-    return {}, status.HTTP_200_OK
+    return OperationProgress(**server._load_image.model.data)
 
   pass
 

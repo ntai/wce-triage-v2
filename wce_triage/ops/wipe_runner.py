@@ -11,7 +11,6 @@
 import sys, argparse, traceback
 
 from .runner import Runner
-from .ops_ui import console_ui
 from .json_ui import json_ui
 from .tasks import task_multiwipe
 from ..lib.util import is_block_device, get_triage_logger
@@ -51,7 +50,6 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser(description="Wipe disks using bin/multiwipe.py.")
   parser.add_argument("devices", help="Comma-separated device names to wipe.")
   parser.add_argument("-s", "--short", action="store_true", help="Wipe only the first 1MB of each disk.")
-  parser.add_argument("-c", "--cli", action="store_true", help="Console UI instead of JSON UI, for testing.")
   args = parser.parse_args()
 
   devices = [device.strip() for device in args.devices.split(",") if device.strip()]
@@ -62,7 +60,7 @@ if __name__ == "__main__":
       pass
     pass
 
-  ui = console_ui() if args.cli else json_ui(wock_event="zerowipe", message_catalog=my_messages)
+  ui = json_ui(wock_event="zerowipe", message_catalog=my_messages)
 
   runner = WipeRunner(ui, ",".join(devices), devices, short=args.short)
   try:

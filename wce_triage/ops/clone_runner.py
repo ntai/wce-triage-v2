@@ -11,7 +11,7 @@ This is because making USB stick is panifully slow, and binary copy is
 import sys
 
 from .tasks import op_task_wipe_disk, op_task_process, task_sync_partitions, task_mkfs, task_mkswap
-from .ops_ui import console_ui
+from .json_ui import json_ui
 from .pplan import make_usb_stick_partition_plan
 from ..components.disk import create_storage_instance, Partition
 from .runner import Runner
@@ -126,7 +126,7 @@ if __name__ == "__main__":
   disk = create_storage_instance(device_name=devname)
   efi_boot = True
   part_map = 'gpt' if efi_boot else 'msdos'
-  ui = console_ui()
+  ui = json_ui(wock_event="clone")
   runner = CloneRunner(ui, disk.device_name, disk=disk,
                        partition_plan=make_usb_stick_partition_plan(disk, efi_boot=efi_boot),
                        partition_map=part_map)

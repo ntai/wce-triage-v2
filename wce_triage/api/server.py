@@ -70,8 +70,8 @@ class TriageServer(threading.Thread):
     self._save_image = RunnerOutputDispatch(Model(default=idle_operation_progress(), meta=ModelMeta(tag="saveimage")), view=self._socketio_view)
     self._wipe_disk = RunnerOutputDispatch(Model(default=idle_operation_progress(), meta=ModelMeta(tag="zerowipe")), view=self._socketio_view)
     self._sync_image = RunnerOutputDispatch(Model(default=idle_operation_progress(), meta=ModelMeta(tag="diskimage")), view=self._socketio_view)
-    self._unmount_disk = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "device": ""}, meta=ModelMeta(tag="unmount")), view=self._socketio_view)
-    self._opticaldrive_test = RunnerOutputDispatch(Model(default={"pages": 1, "tasks": [], "device": ""}, meta=ModelMeta(tag="opticaldrive")), view=self._socketio_view)
+    self._unmount_disk = RunnerOutputDispatch(Model(default=idle_operation_progress(), meta=ModelMeta(tag="unmount")), view=self._socketio_view)
+    self._opticaldrive_test = RunnerOutputDispatch(Model(default=idle_operation_progress(), meta=ModelMeta(tag="opticaldrive")), view=self._socketio_view)
 
     self.dispatches = {op_load: (self._load_image, UserMessages),
                        op_save: (self._save_image, UserMessages),

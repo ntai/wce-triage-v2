@@ -2,11 +2,12 @@
 # JSON UI
 #
 import sys
-from .ops_ui import ops_ui
 import json
-from pydantic import BaseModel
+import datetime
+from typing import List, Optional
 from .run_state import RunState
-from .protocol import OperationProgress, TaskStatus
+from .protocol import OperationProgress, OperationEnvelope, TaskStatus
+from .tasks import op_task
 from ..lib.util import get_triage_logger
 from ..lib.timeutil import in_seconds
 
@@ -17,7 +18,7 @@ TASK_STATUS = ["waiting", "running", "done", "fail"]
 #
 #
 #
-def _describe_task(task, current_time) -> TaskStatus:
+def _describe_task(task, current_time: datetime.datetime) -> TaskStatus:
   task_state = task._get_status()
   if task_state == 0:
     elapsed_time = 0
@@ -38,7 +39,7 @@ def _describe_task(task, current_time) -> TaskStatus:
     taskVerdict=task.verdict if task_state > 1 and task.verdict else [])
 
 
-def _describe_tasks(tasks, current_time):
+def _describe_tasks(tasks: List[op_task], current_time: datetime.datetime) -> List[TaskStatus]:
   """Flattens the runner's task list into TaskStatus entries. A task
   representing several parallel logical operations (describe_subtasks()
   returns non-None) expands into one entry per subtask."""
@@ -54,35 +55,45 @@ def _describe_tasks(tasks, current_time):
   return result
 
 
-class json_ui(ops_ui):
-  def __init__(self, wock_event = "loadimage", message_catalog=None):
-    super().__init__()
-    self.previous = None
+class json_ui(object):
+  wock_event: str
+  message_catalog: Optional[dict]
+
+  def __init__(self, wock_event: str = "loadimage", message_catalog: Optional[dict] = None):
     self.wock_event = wock_event
     self.message_catalog = message_catalog
     pass
 
-  def send(self, event, obj):
-    payload = obj.model_dump(mode="json", exclude_none=True) if isinstance(obj, BaseModel) else obj
-    jata = json.dumps( { "event": event, "message": payload } )
-    print(jata)
+  def send(self, event: str, obj: OperationProgress | dict) -> None:
+    if isinstance(obj, OperationProgress):
+      jata = OperationEnvelope(event=event, message=obj).model_dump_json(exclude_none=True)
+    else:
+      jata = json.dumps({"event": event, "message": obj})
+    sys.stdout.write(jata + "\n")
     sys.stdout.flush()
     pass
 
   # Called from preflight to just set up the flight plan
-  def report_tasks(self, runner_id, current_time, run_estimate, tasks):
+  def report_tasks(self, runner_id: str,
+                   current_time: datetime.datetime,
+                   run_estimate: datetime.timedelta | float | int,
+                   tasks: List[op_task]) -> None:
     self.send(self.wock_event, OperationProgress(
       report="tasks",
       device=runner_id,
       runStatus=RunState.Preflight,
-      runMessage="Prearing",
+      runMessage="Preparing",
       runEstimate=round(in_seconds(run_estimate)),
       runTime=0,
       tasks=_describe_tasks(tasks, current_time)))
     pass
 
   #
-  def report_task_progress(self, runner_id, current_time, run_estimate, run_time, task, tasks):
+  def report_task_progress(self, runner_id: str, current_time: datetime.datetime,
+                           run_estimate: datetime.timedelta | float | int,
+                           run_time: datetime.timedelta | float | int,
+                           task: op_task,
+                           tasks: List[op_task]) -> None:
     self.send(self.wock_event, OperationProgress(
       report="task_progress",
       device=runner_id,
@@ -95,7 +106,9 @@ class json_ui(ops_ui):
     pass
 
 
-  def report_task_failure(self, runner_id, current_time, run_time, task, tasks):
+  def report_task_failure(self, runner_id: str, current_time: datetime.datetime,
+                          run_time: datetime.timedelta | float | int,
+                          task: op_task, tasks: List[op_task]) -> None:
     self.send(self.wock_event, OperationProgress(
       report="task_failure",
       device=runner_id,
@@ -106,7 +119,9 @@ class json_ui(ops_ui):
       tasks=_describe_tasks(tasks, current_time)))
     pass
 
-  def report_task_success(self, runner_id, current_time, run_time, task, tasks):
+  def report_task_success(self, runner_id: str, current_time: datetime.datetime,
+                          run_time: datetime.timedelta | float | int,
+                          task: op_task, tasks: List[op_task]) -> None:
     self.send(self.wock_event, OperationProgress(
       report="task_success",
       device=runner_id,
@@ -118,7 +133,10 @@ class json_ui(ops_ui):
     pass
 
 
-  def report_run_progress(self, runner_id, current_time, runner_state, run_estimate, run_time, step, tasks):
+  def report_run_progress(self, runner_id: str, current_time: datetime.datetime,
+                          runner_state: RunState, run_estimate: datetime.timedelta | float,
+                          run_time: datetime.timedelta | float | int,
+                          step: int, tasks: List[op_task]) -> None:
     '''forms a json from run progress.
 runner_id: is a device
 current_time: datetime
@@ -155,7 +173,7 @@ tasks: array of tasks
       tasks=_describe_tasks(tasks, current_time)))
     pass
 
-  def log(self, runner_id, msg):
+  def log(self, runner_id: str, msg: str) -> None:
     tlog.info("JSON-LOG: " +  msg)
     self.send('message', {"message": runner_id + ": " + msg})
     pass

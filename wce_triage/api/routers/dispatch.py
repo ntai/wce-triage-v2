@@ -125,12 +125,9 @@ def route_cpu_info():
 def save_disk_image(dName: str = Query(alias="deviceName"),
                     saveType: str = Query(alias="type"),
                     dest: str = Query(alias="destination", default=None),
-                    partid: str = Query(alias="partition", default="Linux")):
+                    partid: str = Query(alias="partition", default="Linux")) -> OperationProgress:
   save_command_runner = server.get_runner(SaveCommandRunner)
-  (result, code) = save_command_runner.queue_save(dName, saveType, dest, partid)
-  if code != status.HTTP_200_OK:
-    raise HTTPException(status_code=code, detail=result)
-  return result
+  return save_command_runner.queue_save(dName, saveType, dest, partid)
 
 
 @router.post("/stop-save")
@@ -227,8 +224,7 @@ def route_load_image(
   load_command_runner = server.get_runner(LoadCommandRunner)
 
   for target_disk in target_disks:
-    # FIXME: maybe report?
-    _reply, _code = load_command_runner.queue_load(target_disk, restore_type, imagefile, image_size, wipe_request, newhostname)
+    load_command_runner.queue_load(target_disk, restore_type, imagefile, image_size, wipe_request, newhostname)
     pass
   return OperationProgress(**server._load_image.model.data)
 
@@ -240,10 +236,7 @@ def route_sync_image(
 ) -> OperationProgress:
   target_disks = [disk.strip() for disk in devnames.split(",")]
   sync_command_runner: SyncCommandRunner = server.get_runner(SyncCommandRunner)
-  reply, status_code = sync_command_runner.queue_sync(sources.split(","), target_disks, clean=False)
-  if status_code != status.HTTP_200_OK:
-    raise HTTPException(status_code=status_code, detail=reply)
-  return OperationProgress(**server._sync_image.model.data)
+  return sync_command_runner.queue_sync(sources.split(","), target_disks, clean=False)
 
 @router.get("/sync-status", operation_id="route_sync_status")
 @router.get("/sync/status", operation_id="route_sync_status_alt")
@@ -259,10 +252,7 @@ def route_clean_image(
   if not target_disks:
     raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="No disk selected")
   sync_command_runner: SyncCommandRunner = server.get_runner(SyncCommandRunner)
-  reply, status_code = sync_command_runner.queue_sync([], target_disks, clean=True)
-  if status_code != status.HTTP_200_OK:
-    raise HTTPException(status_code=status_code, detail=reply)
-  return OperationProgress(**server._sync_image.model.data)
+  return sync_command_runner.queue_sync([], target_disks, clean=True)
 
 
 @router.post("/delete", status_code=status.HTTP_204_NO_CONTENT)
@@ -349,10 +339,7 @@ def route_wipe_disks(
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No disks selected")
 
   wipe_command_runner:WipeCommandRunner = server.get_runner(WipeCommandRunner)
-  result, code = wipe_command_runner.queue_wipe(target_disks)
-  if code != status.HTTP_200_OK:
-    raise HTTPException(status_code=code, detail=result)
-  return OperationProgress(**server._wipe_disk.model.data)
+  return wipe_command_runner.queue_wipe(target_disks)
 
 
 def stop_runner(runner_class) -> None:
@@ -429,10 +416,7 @@ def route_unmount(
 ) -> OperationProgress:
   target_disks = [disk.strip() for disk in devnames.split(",")]
   unmount_command_runner: UnmountCommandRunner = server.get_runner(UnmountCommandRunner)
-  result, code = unmount_command_runner.queue_unmount(target_disks)
-  if code != status.HTTP_200_OK:
-    raise HTTPException(status_code=code, detail=result)
-  return OperationProgress.model_validate(result)
+  return unmount_command_runner.queue_unmount(target_disks)
 
 
 @router.post("/opticaldrive/test")

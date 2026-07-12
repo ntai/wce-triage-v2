@@ -5,7 +5,6 @@
 
 import sys, logging, traceback
 
-from .ops_ui import console_ui
 from .runner import Runner
 from ..lib.disk_images import get_disk_images
 from .json_ui import json_ui
@@ -156,24 +155,21 @@ if __name__ == "__main__":
 
   if opt == "preflight":
     print("Preflight only.")
-    ui = console_ui()
     do_it = False
     sources = sources[1:]
     pass
   elif opt == "testflight":
     print("Should be test flight")
-    ui = console_ui()
     do_it = True
     testflight = True
     sources = sources[1:]
     pass
-  else:
-    if opt == "clean":
-      do_it = True
-      sources = []
-      pass
-    ui = json_ui(wock_event="diskimage", message_catalog=my_messages)
+  elif opt == "clean":
+    do_it = True
+    sources = []
     pass
+
+  ui = json_ui(wock_event="diskimage", message_catalog=my_messages)
 
   syncing = []
   runner_id = "diskimage"

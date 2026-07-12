@@ -6,7 +6,7 @@
 
 import sys
 from .runner import Runner
-from .ops_ui import console_ui
+from .json_ui import json_ui
 from .tasks import task_fetch_partitions, task_refresh_partitions, task_mount, task_install_grub, task_finalize_disk, task_unmount
 from ..components.disk import create_storage_instance
 
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     partition_id = sys.argv[2]
     pass
   disk = create_storage_instance(devname)
-  ui = console_ui()
+  ui = json_ui(wock_event="bless")
   runner = BlessDiskRunner(ui, disk.device_name, disk, partition_id=partition_id)
   runner.prepare()
   runner.preflight()

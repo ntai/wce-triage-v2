@@ -6,6 +6,9 @@ from fastapi import status
 from .. import op_wipe
 from ..models import ModelDispatch
 from ..internal.process_runner import SimpleProcessRunner, ProcessRunnerMeta
+from ..server import server
+from ...ops.protocol import OperationProgress
+
 
 #
 #
@@ -26,9 +29,9 @@ class WipeCommandRunner(SimpleProcessRunner):
     super().__init__(stdout_dispatch=stdout_dispatch, stderr_dispatch=stderr_dispatch, meta=meta)
     pass
 
-  def queue_wipe(self, devices: typing.List[str]) -> typing.Tuple[dict, int]:
+  def queue_wipe(self, devices: typing.List[str]) -> OperationProgress:
     args = [sys.executable, '-m', 'wce_triage.ops.wipe_runner', ",".join(devices)]
     self.queue(args, {"args": args, "devnames": ",".join(devices)})
-    return {}, status.HTTP_200_OK
+    return OperationProgress(**server._wipe_disk.model.data)
 
   pass

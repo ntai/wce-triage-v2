@@ -1,7 +1,8 @@
 import sys
-import typing
 from typing import Optional
 from http import HTTPStatus
+
+from fastapi import HTTPException
 
 from .. import op_save
 from ..messages import UserMessages
@@ -11,6 +12,7 @@ from ...lib.disk_images import read_disk_image_types
 from ...lib import get_triage_logger
 from ...components.disk import PartitionLister
 from ..server import server
+from ...ops.protocol import OperationProgress
 
 
 #
@@ -30,7 +32,7 @@ class SaveCommandRunner(SimpleProcessRunner):
     super().__init__(stdout_dispatch=stdout_dispatch, stderr_dispatch=stderr_dispatch, meta=meta)
     pass
 
-  def queue_save(self, devname: str, saveType: str, destdir: str, partid: str) -> typing.Tuple[dict, HTTPStatus]:
+  def queue_save(self, devname: str, saveType: str, destdir: str, partid: str) -> OperationProgress:
     tlog = get_triage_logger()
     target = None
     for disk in server.disk_portal.disks:
@@ -41,7 +43,7 @@ class SaveCommandRunner(SimpleProcessRunner):
 
     if target is None:
       tlog.info("No such disk " + devname)
-      return {}, HTTPStatus.BAD_REQUEST
+      raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="No such disk " + devname)
 
     disk = server.disk_portal.find_disk_by_device_name(devname)
     lister = PartitionLister(disk)
@@ -55,13 +57,15 @@ class SaveCommandRunner(SimpleProcessRunner):
         for partition in disk.partitions:
           tlog.debug(str(partition))
           pass
-        UserMessages.error("Device %s has no EXT4 partition for imaging." % disk.device_name)
-        return {}, HTTPStatus.BAD_REQUEST
+        msg = "Device %s has no EXT4 partition for imaging." % disk.device_name
+        UserMessages.error(msg)
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=msg)
 
     partition_id = disk.get_partition_id(part)
     if partition_id is None:
-      UserMessages.error("Partition %s has not valid ID." % part.device_name)
-      return {}, HTTPStatus.BAD_REQUEST
+      msg = "Partition %s has not valid ID." % part.device_name
+      UserMessages.error(msg)
+      raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=msg)
 
     # saveType is a single word coming back from read_disk_image_types()
     image_type = None
@@ -72,17 +76,19 @@ class SaveCommandRunner(SimpleProcessRunner):
       pass
 
     if image_type is None:
-      UserMessages.error("Image type %s is not known." % saveType)
-      return {}, HTTPStatus.BAD_REQUEST
+      msg = "Image type %s is not known." % saveType
+      UserMessages.error(msg)
+      raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=msg)
 
     destdir = image_type.get('catalogDirectory')
     if destdir is None:
-      msg = UserMessages.error("Imaging type info %s does not include the catalog directory." % image_type.get("id"))
-      return {"message": msg}, HTTPStatus.BAD_REQUEST
+      msg = "Imaging type info %s does not include the catalog directory." % image_type.get("id")
+      UserMessages.error(msg)
+      raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail=msg)
 
     # save image runs its own course, and output will be monitored by a call back
     args = [sys.executable, '-m', 'wce_triage.ops.create_image_runner', devname, str(partition_id), destdir]
     self.queue(args, {"args": args, "devname": devname, "destdir": destdir, "partid": str(partition_id)})
-    return {}, HTTPStatus.OK
+    return OperationProgress(**server._save_image.model.data)
 
   pass
