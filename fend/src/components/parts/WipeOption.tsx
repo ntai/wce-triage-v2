@@ -70,12 +70,14 @@ export default function WipeOption({title, wipeOption, wipeOptionChanged, wipeOp
         <InputLabel id="wipe-option-select-label">{title}</InputLabel>
         <Select
           labelId="wipe-option-select-label"
+          label={title}
           // handing down undefined doesn't change the selection. Dummy value '' sets it.
           value={wipeOption?.value||"nowipe"}
           style={{fontSize: 12, textAlign: "left"}}
-          children={wipeOptions.map( item => <MenuItem value={item.value}>{item.label}</MenuItem>)}
           onChange={handleChange}
-        />
+        >
+          {wipeOptions.map( item => <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>)}
+        </Select>
       </FormControl>
 
     </div>

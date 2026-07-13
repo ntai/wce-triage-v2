@@ -4,8 +4,9 @@ import "../commands/commands.css";
 import Mui5Table from './Mui5Table';
 import OperationProgressBar from './OperationProgressBar';
 import DiskDetails from "./DiskDetails";
-import {DeviceSelectionType, DiskType, ItemType, RunReportType, WipeType} from "../common/types";
-import {Socket, io} from "socket.io-client";
+import {DeviceSelectionType, DiskType, ItemType, WipeType} from "../common/types";
+import {socket} from "../common/socket";
+import {RunnerStatus} from "../../types/socket-events";
 
 
 type DisksPropsType = {
@@ -16,7 +17,7 @@ type DisksPropsType = {
   /* Maximum number of disks that can be targeted at once */
   maxSelected: number;
   selected: DeviceSelectionType<DiskType>;
-  runningStatus?: RunReportType;
+  runningStatus?: RunnerStatus;
 };
 
 type DisksStateType = {
@@ -63,6 +64,7 @@ export default class Disks extends React.Component<DisksPropsType, DisksStateTyp
     };
 
     this.fetchDisks = this.fetchDisks.bind(this);
+    this.onDiskUpdate = this.onDiskUpdate.bind(this);
   }
 
 
@@ -107,8 +109,11 @@ export default class Disks extends React.Component<DisksPropsType, DisksStateTyp
   componentDidMount() {
     this.fetchWipeOptions();
     this.fetchDisks();
-    const wock: Socket = io(sweetHome.websocketUrl);
-    wock.on("disks", this.onDiskUpdate.bind(this));
+    socket.on("disks", this.onDiskUpdate);
+  }
+
+  componentWillUnmount() {
+    socket.off("disks", this.onDiskUpdate);
   }
 
   // Backend notifies over the socket when disks are physically attached/removed.

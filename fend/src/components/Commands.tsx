@@ -86,7 +86,7 @@ export default class Commands extends React.Component<any, CommandsState> {
     return (
       <Box >
         <Box sx={{ p: 0 }}>
-          <AppBar position="static" >
+          <AppBar position="static" sx={{backgroundColor: '#208090'}}>
             <Tabs value={selectedTab} onChange={this.handleChange} aria-label="WCE Triage SPAs" textColor="inherit" indicatorColor="secondary">
               <Tab label="Triage" {...a11yProps(0)} />
               <Tab label="Load Disk Image" {...a11yProps(1)} />

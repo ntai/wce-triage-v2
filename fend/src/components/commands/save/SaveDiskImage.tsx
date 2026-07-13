@@ -1,6 +1,7 @@
 import React from "react";
 import {sweetHome} from '../../../looseend/home';
-import {io} from "socket.io-client";
+import {socket} from "../../common/socket";
+import {RunnerStatus} from "../../../types/socket-events";
 import RunnerProgress from "../../parts/RunnerProgress";
 import Disks from "../../parts/Disks";
 import Catalog from "../../parts/Catalog";
@@ -11,7 +12,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import "../commands.css";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import CancelIcon from "@mui/icons-material/Cancel";
-import {ItemType, RunReportType, DiskType, DeviceSelectionType} from "../../common/types";
+import {ItemType, DiskType, DeviceSelectionType} from "../../common/types";
 import {isProcessRunning} from "../../common/backend";
 
 
@@ -20,7 +21,7 @@ type SaveDiskImageStateType = {
   imageType?: string;
 
   sourceDisk?: string;
-  runningStatus?: RunReportType;
+  runningStatus?: RunnerStatus;
 
   /* Selected disks */
   selectedDisks: DeviceSelectionType<DiskType>;
@@ -48,15 +49,19 @@ export default class SaveDiskImage extends React.Component<any,SaveDiskImageStat
     this.did_reset = this.did_reset.bind(this);
     this.setImageType = this.setImageType.bind(this);
     this.setImageTypes = this.setImageTypes.bind(this);
+    this.onRunnerUpdate = this.onRunnerUpdate.bind(this);
   }
 
   componentDidMount() {
     this.fetchSavingStatus();
-    const loadWock = io(sweetHome.websocketUrl);
-    loadWock.on("saveimage", this.onRunnerUpdate.bind(this));
+    socket.on("saveimage", this.onRunnerUpdate);
   }
 
-  onRunnerUpdate(update: RunReportType) {
+  componentWillUnmount() {
+    socket.off("saveimage", this.onRunnerUpdate);
+  }
+
+  onRunnerUpdate(update: RunnerStatus) {
     this.setState({runningStatus: update})
   }
 

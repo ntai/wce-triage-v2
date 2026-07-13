@@ -44,6 +44,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/dispatch/schema/disks-event": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Disks Event Schema */
+        get: operations["_disks_event_schema_dispatch_schema_disks_event_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dispatch/schema/log-message-event": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Log Message Event Schema */
+        get: operations["_log_message_event_schema_dispatch_schema_log_message_event_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/dispatch/wipe-types": {
         parameters: {
             query?: never;
@@ -718,6 +752,44 @@ export interface components {
             /** Verdict */
             verdict?: string[] | null;
         };
+        /** CpuBenchmark */
+        CpuBenchmark: {
+            /** Baseline */
+            baseline: number;
+            /** Score */
+            score?: number | null;
+        };
+        /** CpuInfo */
+        CpuInfo: {
+            /** Benchmarks */
+            benchmarks: {
+                [key: string]: components["schemas"]["CpuBenchmark"];
+            };
+            /** Rating */
+            rating: string;
+            /** Machine */
+            machine?: string | null;
+            /** Board */
+            board?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Config */
+            config?: string | null;
+            /** Memory Size */
+            memory_size?: string | null;
+            /** N Processors */
+            n_processors?: string | null;
+            /** N Physical Cores */
+            n_physical_cores?: string | null;
+            /** N Logical Cores */
+            n_logical_cores?: string | null;
+        };
+        /** CpuInfoResponse */
+        CpuInfoResponse: {
+            cpu_info: components["schemas"]["CpuInfo"];
+        };
         /**
          * DiskImageInfo
          * @description Shape of one entry from lib.disk_images.get_disk_images().
@@ -737,6 +809,43 @@ export interface components {
             subdir: string;
             /** Index */
             index: number;
+        };
+        /**
+         * DiskImageType
+         * @description Shape of one entry from lib.disk_images.read_disk_image_types() - parsed
+         *     directly from each image's .disk_image_type.json, plus catalogDirectory/index
+         *     added by the reader. Only id/filestem/name/catalogDirectory/index are guaranteed;
+         *     everything else is whatever the catalog file happened to declare.
+         */
+        DiskImageType: {
+            /** Id */
+            id: string;
+            /** Filestem */
+            filestem: string;
+            /** Name */
+            name: string;
+            /** Catalogdirectory */
+            catalogDirectory: string;
+            /** Index */
+            index: number;
+            /** Timestamp */
+            timestamp?: boolean | null;
+            /** Media */
+            media?: string | null;
+            /** Efi Image */
+            efi_image?: string | null;
+            /** Wce Share Url */
+            wce_share_url?: string | null;
+            /** Partition Map */
+            partition_map?: string | null;
+            /** Partition Plan */
+            partition_plan?: string | null;
+            /** Hostname */
+            hostname?: string | null;
+            /** Randomize Hostname */
+            randomize_hostname?: boolean | null;
+            /** Cmdline */
+            cmdline?: Record<string, never> | null;
         };
         /** DiskImagesResponse */
         DiskImagesResponse: {
@@ -779,6 +888,15 @@ export interface components {
             /** Smart Enabled */
             smart_enabled: boolean;
         };
+        /**
+         * DisksEvent
+         * @description Payload for the 'disks' socket event (TriageServer.update_triage() ->
+         *     DiskModel). Same _sequence_ convention as TriageUpdateEvent.
+         */
+        DisksEvent: {
+            /** Disks */
+            disks: components["schemas"]["DiskInfo"][];
+        };
         /** DisksResponse */
         DisksResponse: {
             /** Diskpages */
@@ -791,6 +909,17 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /**
+         * LogMessageEvent
+         * @description Payload for the 'message' socket event (UserMessages/ErrorMessages via
+         *     MessageSocketIOView). severity is 1 (note) or 2 (error).
+         */
+        LogMessageEvent: {
+            /** Message */
+            message: string;
+            /** Severity */
+            severity: number;
+        };
         /** MessageDataType */
         MessageDataType: {
             /** Start */
@@ -799,6 +928,13 @@ export interface components {
             count: number;
             /** Messages */
             messages?: string[] | null;
+        };
+        /** NetworkDeviceStatus */
+        NetworkDeviceStatus: {
+            /** Device */
+            device: string;
+            /** Carrier */
+            carrier: boolean;
         };
         /**
          * OperationProgress
@@ -844,6 +980,11 @@ export interface components {
         OpticalDrivesResponse: {
             /** Opticaldrives */
             opticaldrives: components["schemas"]["OpticalDriveInfo"][];
+        };
+        /** RestoreTypesResponse */
+        RestoreTypesResponse: {
+            /** Restoretypes */
+            restoreTypes: components["schemas"]["DiskImageType"][];
         };
         /**
          * RunState
@@ -904,6 +1045,20 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** WipeType */
+        WipeType: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Arg */
+            arg?: string | null;
+        };
+        /** WipeTypesResponse */
+        WipeTypesResponse: {
+            /** Wipetypes */
+            wipeTypes: components["schemas"]["WipeType"][];
+        };
     };
     responses: never;
     parameters: never;
@@ -953,6 +1108,46 @@ export interface operations {
             };
         };
     };
+    _disks_event_schema_dispatch_schema_disks_event_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisksEvent"];
+                };
+            };
+        };
+    };
+    _log_message_event_schema_dispatch_schema_log_message_event_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogMessageEvent"];
+                };
+            };
+        };
+    };
     route_wipe_types_dispatch_wipe_types_get: {
         parameters: {
             query?: never;
@@ -968,7 +1163,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["WipeTypesResponse"];
                 };
             };
         };
@@ -1092,7 +1287,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["CpuInfoResponse"];
                 };
             };
         };
@@ -1117,7 +1312,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["OperationProgress"];
                 };
             };
             /** @description Validation Error */
@@ -1146,7 +1341,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["OperationProgress"];
                 };
             };
         };
@@ -1166,7 +1361,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["OperationProgress"];
                 };
             };
         };
@@ -1266,7 +1461,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["RestoreTypesResponse"];
                 };
             };
         };
@@ -1356,7 +1551,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["OperationProgress"];
                 };
             };
             /** @description Validation Error */
@@ -1486,13 +1681,11 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Successful Response */
-            200: {
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": unknown;
-                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -1586,7 +1779,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["OperationProgress"];
                 };
             };
             /** @description Validation Error */
@@ -1635,7 +1828,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["OperationProgress"];
                 };
             };
         };
@@ -1655,7 +1848,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["OperationProgress"];
                 };
             };
         };
@@ -1675,7 +1868,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["OperationProgress"];
                 };
             };
         };
@@ -1695,7 +1888,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["OperationProgress"];
                 };
             };
         };
@@ -1715,7 +1908,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["OperationProgress"];
                 };
             };
         };
@@ -1735,7 +1928,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["OperationProgress"];
                 };
             };
         };
@@ -1786,7 +1979,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["NetworkDeviceStatus"][];
                 };
             };
         };
@@ -1808,7 +2001,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["OperationProgress"];
                 };
             };
             /** @description Validation Error */
@@ -1837,7 +2030,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["OperationProgress"];
                 };
             };
         };

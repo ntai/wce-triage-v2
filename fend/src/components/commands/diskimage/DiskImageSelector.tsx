@@ -54,11 +54,13 @@ export default function DiskImageSelector( { setSource, sources, source } : {
         <InputLabel id="source-select-label">Disk Image Source</InputLabel>
         <Select
           labelId="source-select-label"
+          label="Disk Image Source"
           value={source?.value || ''}
           style={{fontSize: 13, textAlign: "left"}}
-          children={sources.map( item => <MenuItem value={item.value}>{item.label}</MenuItem>)}
           onChange={handleChange}
-        />
+        >
+          {sources.map( item => <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>)}
+        </Select>
       </FormControl>
 
     </div>

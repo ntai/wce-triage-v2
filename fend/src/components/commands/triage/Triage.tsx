@@ -7,7 +7,8 @@ import Button from '@mui/material/Button';
 import { makeStyles } from '@mui/styles';
 
 import PressPlay from "./PressPlay";
-import {io} from "socket.io-client";
+import {socket} from "../../common/socket";
+import {SocketEventMap} from "../../../types/socket-events";
 import Typography from '@mui/material/Typography';
 import Mui5Table from '../../parts/Mui5Table';
 import "../commands.css";
@@ -20,7 +21,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import LoopIcon from '@mui/icons-material/Loop';
 import StopIcon from '@mui/icons-material/Stop';
 import Tooltip from "@mui/material/Tooltip";
-import {ComponentTriageType, CPUInfoType, TriageResultType, TriageUpdateType} from "../../common/types";
+import {ComponentTriageType, CPUInfoType, TriageResultType} from "../../common/types";
 
 // cssstyle 3.0.10 bug
 const useStyles = makeStyles(theme => ({
@@ -132,6 +133,7 @@ export default class Triage extends React.Component<any,TriageStateType> {
     };
 
     this.fetchTriage = this.fetchTriage.bind(this);
+    this.onTriageUpdate = this.onTriageUpdate.bind(this);
   }
 
   fetchTriage() {
@@ -146,9 +148,12 @@ export default class Triage extends React.Component<any,TriageStateType> {
   }
 
   componentDidMount() {
-    const loadWock = io(sweetHome.websocketUrl);
-    loadWock.on("triageupdate", this.onTriageUpdate.bind(this));
+    socket.on("triageupdate", this.onTriageUpdate);
     this.fetchTriage();
+  }
+
+  componentWillUnmount() {
+    socket.off("triageupdate", this.onTriageUpdate);
   }
 
   setFontSize(fontSize:number) {
@@ -196,24 +201,19 @@ export default class Triage extends React.Component<any,TriageStateType> {
   }
  */
 
-  onTriageUpdate(update:TriageUpdateType) {
+  onTriageUpdate(update: SocketEventMap["triageupdate"]) {
     console.log(update);
     let rows: ComponentTriageType[] = JSON.parse(JSON.stringify(this.state.triageResult));
-    let row;
-    let updated;
 
-    for (row of rows) {
-      if (row.component === update.component) {
-        if (row.device === update.device) {
-          row.result = update.result;
-          row.message = update.message;
-          updated = row;
+    for (const decision of update.components) {
+      for (const row of rows) {
+        if (row.component === decision.component && row.device === decision.device) {
+          row.result = decision.result;
+          row.message = decision.message ?? undefined;
           break;
         }
       }
     }
-
-    console.log(updated);
 
     this.setState({ triageResult: rows } );
   }

@@ -1,11 +1,12 @@
 import React from "react";
 import {sweetHome} from '../../../looseend/home';
-import {Socket, io} from "socket.io-client";
+import {socket} from "../../common/socket";
+import {RunnerStatus} from "../../../types/socket-events";
 import RunnerProgress from "../../parts/RunnerProgress";
 import Disks from "../../parts/Disks";
 import Catalog from "../../parts/Catalog";
 import WipeOption from "../../parts/WipeOption";
-import Grid from '@mui/material/Grid';
+import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import ButtonGroup from '@mui/material/ButtonGroup';
 import DiskImageSelector, {SourceType, ToDiskSources} from '../diskimage/DiskImageSelector';
@@ -13,7 +14,7 @@ import "../commands.css";
 import BuildIcon from '@mui/icons-material/Build';
 import RefreshIcon from "@mui/icons-material/Refresh";
 import CancelIcon from "@mui/icons-material/Cancel";
-import {ItemType, DiskType, RunReportType, DiskImageType, DeviceSelectionType} from "../../common/types";
+import {ItemType, DiskType, DiskImageType, DeviceSelectionType} from "../../common/types";
 import {isProcessRunning} from "../../common/backend";
 
 
@@ -38,7 +39,7 @@ type LoadDiskImageStateType = {
   /* target disks */
   targetDisks: DeviceSelectionType<DiskType>;
 
-  runningStatus?: RunReportType;
+  runningStatus?: RunnerStatus;
 
   resetting : boolean;
 };
@@ -79,6 +80,7 @@ export default class LoadDiskImage extends React.Component<any,LoadDiskImageStat
     this.setRestoreType = this.setRestoreType.bind(this);
     this.setRestoreTypes = this.setRestoreTypes.bind(this);
     this.did_reset = this.did_reset.bind(this);
+    this.onRunnerUpdate = this.onRunnerUpdate.bind(this);
   }
 
   // FIXME: clicked needs a real type here.
@@ -105,7 +107,8 @@ export default class LoadDiskImage extends React.Component<any,LoadDiskImageStat
 
 
   onReset() {
-    this.setState( {resetting: true,
+    this.setState( {
+      resetting: true,
       source: undefined,
       sources: [],
       subsetSources: [],
@@ -160,11 +163,14 @@ export default class LoadDiskImage extends React.Component<any,LoadDiskImageStat
   componentDidMount() {
     this.fetchSources();
     this.fetchDiskLoadStatus();
-    const wock:Socket = io(sweetHome.websocketUrl);
-    wock.on("loadimage", this.onRunnerUpdate.bind(this));
+    socket.on("loadimage", this.onRunnerUpdate);
   }
 
-  onRunnerUpdate(update: RunReportType) {
+  componentWillUnmount() {
+    socket.off("loadimage", this.onRunnerUpdate);
+  }
+
+  onRunnerUpdate(update: RunnerStatus) {
     this.setState({runningStatus: update});
   }
 
@@ -269,39 +275,49 @@ export default class LoadDiskImage extends React.Component<any,LoadDiskImageStat
     const diskRestoring = isProcessRunning(runningStatus?.runStatus);
 
     return (
-      <div>
-        <Grid container spacing={0} >
-          <Grid size={1}>
-              <Button startIcon={<BuildIcon />} variant="contained" color="secondary" onClick={() => this.onLoad()} disabled={restoringUrl === undefined}>Load</Button>
-          </Grid>
-          <Grid size={2}>
-              <WipeOption title={"Wipe"} wipeOption={wipeOption} wipeOptionChanged={this.selectWipe.bind(this)} wipeOptionsChanged={this.setWipeOptions.bind(this)}/>
-          </Grid>
-            <Grid size={4}>
-              <DiskImageSelector setSource={this.setSource.bind(this)} sources={subsetSources} source={source} />
-            </Grid>
-
-            <Grid size={2}>
+        <React.Fragment>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap' }}>
+            <Box sx={{ width: '16.6667%' }}>
               <Catalog title={"Restore type"}
                        catalogType={restoreType}
                        catalogTypeChanged={this.setRestoreType}
-                       catalogTypesChanged={this.setRestoreTypes} />
-            </Grid>
-            <Grid size={2}>
-              <ButtonGroup>
-                <Button startIcon={<RefreshIcon />} size="small" variant="contained" color="primary" onClick={() => this.onReset()}>Reset</Button>
-                <Button startIcon={<CancelIcon />} size="small" variant="contained" color="secondary" onClick={() => this.onAbort()} disabled={!diskRestoring}>Abort</Button>
-              </ButtonGroup>
-            </Grid>
+                       catalogTypesChanged={this.setRestoreTypes}/>
+            </Box>
 
-          <Grid size={12} >
-            <Disks maxSelected={100} running={diskRestoring} selected={targetDisks} runningStatus={runningStatus} resetting={resetting} did_reset={this.did_reset} diskSelectionChanged={this.diskSelectionChanged.bind(this)} />
-          </Grid>
-          <Grid size={12} >
-            <RunnerProgress runningStatus={runningStatus} statuspath={"/dispatch/load/status"} />
-          </Grid>
-        </Grid>
-      </div>
+            <Box sx={{ width: '33.3333%' }}>
+              <DiskImageSelector setSource={this.setSource.bind(this)}
+                                 sources={subsetSources} source={source}/>
+            </Box>
+
+            <Box sx={{ width: '16.6667%' }}>
+              <WipeOption title={"Wipe"} wipeOption={wipeOption}
+                          wipeOptionChanged={this.selectWipe.bind(this)}
+                          wipeOptionsChanged={this.setWipeOptions.bind(this)}/>
+            </Box>
+
+            <Box sx={{ width: '8.3333%' }}>
+              <Button startIcon={<BuildIcon/>} variant="contained" color="secondary"
+                      onClick={() => this.onLoad()} disabled={restoringUrl === undefined}>Load</Button>
+            </Box>
+
+            <Box sx={{ width: '16.6667%' }}>
+              <ButtonGroup>
+                <Button startIcon={<RefreshIcon/>} size="small" variant="contained" color="primary"
+                        onClick={() => this.onReset()}>Reset</Button>
+                <Button startIcon={<CancelIcon/>} size="small" variant="contained" color="secondary"
+                        onClick={() => this.onAbort()} disabled={!diskRestoring}>Abort</Button>
+              </ButtonGroup>
+            </Box>
+            <Box sx={{ width: '100%' }}>
+              <Disks maxSelected={100} running={diskRestoring} selected={targetDisks}
+                     runningStatus={runningStatus} resetting={resetting} did_reset={this.did_reset}
+                     diskSelectionChanged={this.diskSelectionChanged.bind(this)}/>
+            </Box>
+            <Box sx={{ width: '100%' }}>
+              <RunnerProgress runningStatus={runningStatus} statuspath={"/dispatch/load/status"}/>
+            </Box>
+          </Box>
+        </React.Fragment>
     );
   }
 }

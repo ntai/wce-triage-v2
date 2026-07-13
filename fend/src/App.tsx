@@ -10,7 +10,13 @@ import { StyledEngineProvider, ThemeProvider, createTheme } from '@mui/material/
 import { ThemeProvider as StylesThemeProvider } from '@mui/styles';
 import wcelogo from './wcelogo.svg';
 
-const theme = createTheme();
+const theme = createTheme({
+    palette: {
+        secondary: {
+            main: '#FF5722',
+        },
+    },
+});
 
 /*
 const styles = StyleSheet.create({

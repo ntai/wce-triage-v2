@@ -58,19 +58,23 @@ export default function Catalog( {title, catalogType, catalogTypeChanged, catalo
     catalogTypeChanged(event.target.value);
   };
 
+  const labelId = `catalog-select-label-${title.replace(/\s+/g, '-').toLowerCase()}`;
+
   return (
     <div>
       <FormControl className={classes.formControl}>
-        <InputLabel id="wipe-option-select-label">{title}</InputLabel>
+        <InputLabel id={labelId}>{title}</InputLabel>
         <Select
-          labelId="wipe-option-select-label"
+          labelId={labelId}
+          label={title}
           // handing down undefined doesn't change the selection. Dummy value '' sets it.
           key={catalogType}
           value={catalogType || ''}
           style={{fontSize: 14, textAlign: "left"}}
-          children={catalogTypes.map(item => <MenuItem value={item.value}>{item.label}</MenuItem>)}
           onChange={handleChange}
-        />
+        >
+          {catalogTypes.map(item => <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>)}
+        </Select>
       </FormControl>
 
     </div>

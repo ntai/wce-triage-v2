@@ -2,7 +2,8 @@ import React, { Component } from 'react';
 import Grid from "@mui/material/Grid";
 import Box from "@mui/material/Box";
 import {sweetHome} from '../looseend/home'
-import {io} from 'socket.io-client';
+import {socket} from './common/socket';
+import {SocketEventMap} from '../types/socket-events';
 
 type MessagesStateType = {
   messages: string[];
@@ -14,6 +15,7 @@ export default class Messages extends Component<any, MessagesStateType> {
     this.state = {
       messages: []
     }
+    this.handleMessage = this.handleMessage.bind(this);
   }
 
   componentWillMount() {
@@ -30,11 +32,14 @@ export default class Messages extends Component<any, MessagesStateType> {
 
   /* set up the wock for message */
   componentDidMount() {
-    const wock = io(sweetHome.websocketUrl);
-    wock.on('message', this.handleMessage.bind(this));
+    socket.on('message', this.handleMessage);
   }
 
-  handleMessage(msg: any) {
+  componentWillUnmount() {
+    socket.off('message', this.handleMessage);
+  }
+
+  handleMessage(msg: SocketEventMap["message"]) {
     const messages = this.state.messages.concat(msg.message);
     console.log("got message." + messages);
     this.setState({messages: messages});

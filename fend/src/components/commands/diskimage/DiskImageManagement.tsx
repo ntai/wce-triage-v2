@@ -9,7 +9,8 @@ import Grid from "@mui/material/Grid";
 import IconButton from '@mui/material/IconButton';
 import MenuIcon from '@mui/icons-material/Menu';
 import Disks from "../../parts/Disks";
-import {io} from "socket.io-client";
+import {socket} from "../../common/socket";
+import {RunnerStatus} from "../../../types/socket-events";
 import {sweetHome} from "../../../looseend/home";
 import Button from "@mui/material/Button";
 import BuildIcon from '@mui/icons-material/Build';
@@ -20,7 +21,7 @@ import ListItemText from '@mui/material/ListItemText';
 import RunnerProgress from "../../parts/RunnerProgress";
 import Tooltip from '@mui/material/Tooltip';
 import CancelIcon from '@mui/icons-material/Cancel';
-import {DeviceSelectionType, DiskImageType, DiskType, RunReportType} from "../../common/types";
+import {DeviceSelectionType, DiskImageType, DiskType} from "../../common/types";
 import {isProcessRunning} from "../../common/backend";
 
 
@@ -188,7 +189,7 @@ type DiskImageManagementStateType = {
   /* target disks */
   targetDisks: DeviceSelectionType<DiskType>;
 
-  runningStatus?: RunReportType;
+  runningStatus?: RunnerStatus;
 
   resetting: boolean;
 
@@ -212,6 +213,7 @@ export default class DiskImageManagement extends React.Component<any, DiskImageM
     };
 
     this.did_reset = this.did_reset.bind(this);
+    this.onRunnerUpdate = this.onRunnerUpdate.bind(this);
   }
 
   imageFileSelection(selectedImages: DeviceSelectionType<boolean>) {
@@ -245,8 +247,11 @@ export default class DiskImageManagement extends React.Component<any, DiskImageM
 
   componentDidMount() {
     this.fetchSyncStatus();
-    const loadWock = io(sweetHome.websocketUrl);
-    loadWock.on("diskimage", this.onRunnerUpdate.bind(this));
+    socket.on("diskimage", this.onRunnerUpdate);
+  }
+
+  componentWillUnmount() {
+    socket.off("diskimage", this.onRunnerUpdate);
   }
 
   fetchSyncStatus() {
@@ -332,7 +337,7 @@ export default class DiskImageManagement extends React.Component<any, DiskImageM
     });
   }
 
-  onRunnerUpdate(update: RunReportType) {this.setState({runningStatus: update});}
+  onRunnerUpdate(update: RunnerStatus) {this.setState({runningStatus: update});}
 
   onReset() {
     this.setState({

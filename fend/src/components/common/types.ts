@@ -34,35 +34,7 @@ export type DiskType = {
     runMessage?: string;
 }
 
-export type TaskStatusType = "waiting" | "running" | "done" | "fail";
-
-export type TaskInfo = {
-    step: "" | number;
-    taskCategory: string;
-    taskProgress: number;
-    taskEstimate: number;
-    taskElapse: number;
-    taskStatus: TaskStatusType;
-    taskMessage: null | string;
-    taskExplain: string;
-    taskVerdict?: string[];
-}
-
 export type RunStatusType = "Waiting" | "Prepare" | "Preflight" | "Running" | "Success" | "Failed";
-
-// FIXME: This is a terrible design.
-export type RunReportType = {
-    report: "tasks" | "task_progress" | "task_failure" | "task_success" | "run_progress";
-    device: string;
-    runStatus: RunStatusType;
-    runMessage: string;
-    runEstimate: number;
-    runTime: number;
-    step?: number;
-    task?: TaskInfo;
-    tasks?: TaskInfo[];
-    _sequence_: number;
-}
 
 export type FanOutCopyRunState = {
     key: string; // device name
@@ -125,11 +97,4 @@ export type ComponentTriageType = {
 
 export type TriageResultType = {
     components: ComponentTriageType[];
-}
-
-export type TriageUpdateType = {
-    component: string;
-    device: string;
-    result: boolean;
-    message: string;
 }

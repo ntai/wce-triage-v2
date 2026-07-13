@@ -4,16 +4,16 @@ import Mui5Table from './Mui5Table';
 import {value_to_bgcolor, value_to_color} from "./TriageTableTheme";
 import OperationProgressBar from './OperationProgressBar';
 import '../commands/commands.css';
-import {TaskInfo, RunReportType} from "../common/types";
+import {RunnerStatus, TaskStatus} from "../../types/socket-events";
 
 type RunnerPropsType = {
-  runningStatus: undefined | RunReportType;
+  runningStatus: undefined | RunnerStatus;
   statuspath: string;
 }
 
 type RunnerStateType = {
   sequenceNumber: number | undefined;
-  tasks: TaskInfo[];
+  tasks: TaskStatus[];
   taskPages: number;
   tasksLoading: boolean;
   fontSize: number;
@@ -55,21 +55,11 @@ export default class RunnerProgress extends React.Component<RunnerPropsType, Run
 
     console.log(this.props.runningStatus._sequence_);
 
+    // Every report is a complete, self-sufficient snapshot (see
+    // RunnerOutputDispatch's docstring) - just take the full tasks array,
+    // there's no per-step delta to patch in.
     if (this.props.runningStatus.tasks !== undefined) {
       this.setState({tasks: this.props.runningStatus.tasks})
-    }
-
-    if (this.props.runningStatus.step !== undefined) {
-      if (this.state.tasks !== undefined) {
-        console.log( this.props.runningStatus);
-        const tasks = JSON.parse(JSON.stringify(this.state.tasks));
-        const step_no = this.props.runningStatus.step;
-        tasks[step_no] = this.props.runningStatus.task;
-        this.setState({tasks: tasks})
-      }
-      else {
-        console.log("tasks is not defined yet.")
-      }
     }
   }
 
@@ -104,7 +94,7 @@ export default class RunnerProgress extends React.Component<RunnerPropsType, Run
 
     return (
       <div>
-        <Mui5Table<TaskInfo>
+        <Mui5Table<TaskStatus>
           rows={tasks}
           isLoading={tasksLoading}
           style={ {marginTop: 1, marginBottom: 1, minWidth: 750, fontSize: 13, borderRadius: 0, borderWidth: 0, textAlign: "left"} }

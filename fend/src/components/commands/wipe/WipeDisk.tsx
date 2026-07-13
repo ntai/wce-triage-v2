@@ -5,18 +5,19 @@ import Grid from '@mui/material/Grid';
 import {sweetHome} from '../../../looseend/home';
 import Disks from "../../parts/Disks";
 import "../commands.css";
-import {io} from "socket.io-client";
+import {socket} from "../../common/socket";
+import {RunnerStatus} from "../../../types/socket-events";
 import DeleteIcon from '@mui/icons-material/Delete';
 import RefreshIcon from "@mui/icons-material/Refresh";
 import CancelIcon from "@mui/icons-material/Cancel";
 import ErrorMessageModal from "../../ErrorMessageDialog";
-import {DeviceSelectionType, DiskType, RunReportType} from "../../common/types";
+import {DeviceSelectionType, DiskType} from "../../common/types";
 import {isProcessRunning} from "../../common/backend";
 
 type WipeDiskStateType = {
   /* target disks */
   targetDisks: DeviceSelectionType<DiskType>;
-  runningStatus?: RunReportType;
+  runningStatus?: RunnerStatus;
 
   /* Error message modal dialog */
   modaling: boolean;
@@ -43,15 +44,19 @@ export default class WipeDisk extends React.Component<any, WipeDiskStateType> {
 
     this.diskSelectionChanged = this.diskSelectionChanged.bind(this);
     this.did_reset = this.did_reset.bind(this);
+    this.onRunnerUpdate = this.onRunnerUpdate.bind(this);
   }
 
   componentDidMount() {
     this.fetchWipeStatus();
-    const loadWock = io(sweetHome.websocketUrl);
-    loadWock.on("zerowipe", this.onRunnerUpdate.bind(this));
+    socket.on("zerowipe", this.onRunnerUpdate);
   }
 
-  onRunnerUpdate(update: RunReportType) {
+  componentWillUnmount() {
+    socket.off("zerowipe", this.onRunnerUpdate);
+  }
+
+  onRunnerUpdate(update: RunnerStatus) {
     this.setState({runningStatus: update});
   }
 
