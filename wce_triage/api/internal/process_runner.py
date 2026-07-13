@@ -172,6 +172,13 @@ class RunnerOutputDispatch(ModelDispatch):
     except Exception:
       get_triage_logger().debug(update)
       raise Exception("not json")
+    if json_data.get("event") == "message":
+      # Side-band log line from json_ui.log() (e.g. a task's exception
+      # traceback) - not an OperationProgress report. Surface it the same
+      # way UserMessages does, via the 'message' socket event Messages.tsx
+      # listens on, instead of validating it as OperationProgress.
+      UserMessages.note(json_data["message"]["message"])
+      return
     message = OperationProgress.model_validate(json_data["message"])
     super().dispatch(message.model_dump(mode="json"))
     pass

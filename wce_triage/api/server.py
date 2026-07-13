@@ -10,7 +10,7 @@ import os, re
 import queue
 import sys
 import time
-from typing import Optional
+from typing import Optional, cast
 import itertools
 import datetime
 import threading
@@ -21,7 +21,7 @@ import traceback
 
 from . import op_load, op_save, op_sync, op_wipe, op_unmount, op_opticaldrive
 from .config import Config
-from .formatters import jsoned_disk
+from .formatters import jsoned_disk, CpuInfo
 from .messages import UserMessages, ErrorMessages
 from .models import Model, ModelDispatch, ModelMeta
 from .internal.cpu_info import CpuInfoModel
@@ -232,7 +232,7 @@ class TriageServer(threading.Thread):
     return self._cpu_info.model.data
 
   @property
-  def cpu_info(self) -> dict:
+  def cpu_info(self) -> Optional[CpuInfo]:
     lock = self.get_lock("cpu_info")
     lock.acquire()
     try:
@@ -247,8 +247,8 @@ class TriageServer(threading.Thread):
       lock.release()
       pass
     if self._cpu_info.model.model_state is True:
-      return self._cpu_info.model.data
-    return {}
+      return CpuInfo(**cast(dict, self._cpu_info.model.data))
+    return None
 
   @property
   def disk_portal(self) -> DiskPortal:
@@ -387,7 +387,7 @@ class SocketIOView(View):
   def __init__(self):
     pass
 
-  def updating(self, t0: dict, update: typing.Optional[any], meta: ModelMeta):
+  def updating(self, t0: dict, update: typing.Optional[typing.Any], meta: ModelMeta):
     server.send_to_ui(meta.get("tag", "message"), update)
     pass
   pass
@@ -399,7 +399,7 @@ class MessageSocketIOView(View):
     self.event = event
     pass
 
-  def updating(self, t0: dict, update: typing.Optional[any], meta: ModelMeta):
+  def updating(self, t0: dict, update: typing.Optional[typing.Any], meta: ModelMeta):
     if not isinstance(update, dict):
       raise Exception("message must be a dict")
     if not update.get("message"):
@@ -429,7 +429,7 @@ class LoggingView(View):
     self.logger = logger
     pass
 
-  def updating(self, t0: dict, update: typing.Optional[any], meta: ModelMeta):
+  def updating(self, t0: dict, update: typing.Optional[typing.Any], meta: ModelMeta):
     level = meta.get("level", logging.INFO)
     self.logger.log(level, update)
     pass
@@ -446,7 +446,7 @@ class MultiView(View):
     self.views.append(view)
     pass
 
-  def updating(self, t0: dict, update: typing.Optional[any], meta: ModelMeta):
+  def updating(self, t0: dict, update: typing.Optional[typing.Any], meta: ModelMeta):
     for view in self.views:
       view.updating(t0, update, meta)
       pass

@@ -125,7 +125,7 @@ class TaskStatus(BaseModel):
   subprocess targets, one of its describe_subtasks() entries)."""
   step: int
   taskCategory: str
-  taskProgress: int                        # 0-100, or 999 sentinel meaning failed
+  taskProgress: float                      # 0-100, or 999 sentinel meaning failed
   taskEstimate: float
   taskElapse: float
   taskStatus: TaskState

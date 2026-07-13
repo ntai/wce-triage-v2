@@ -1,3 +1,4 @@
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
 
 
@@ -38,6 +39,48 @@ class DiskImageInfo(BaseModel):
   size: int
   subdir: str
   index: int
+  pass
+
+
+class CpuBenchmark(BaseModel):
+  baseline: float
+  score: Optional[float] = None
+
+
+class CpuInfo(BaseModel):
+  benchmarks: Dict[str, CpuBenchmark]
+  rating: str
+  machine: Optional[str] = None
+  board: Optional[str] = None
+  name: Optional[str] = None
+  description: Optional[str] = None
+  config: Optional[str] = None
+  memory_size: Optional[str] = None
+  n_processors: Optional[str] = None
+  n_physical_cores: Optional[str] = None
+  n_logical_cores: Optional[str] = None
+  pass
+
+
+class DiskImageType(BaseModel):
+  """Shape of one entry from lib.disk_images.read_disk_image_types() - parsed
+  directly from each image's .disk_image_type.json, plus catalogDirectory/index
+  added by the reader. Only id/filestem/name/catalogDirectory/index are guaranteed;
+  everything else is whatever the catalog file happened to declare."""
+  id: str
+  filestem: str
+  name: str
+  catalogDirectory: str
+  index: int
+  timestamp: Optional[bool] = None
+  media: Optional[str] = None
+  efi_image: Optional[str] = None
+  wce_share_url: Optional[str] = None
+  partition_map: Optional[str] = None
+  partition_plan: Optional[str] = None
+  hostname: Optional[str] = None
+  randomize_hostname: Optional[bool] = None
+  cmdline: Optional[Dict[str, Any]] = None
   pass
 
 

@@ -6,6 +6,8 @@ from typing import List, Optional
 
 from pydantic import BaseModel
 
+from .formatters import DiskInfo
+
 
 class ComponentDecision(BaseModel):
   """One entry in Computer.decisions - the triage verdict for a single
@@ -26,4 +28,19 @@ class TriageUpdateEvent(BaseModel):
   disks/loadimage/saveimage/zerowipe/diskimage events rely on - so the model
   intentionally doesn't declare that field itself."""
   components: List[ComponentDecision]
+  pass
+
+
+class DisksEvent(BaseModel):
+  """Payload for the 'disks' socket event (TriageServer.update_triage() ->
+  DiskModel). Same _sequence_ convention as TriageUpdateEvent."""
+  disks: List[DiskInfo]
+  pass
+
+
+class LogMessageEvent(BaseModel):
+  """Payload for the 'message' socket event (UserMessages/ErrorMessages via
+  MessageSocketIOView). severity is 1 (note) or 2 (error)."""
+  message: str
+  severity: int
   pass

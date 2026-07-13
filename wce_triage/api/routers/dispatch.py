@@ -1,14 +1,14 @@
 import os
 import subprocess
 import traceback
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from fastapi import APIRouter, HTTPException, Query, status
 
 from pydantic import BaseModel
 from typing import List, Optional, Any
 
 from .. import op_save
-from ..formatters import disk_info, optical_drive_info, network_device_status, DiskInfo, OpticalDriveInfo, DiskImageInfo, NetworkDeviceStatus
+from ..formatters import disk_info, optical_drive_info, network_device_status, DiskInfo, OpticalDriveInfo, DiskImageInfo, NetworkDeviceStatus, CpuInfo, DiskImageType
 from ...ops.protocol import OperationProgress
 from ...ops.run_state import RunState
 from ..socket_protocol import TriageUpdateEvent
@@ -26,8 +26,23 @@ from ...components import detect_sound_device, detect_optical_drives
 from ..server import server
 from ..operations import WIPE_TYPES
 from ...components import network as _network
+from ..socket_protocol import DisksEvent, LogMessageEvent
 
 router = APIRouter()
+
+
+# Schema-only stubs: DisksEvent/LogMessageEvent are socket.io-only payloads (see
+# api/socket_protocol.py) with no REST equivalent, so nothing calls these routes -
+# they exist purely so openapi-typescript picks the models up into triage-api.ts,
+# the same way OperationProgress/TriageUpdateEvent already do via their real routes.
+@router.get("/schema/disks-event", include_in_schema=True)
+def _disks_event_schema() -> DisksEvent:
+  return DisksEvent(disks=[])
+
+
+@router.get("/schema/log-message-event", include_in_schema=True)
+def _log_message_event_schema() -> LogMessageEvent:
+  return LogMessageEvent(message="", severity=1)
 
 
 class WipeType(BaseModel):
@@ -112,12 +127,19 @@ def route_messages_head(
   return MessageDataType(start=start, count=count)
 
 
+class CpuInfoResponse(BaseModel):
+  cpu_info: CpuInfo
+
+
 # get_cpu_info is potentially ver slow for older computers as this runs a
 # cpu benchmark.
 @router.get("/cpu_info")
-def route_cpu_info():
+def route_cpu_info() -> CpuInfoResponse:
   """Handles getting CPU rating """
-  return {"cpu_info": server.cpu_info}
+  cpu_info = server.cpu_info
+  if cpu_info is None:
+    raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="CPU info not available")
+  return CpuInfoResponse(cpu_info=cpu_info)
 
 
 
@@ -132,13 +154,13 @@ def save_disk_image(dName: str = Query(alias="deviceName"),
 
 @router.post("/stop-save")
 @router.post("/save/stop")
-def stop_save() -> JSONResponse:
+def stop_save() -> None:
   runner_name = op_save
   save_command_runner = server.get_runner(runner_name)
   if save_command_runner is None:
-    return JSONResponse({})
+    return
   save_command_runner.terminate()
-  return JSONResponse({})
+  return
 
 
 @router.get("/disk-save-status")
@@ -155,11 +177,15 @@ def disk_load_status() -> OperationProgress:
   return OperationProgress(**server._load_image.model.data)
 
 
+class RestoreTypesResponse(BaseModel):
+  restoreTypes: List[DiskImageType]
+
+
 @router.get("/restore-types")
-def route_restore_types() -> JSONResponse:
+def route_restore_types() -> RestoreTypesResponse:
   """Returning supported restore types."""
   # disk image type is in lib/disk_images
-  return JSONResponse({"restoreTypes": read_disk_image_types() })
+  return RestoreTypesResponse(restoreTypes=[DiskImageType(**t) for t in read_disk_image_types()])
 
 
 class DisksResponse(BaseModel):
