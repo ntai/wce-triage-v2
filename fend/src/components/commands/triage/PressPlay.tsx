@@ -10,11 +10,23 @@ class OpticalDriveTest {
   pause() {}
 }
 
-class PressPlay extends React.Component {
-  state = {
+type PressPlayProps = {
+  title: string;
+  tooltip: string;
+  kind: "mp3" | "optical";
+  url: string;
+  onPlay: () => void;
+};
+
+type PressPlayState = {
+  play: boolean;
+};
+
+class PressPlay extends React.Component<PressPlayProps, PressPlayState> {
+  state: PressPlayState = {
     play: false
   };
-  player = undefined;
+  player: HTMLAudioElement | OpticalDriveTest | undefined = undefined;
 
   togglePlay = () => {
     this.props.onPlay();
@@ -29,7 +41,7 @@ class PressPlay extends React.Component {
     return (
       <div>
         <Tooltip title={this.props.tooltip}>
-        <Button variant={"contained"} size="small" color={"primary"} onClick={this.togglePlay}>{this.props.title  + ": " + (this.state.play ? '\u25a0' : '\u25B6')}</Button>
+        <Button variant={"contained"} size="small" color={"primary"} onClick={this.togglePlay}>{this.props.title  + ": " + (this.state.play ? '■' : '▶')}</Button>
         </Tooltip>
       </div>
     );

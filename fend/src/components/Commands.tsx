@@ -93,6 +93,7 @@ export default class Commands extends React.Component<any, CommandsState> {
               <Tab label="Create Disk Image" {...a11yProps(2)} />
               <Tab label="Wipe Disk" {...a11yProps(3)} />
               <Tab label="Disk Image" {...a11yProps(4)} />
+              <Tab label="Messages" {...a11yProps(5)} />
             </Tabs>
           </AppBar>
           <TabPanel value={selectedTab} index={0} visible={selectedTab === 0} title="Triage">
@@ -110,13 +111,15 @@ export default class Commands extends React.Component<any, CommandsState> {
           <TabPanel value={selectedTab} index={4} visible={selectedTab === 4} title="Disk Images">
             <DiskImageManagement/>
           </TabPanel>
+          <TabPanel value={selectedTab} index={5} visible={selectedTab === 5} title="Messages">
+            <Messages selected={selectedTab === 5}/>
+          </TabPanel>
           {/*
           <Tab key="settings" eventKey="settings" title="Settings" disabled={!this.state.settings}>
             <TriageAppSettings/>
           </Tab>
 */}
         </Box>
-        <Messages/>
       </Box>
     );
   }

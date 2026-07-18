@@ -5,12 +5,16 @@ import {sweetHome} from '../looseend/home'
 import {socket} from './common/socket';
 import {SocketEventMap} from '../types/socket-events';
 
+type MessagesPropsType = {
+  selected?: boolean;
+}
+
 type MessagesStateType = {
   messages: string[];
 }
 
-export default class Messages extends Component<any, MessagesStateType> {
-  constructor(props:any) {
+export default class Messages extends Component<MessagesPropsType, MessagesStateType> {
+  constructor(props: MessagesPropsType) {
     super(props);
     this.state = {
       messages: []
@@ -20,6 +24,12 @@ export default class Messages extends Component<any, MessagesStateType> {
 
   componentWillMount() {
     this.fetchMessages();
+  }
+
+  componentDidUpdate(prevProps: MessagesPropsType) {
+    if (this.props.selected && !prevProps.selected) {
+      this.fetchMessages();
+    }
   }
 
   /* Initial message loading */
