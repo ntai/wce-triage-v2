@@ -7,7 +7,8 @@ import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
-import {ImageMetaType, ItemType} from "../common/types";
+import {ImageMetaType} from "../../types/api-types";
+import {ItemType} from "./WipeOption";
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({

@@ -22,26 +22,15 @@ type TabPanelProps = {
   title?: string;
 };
 
-type TabPanelState = {
-  children?: React.ReactNode;
-  index: number;
-  title?: string;
-};
-
-class TabPanel extends React.Component<TabPanelProps, TabPanelState> {
-  constructor(props: TabPanelProps) {
-    super(props);
-    this.state = { children: props.children, index: props.index, title: props.title};
-  }
-
+class TabPanel extends React.Component<TabPanelProps> {
   render() {
-    const {children, index} = this.state;
+    const {children, index, value} = this.props;
       return (
         <div>
           <Typography
             component="div"
             role="tabpanel"
-            hidden={this.props.value !== index}
+            hidden={value !== index}
             id={`wrapped-tabpanel-${index}`}
             aria-labelledby={`wrapped-tab-${index}`}
           >

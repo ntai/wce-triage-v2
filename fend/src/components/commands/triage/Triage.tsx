@@ -21,7 +21,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import LoopIcon from '@mui/icons-material/Loop';
 import StopIcon from '@mui/icons-material/Stop';
 import Tooltip from "@mui/material/Tooltip";
-import {ComponentTriageType, CPUInfoType, TriageResultType} from "../../common/types";
+import {ComponentDecision, CpuInfo as CpuInfoType, TriageUpdateEvent} from "../../../types/api-types";
 
 // cssstyle 3.0.10 bug
 const useStyles = makeStyles(theme => ({
@@ -40,22 +40,22 @@ const useStyles = makeStyles(theme => ({
 
 
 function CpuInfo(props: {
-  onMount: (cpu_info: CPUInfoType) => void
+  onMount: (cpu_info: CpuInfoType) => void
 }) {
   const [loading, setLoading] = React.useState(true);
-  const [cpu_info, set_cpu_info] = React.useState<CPUInfoType>(
-      {name: "Unknown", description: "", config: "", rating: "?"}
+  const [cpu_info, set_cpu_info] = React.useState<CpuInfoType>(
+      {name: "Unknown", description: "", config: "", rating: "?", benchmarks: {}}
   );
 
   React.useEffect(() => {
     fetch(sweetHome.backendUrl + '/dispatch/cpu_info').then(rep => rep.json())
         .then(res => {
-          const cpu_info: CPUInfoType = res.cpu_info as any;
+          const cpu_info: CpuInfoType = res.cpu_info as any;
           set_cpu_info(cpu_info);
           props.onMount(cpu_info);
         })
         .catch( err => {
-          set_cpu_info({name: "Failed to communicate", description: err, config: "Unknown", rating: "?"});
+          set_cpu_info({name: "Failed to communicate", description: err, config: "Unknown", rating: "?", benchmarks: {}});
         })
         .finally(() => setLoading(false));
   });
@@ -66,7 +66,7 @@ function CpuInfo(props: {
   else {
     return (
       <Typography variant={"subtitle1"}>
-        {cpu_info.name +  " " + cpu_info.description + " " + cpu_info.config}
+        {(cpu_info.name ?? "") + " " + (cpu_info.description ?? "") + " " + (cpu_info.config ?? "")}
       </Typography>
     )
   }
@@ -75,10 +75,10 @@ function CpuInfo(props: {
 
 function CpuRating() {
   const classes = useStyles();
-  const [cpu_info, set_cpu_info] = React.useState<CPUInfoType|undefined>(undefined);
+  const [cpu_info, set_cpu_info] = React.useState<CpuInfoType|undefined>(undefined);
 
   let summary = "CPU Rating: Expand to see. It may take a couple of minutes.";
-  const mounted = (info: CPUInfoType) => (set_cpu_info(info));
+  const mounted = (info: CpuInfoType) => (set_cpu_info(info));
 
   if (cpu_info) {
     summary = "CPU Rating: " + cpu_info.rating;
@@ -107,14 +107,14 @@ function CpuRating() {
 
 
 type TriageStateType = {
-  triageResult: ComponentTriageType[];
+  triageResult: ComponentDecision[];
   loading: boolean;
   show_cpu_info: boolean;
-  cpu_info?: CPUInfoType;
+  cpu_info?: CpuInfoType;
   cpu_info_loading: boolean;
   soundPlaying: boolean;
   fontSize: number;
-  opticals: ComponentTriageType[];
+  opticals: ComponentDecision[];
 }
 
 export default class Triage extends React.Component<any,TriageStateType> {
@@ -138,7 +138,7 @@ export default class Triage extends React.Component<any,TriageStateType> {
 
   fetchTriage() {
     this.setState({loading: true, triageResult: []});
-    fetch(sweetHome.backendUrl + '/dispatch/triage').then(rep => rep.json()).then((res: TriageResultType) => {
+    fetch(sweetHome.backendUrl + '/dispatch/triage').then(rep => rep.json()).then((res: TriageUpdateEvent) => {
       // Now just get the rows of triage results
       this.setState({
         triageResult: res.components,
@@ -203,7 +203,7 @@ export default class Triage extends React.Component<any,TriageStateType> {
 
   onTriageUpdate(update: SocketEventMap["triageupdate"]) {
     console.log(update);
-    let rows: ComponentTriageType[] = JSON.parse(JSON.stringify(this.state.triageResult));
+    let rows: ComponentDecision[] = JSON.parse(JSON.stringify(this.state.triageResult));
 
     for (const decision of update.components) {
       for (const row of rows) {
@@ -265,7 +265,7 @@ export default class Triage extends React.Component<any,TriageStateType> {
         </Grid>
 
         <Grid size={12}>
-          <Mui5Table<ComponentTriageType>
+          <Mui5Table<ComponentDecision>
             rows={data}
             isLoading={this.state.loading}
             style={{borderRadius: 0, borderWidth: 0, textAlign: "left", fontSize: this.state.fontSize, paddingTop: 5, paddingBottom: 5 }}

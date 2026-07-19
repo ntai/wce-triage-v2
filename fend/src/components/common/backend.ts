@@ -1,5 +1,5 @@
-import {RunStatusType} from "./types";
+import {RunState} from "../../types/api-types";
 
-export function isProcessRunning(status?: RunStatusType) : boolean {
+export function isProcessRunning(status?: RunState) : boolean {
   return status === "Waiting" || status === "Prepare" || status === "Preflight" || status === "Running";
 }

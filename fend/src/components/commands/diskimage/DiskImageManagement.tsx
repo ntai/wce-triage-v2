@@ -8,7 +8,7 @@ import DiskImageTreeView, {DiskImageOperationType} from "./DiskImageTreeView";
 import Grid from "@mui/material/Grid";
 import IconButton from '@mui/material/IconButton';
 import MenuIcon from '@mui/icons-material/Menu';
-import Disks from "../../parts/Disks";
+import Disks, {DeviceSelectionType, DiskType} from "../../parts/Disks";
 import {socket} from "../../common/socket";
 import {RunnerStatus} from "../../../types/socket-events";
 import {sweetHome} from "../../../looseend/home";
@@ -21,7 +21,6 @@ import ListItemText from '@mui/material/ListItemText';
 import RunnerProgress from "../../parts/RunnerProgress";
 import Tooltip from '@mui/material/Tooltip';
 import CancelIcon from '@mui/icons-material/Cancel';
-import {DeviceSelectionType, DiskImageType, DiskType} from "../../common/types";
 import {isProcessRunning} from "../../common/backend";
 
 

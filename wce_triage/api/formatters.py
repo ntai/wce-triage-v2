@@ -15,6 +15,7 @@ class DiskInfo(BaseModel):
   serial_no: str
   smart: bool
   smart_enabled: bool
+  connection_speed: int
   pass
 
 
@@ -96,7 +97,8 @@ def disk_info(disk) -> DiskInfo:
                   vendor=disk.vendor,
                   serial_no=disk.serial_no,
                   smart=disk.smart,
-                  smart_enabled=disk.smart_enabled)
+                  smart_enabled=disk.smart_enabled,
+                  connection_speed=disk.connection_speed_mbps or 0)
 
 def optical_drive_info(optical) -> OpticalDriveInfo:
   return OpticalDriveInfo(deviceName=optical.device_name,

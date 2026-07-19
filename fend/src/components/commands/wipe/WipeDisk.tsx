@@ -3,7 +3,7 @@ import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid';
 //
 import {sweetHome} from '../../../looseend/home';
-import Disks from "../../parts/Disks";
+import Disks, {DeviceSelectionType, DiskType} from "../../parts/Disks";
 import "../commands.css";
 import {socket} from "../../common/socket";
 import {RunnerStatus} from "../../../types/socket-events";
@@ -11,7 +11,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import RefreshIcon from "@mui/icons-material/Refresh";
 import CancelIcon from "@mui/icons-material/Cancel";
 import ErrorMessageModal from "../../ErrorMessageDialog";
-import {DeviceSelectionType, DiskType} from "../../common/types";
 import {isProcessRunning} from "../../common/backend";
 
 type WipeDiskStateType = {

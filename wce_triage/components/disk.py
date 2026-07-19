@@ -160,6 +160,86 @@ ata_disk = StorageProperty("ata-disk", read_speed= 60 * 2**20, write_speed= 60 *
 # This is an average SSD
 ata_ssd  = StorageProperty("ata-ssd",  read_speed= 80 * 2**20, write_speed= 80 * 2**20, read_speed_4k= 60 * 2**20, write_speed_4k= 80 * 2**20)
 
+
+def _read_sysfs_line(path):
+  try:
+    with open(path) as f:
+      return f.readline().strip()
+    pass
+  except OSError:
+    return None
+  pass
+
+
+def _detect_usb_speed_mbps(devpath):
+  """USB link speed in Mbps, read from the ancestor USB device node's
+  `speed` sysfs attribute (e.g. 480 for USB2 High Speed, 5000/10000/20000
+  for USB3 SuperSpeed and up). Found by walking up from the block device's
+  sysfs path, since `speed` lives on the USB device node itself, not on the
+  interface/host/target/block layers below it."""
+  path = os.path.join('/sys', devpath.lstrip('/'))
+  while path not in ('/sys', '/', ''):
+    path = os.path.dirname(path)
+    speed_file = os.path.join(path, 'speed')
+    if os.path.isfile(speed_file):
+      value = _read_sysfs_line(speed_file)
+      try:
+        return int(float(value))
+      except (TypeError, ValueError):
+        return None
+      pass
+    pass
+  return None
+
+
+def _detect_sata_speed_mbps(devpath):
+  """SATA negotiated link speed in Mbps, read from the ancestor ataN port's
+  `sata_spd` attribute (e.g. "6.0 Gbps"). sata_spd lives a few directories
+  below the ataN node (ataN/linkM/ata_link/linkM/sata_spd on a typical
+  kernel), and that ata_link subdirectory is a symlink back to a class
+  object of the same name - a real cycle, not just a deep nesting. os.walk()
+  (followlinks=False by default) doesn't descend into it, so it's used here
+  instead of glob(..., recursive=True), which does follow symlinks and hangs
+  forever on this exact structure."""
+  m = re.search(r'/ata\d+(?=/|$)', devpath)
+  if m is None:
+    return None
+  ata_dir = os.path.join('/sys', devpath[:m.end()].lstrip('/'))
+  found = None
+  for root, dirs, files in os.walk(ata_dir):
+    if 'sata_spd' in files:
+      found = os.path.join(root, 'sata_spd')
+      break
+    pass
+  if found is None:
+    return None
+  value = _read_sysfs_line(found)
+  m2 = re.match(r'([\d.]+)\s*Gbps', value or '')
+  if m2 is None:
+    return None
+  return round(float(m2.group(1)) * 1000)
+
+
+def _detect_nvme_speed_mbps(device_name):
+  """NVMe PCIe link speed in Mbps: GT/s * lane count * 1000. This is the
+  raw signaling rate, not corrected for 8b/10b (Gen1/2) or 128b/130b
+  (Gen3+) encoding overhead - close enough for display/comparison, not a
+  precise effective-throughput figure."""
+  base = os.path.join('/sys/block', device_name, 'device', 'device')
+  speed = _read_sysfs_line(os.path.join(base, 'current_link_speed'))
+  width = _read_sysfs_line(os.path.join(base, 'current_link_width'))
+  if not speed or not width:
+    return None
+  m = re.match(r'([\d.]+)\s*GT/s', speed)
+  if m is None:
+    return None
+  try:
+    return round(float(m.group(1)) * int(width) * 1000)
+  except ValueError:
+    return None
+  pass
+
+
 #
 # disk class represents a disk
 #
@@ -186,6 +266,7 @@ class Disk:
   smart_enabled: bool
   is_usb3 : bool
   usb_driver: str | None
+  connection_speed_mbps: int | None
   storage_property: StorageProperty | None
 
 
@@ -214,6 +295,7 @@ class Disk:
     # These two will be redesigned. Need a better way.
     self.is_usb3 = False
     self.usb_driver = None
+    self.connection_speed_mbps = None
     self.storage_property = None
     pass
 
@@ -434,6 +516,21 @@ class Disk:
           self.smart_enabled = (value == '1')
           pass
         pass
+      pass
+
+      devpath = props.get('DEVPATH')
+      if devpath:
+        if devpath.find('/nvme/') >= 0:
+          self.connection_speed_mbps = _detect_nvme_speed_mbps(os.path.basename(self.device_name))
+          pass
+        elif self.is_usb:
+          self.connection_speed_mbps = _detect_usb_speed_mbps(devpath)
+          pass
+        elif self.is_ata_or_scsi:
+          self.connection_speed_mbps = _detect_sata_speed_mbps(devpath)
+          pass
+        pass
+      self.is_usb3 = bool(self.is_usb and self.connection_speed_mbps and self.connection_speed_mbps >= 5000)
       pass
     else:
       self.is_disk = False

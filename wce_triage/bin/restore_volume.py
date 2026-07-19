@@ -49,7 +49,11 @@ def load_disk(source, dest_dev, filesystem=None):
   pipes = []
 
   # So, for partclone, the source is whatever upstream hands down.
-  argv_partclone = [ partclone_path, "-f", "2", "-r", "-L", "-", "-s", source, "-o", dest_dev ]
+  # -L takes a literal file path, not a "-" for stdout convention (that's
+  # -s's job) - "-" here just created a file literally named "-" in the
+  # process's cwd. We already get progress via drive_process()'s stdout
+  # pipe, so discard the log file.
+  argv_partclone = [ partclone_path, "-f", "2", "-r", "-L", "/dev/null", "-s", source, "-o", dest_dev ]
 
   # wire up the apps
   if argv_wget:

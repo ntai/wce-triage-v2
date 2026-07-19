@@ -3,8 +3,9 @@ import {sweetHome} from '../../../looseend/home';
 import {socket} from "../../common/socket";
 import {RunnerStatus} from "../../../types/socket-events";
 import RunnerProgress from "../../parts/RunnerProgress";
-import Disks from "../../parts/Disks";
+import Disks, {DeviceSelectionType, DiskType} from "../../parts/Disks";
 import Catalog from "../../parts/Catalog";
+import {ItemType} from "../../parts/WipeOption";
 import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid';
 import SaveIcon from '@mui/icons-material/Save';
@@ -12,7 +13,6 @@ import SaveIcon from '@mui/icons-material/Save';
 import "../commands.css";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import CancelIcon from "@mui/icons-material/Cancel";
-import {ItemType, DiskType, DeviceSelectionType} from "../../common/types";
 import {isProcessRunning} from "../../common/backend";
 
 

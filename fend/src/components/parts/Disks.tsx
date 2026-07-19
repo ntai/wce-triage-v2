@@ -4,9 +4,16 @@ import "../commands/commands.css";
 import Mui5Table from './Mui5Table';
 import OperationProgressBar from './OperationProgressBar';
 import DiskDetails from "./DiskDetails";
-import {DeviceSelectionType, DiskType, ItemType, WipeType} from "../common/types";
+import {DiskInfo, WipeType} from "../../types/api-types";
+import {ItemType} from "./WipeOption";
 import {socket} from "../common/socket";
 import {RunnerStatus} from "../../types/socket-events";
+import UsbIcon from '@mui/icons-material/Usb';
+export type DeviceSelectionType<T> = { [deviceName: string]: T };
+
+// DiskInfo plus UI-only fields populated locally in componentDidUpdate()
+// below, from the runner's progress updates - never sent by the backend.
+export type DiskType = DiskInfo & { progress?: number; runMessage?: string };
 
 
 type DisksPropsType = {
@@ -290,11 +297,25 @@ export default class Disks extends React.Component<DisksPropsType, DisksStateTyp
             },
             {
               title: "Bus",
-              render: row => row.bus,
+              render: (row, index) => row.bus === "usb" ? (<UsbIcon>USB</UsbIcon>) : "ATA",
               cellStyle: { width: 40, maxWidth: 40,
                 paddingTop: 2, paddingBottom: 2,  },
               headerStyle: {
                 maxWidth: 40,
+              },
+            },
+            {
+              title: "Speed",
+              render: (row, index) => (
+                <span>
+                  {row.connection_speed >= 1000 ? row.connection_speed / 1000 : row.connection_speed}
+                  <span style={{fontSize: '0.5em', verticalAlign: 'super', whiteSpace: 'nowrap'}}>{row.connection_speed >= 1000 ? 'GB/s' : 'MB/s'}</span>
+                </span>
+              ),
+              cellStyle: { width: 70, maxWidth: 70,
+                paddingTop: 1, paddingBottom: 1,  },
+              headerStyle: {
+                maxWidth: 70,
               },
             },
             {

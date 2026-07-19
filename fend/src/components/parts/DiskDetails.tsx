@@ -10,7 +10,7 @@ import TableCell from '@mui/material/TableCell';
 import TableRow from '@mui/material/TableRow';
 import NumberFormat from 'react-number-format';
 import Paper from '@mui/material/Paper';
-import {DiskType} from "../common/types";
+import {DiskType} from "./Disks";
 
 const useStyles = makeStyles((theme) => ({
   root: {

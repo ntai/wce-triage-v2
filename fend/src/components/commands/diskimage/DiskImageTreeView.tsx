@@ -21,7 +21,8 @@ import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ArrowRightIcon from '@mui/icons-material/ArrowRight';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import DeleteIcon from '@mui/icons-material/Delete';
-import {DeviceSelectionType, ImageMetaType} from "../../common/types";
+import {DeviceSelectionType} from "../../parts/Disks";
+import {ImageMetaType} from "../../../types/api-types";
 import {SourceType, ToDiskSources} from "./DiskImageSelector";
 
 const useTreeItemStyles = makeStyles((theme) => ({
@@ -90,7 +91,7 @@ type StyledTreeItemProps = {
 
 function StyledTreeItem(props: TreeItemProps & StyledTreeItemProps) {
   const classes = useTreeItemStyles();
-  const { labelText, labelIcon, selected, handleChange, value, itemId, ...other } = props;
+  const { labelText, labelIcon, selected, handleChange, value, itemId, onClick, ...other } = props;
 
   let checkbox = null;
   if (value) {
@@ -107,10 +108,19 @@ function StyledTreeItem(props: TreeItemProps & StyledTreeItemProps) {
     />
   }
 
+  // Stop clicks on this item (or anything nested inside it, e.g. a file item
+  // inside a category) from bubbling up and triggering an ancestor item's
+  // own onClick - otherwise clicking a file collapses its parent category.
+  const handleClick = (event: React.MouseEvent<HTMLLIElement>) => {
+    event.stopPropagation();
+    if (onClick) onClick(event);
+  };
+
   return (
     <TreeItem
       itemId={itemId}
       key={itemId}
+      onClick={handleClick}
       label={
         <div className={classes.labelRoot}>
           {labelIcon}

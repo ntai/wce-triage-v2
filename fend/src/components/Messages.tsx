@@ -1,6 +1,8 @@
 import React, { Component } from 'react';
 import Grid from "@mui/material/Grid";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import RefreshIcon from '@mui/icons-material/Refresh';
 import {sweetHome} from '../looseend/home'
 import {socket} from './common/socket';
 import {SocketEventMap} from '../types/socket-events';
@@ -60,6 +62,11 @@ export default class Messages extends Component<MessagesPropsType, MessagesState
 
     return (
       <Grid style={{ display: "flex", flex: 1 }} container >
+        <Grid size={12}>
+          <Button startIcon={<RefreshIcon/>} variant="contained" size="small" onClick={() => this.fetchMessages()}>
+            Refresh
+          </Button>
+        </Grid>
         <Grid style={{ display: "flex", flex: 1 }} size={12}>
           <Box sx={{overflow: "auto", flex: 1, bgcolor: "white", height: "400px"}} id="scroll" className="message-font">
             {messages.map(line => {return (<div>{line}</div>)})}

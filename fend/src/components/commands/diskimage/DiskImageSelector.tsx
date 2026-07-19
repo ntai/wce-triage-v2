@@ -4,7 +4,8 @@ import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
-import {ItemType, DiskImageType} from "../../common/types";
+import {ItemType} from "../../parts/WipeOption";
+import {DiskImageInfo} from "../../../types/api-types";
 
 const useStyles = makeStyles((theme) =>
   createStyles({
@@ -29,7 +30,7 @@ export type SourceType = ItemType & {
     index: number;
 }
 
-export function ToDiskSources( diskImages: DiskImageType[], start?: number) : SourceType[] {
+export function ToDiskSources( diskImages: DiskImageInfo[], start?: number) : SourceType[] {
     const base = start ? start : 0;
     return diskImages.map( (src, index) => ({value: src.fullpath, label: src.name, filesize: src.size, mtime: src.mtime, restoreType: src.restoreType, index: index + base}));
 }

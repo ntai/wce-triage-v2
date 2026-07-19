@@ -887,6 +887,8 @@ export interface components {
             smart: boolean;
             /** Smart Enabled */
             smart_enabled: boolean;
+            /** Connection Speed */
+            connection_speed: number;
         };
         /**
          * DisksEvent
