@@ -95,8 +95,6 @@ For now, this is only dealing with the EXT4 linux partition.
     sb_fd = open("/tmp/scoreboard", "w")
 
     for disk in self.disks:
-      self.ui.report_run_progress(disk.device_name, self.current_time, self.state, self.run_estimate, self.run_time, self.task_step, self.tasks)
-
       print("%s:" % disk.device_name, file=sb_fd)
       print(self.scoreboard[disk.device_name], file=sb_fd)
       print("", file=sb_fd)
@@ -110,7 +108,17 @@ For now, this is only dealing with the EXT4 linux partition.
         pass
       pass
 
+    # Must come before the per-disk reports below: this is what finalizes
+    # self.run_time for this state - in particular, forcing it to equal
+    # self.run_estimate once self.state reaches Success/Failed. Reporting
+    # per-disk first (the old order) meant every disk's final report went
+    # out with the previous tick's run_time, so the UI never saw a disk
+    # reach 100% - only the runner_id-keyed report from super() did.
     super().report_run_state()
+
+    for disk in self.disks:
+      self.ui.report_run_progress(disk.device_name, self.current_time, self.state, self.run_estimate, self.run_time, self.task_step, self.tasks)
+      pass
     pass
 
   def report_task_progress(self, run_time, task):
