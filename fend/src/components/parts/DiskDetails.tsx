@@ -44,7 +44,7 @@ export default function DiskDetails(props: DiskDetailsProps) {
     {name: 'Vendor', value: disk.vendor },
     {name: 'Model', value: disk.model },
     {name: 'Size', value: disk.size, format: 'disksize'},
-    {name: 'Bus', value: disk.bus },
+    {name: 'Bus', value: disk.busType ?? 'Unknown' },
     {name: 'Serial Number', value: disk.serial_no },
     {name: 'SMART capable', value: disk.smart ? "Yes" : "No" },
   ];

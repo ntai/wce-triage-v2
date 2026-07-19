@@ -5,6 +5,7 @@ import { components } from "./triage-api";
 // over reaching into components["schemas"][...] directly at call sites.
 
 export type DiskInfo = components["schemas"]["DiskInfo"];
+export type BusType = components["schemas"]["BusType"];
 export type DiskImageInfo = components["schemas"]["DiskImageInfo"];
 export type WipeType = components["schemas"]["WipeType"];
 export type CpuInfo = components["schemas"]["CpuInfo"];

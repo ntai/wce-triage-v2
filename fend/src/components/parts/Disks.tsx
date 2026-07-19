@@ -9,6 +9,8 @@ import {ItemType} from "./WipeOption";
 import {socket} from "../common/socket";
 import {RunnerStatus} from "../../types/socket-events";
 import UsbIcon from '@mui/icons-material/Usb';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
 export type DeviceSelectionType<T> = { [deviceName: string]: T };
 
 // DiskInfo plus UI-only fields populated locally in componentDidUpdate()
@@ -44,6 +46,9 @@ type DisksStateType = {
   /* Wipe options */
   wipeOptions: ItemType[];
   wipeOptionsLoading: boolean;
+
+  /* Error from the most recent failed unmount request, if any */
+  unmountError?: string;
 };
 
 
@@ -68,6 +73,8 @@ export default class Disks extends React.Component<DisksPropsType, DisksStateTyp
       /* Wipe options */
       wipeOptions: [],
       wipeOptionsLoading: true,
+
+      unmountError: undefined,
     };
 
     this.fetchDisks = this.fetchDisks.bind(this);
@@ -249,15 +256,31 @@ export default class Disks extends React.Component<DisksPropsType, DisksStateTyp
     fetch(sweetHome.backendUrl + "/dispatch/unmount?deviceNames=" + deviceName + "&mount=" + mountState,
       { method: "POST" })
       .then( reply => {
+        if (!reply.ok) {
+          throw new Error(`Server returned ${reply.status} ${reply.statusText}`);
+        }
         this.onReset();
+      })
+      .catch( err => {
+        console.log(err);
+        this.setState({unmountError: `Failed to ${mountState ? "unmount" : "mount"} ${deviceName}: ${err.message}`});
       });
   }
 
   render() {
-    const { disks, diskStatusLoading } = this.state;
+    const { disks, diskStatusLoading, unmountError } = this.state;
 
     return (
       <div>
+        <Snackbar
+          open={unmountError !== undefined}
+          autoHideDuration={6000}
+          onClose={() => this.setState({unmountError: undefined})}
+        >
+          <Alert onClose={() => this.setState({unmountError: undefined})} severity="error">
+            {unmountError}
+          </Alert>
+        </Snackbar>
         <Mui5Table<DiskType>
           rows={disks}
           style={ {marginTop: 1, marginBottom: 1, marginLeft: 0, marginRight: 0} }
@@ -297,7 +320,7 @@ export default class Disks extends React.Component<DisksPropsType, DisksStateTyp
             },
             {
               title: "Bus",
-              render: (row, index) => row.bus === "usb" ? (<UsbIcon>USB</UsbIcon>) : "ATA",
+              render: (row, index) => row.busType === "USB" ? (<UsbIcon>USB</UsbIcon>) : (row.busType ?? "—"),
               cellStyle: { width: 40, maxWidth: 40,
                 paddingTop: 2, paddingBottom: 2,  },
               headerStyle: {

@@ -1,6 +1,9 @@
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
 
+from wce_triage.components import Disk
+from wce_triage.components.disk import BusType
+
 
 class DiskInfo(BaseModel):
   target: int = 0
@@ -9,7 +12,7 @@ class DiskInfo(BaseModel):
   runEstimate: float = 0
   mounted: bool
   size: int  # in MB (not MiB)
-  bus: str
+  busType: Optional[BusType] = None
   model: str
   vendor: str
   serial_no: str
@@ -85,14 +88,14 @@ class DiskImageType(BaseModel):
   pass
 
 
-def disk_info(disk) -> DiskInfo:
+def disk_info(disk: Disk) -> DiskInfo:
   return DiskInfo(target=0,
                   deviceName=disk.device_name,
                   runTime=0,
                   runEstimate=0,
                   mounted=disk.mounted,
                   size=round(disk.get_byte_size() / 1000000), # in MB (not MiB)
-                  bus="usb" if disk.is_usb else "ata",
+                  busType=disk.bus_type,
                   model=disk.model_name,
                   vendor=disk.vendor,
                   serial_no=disk.serial_no,

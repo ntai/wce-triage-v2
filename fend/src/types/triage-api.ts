@@ -735,6 +735,13 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * BusType
+         * @description Transport a disk is attached over, as derived from udevadm's ID_BUS/
+         *     DEVPATH properties in Disk.detect_disk_type().
+         * @enum {string}
+         */
+        BusType: "ATA" | "SCSI" | "NVME" | "USB";
+        /**
          * ComponentDecision
          * @description One entry in Computer.decisions - the triage verdict for a single
          *     component, or the synthetic 'Overall' aggregate entry (which carries only
@@ -875,8 +882,7 @@ export interface components {
             mounted: boolean;
             /** Size */
             size: number;
-            /** Bus */
-            bus: string;
+            busType?: components["schemas"]["BusType"] | null;
             /** Model */
             model: string;
             /** Vendor */

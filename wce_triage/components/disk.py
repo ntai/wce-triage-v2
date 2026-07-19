@@ -6,11 +6,22 @@ from __future__ import annotations
 import re, subprocess, traceback, time, os
 import json
 import typing
+from enum import Enum
 
 from ..lib.util import get_triage_logger
 from .component import Component
 
 tlog = get_triage_logger()
+
+
+class BusType(str, Enum):
+  """Transport a disk is attached over, as derived from udevadm's ID_BUS/
+  DEVPATH properties in Disk.detect_disk_type()."""
+  ATA = "ATA"
+  SCSI = "SCSI"
+  NVME = "NVME"
+  USB = "USB"
+  pass
 
 
 disk1_re = re.compile(r"Disk /dev/[^:]+:\s+\d+\.\d*\s+[KMG]B, (\d+) bytes")
@@ -220,6 +231,14 @@ def _detect_sata_speed_mbps(devpath):
   return round(float(m2.group(1)) * 1000)
 
 
+# PCIe Gen1 x1's raw signaling rate (2.5 GT/s * 1 lane * 1000) - the slowest
+# link an NVMe device can plausibly negotiate. Used as a floor wherever a
+# disk is known to be NVMe but the real negotiated link speed/width can't be
+# read from sysfs (missing/unsupported attributes, or an Nvme instance built
+# straight from `nvme list` output, which never touches sysfs at all).
+NVME_MIN_SPEED_MBPS = 2500
+
+
 def _detect_nvme_speed_mbps(device_name):
   """NVMe PCIe link speed in Mbps: GT/s * lane count * 1000. This is the
   raw signaling rate, not corrected for 8b/10b (Gen1/2) or 128b/130b
@@ -252,9 +271,7 @@ class Disk:
   sectors: int | None
   mounted: bool
   is_disk: bool | None
-  is_ata_or_scsi: bool | None
-  is_usb: bool | None
-  bus: str | None
+  bus_type: BusType | None
   vendor: str
   model_name: str
   serial_no: str
@@ -264,7 +281,6 @@ class Disk:
   disappeared: bool
   smart: bool
   smart_enabled: bool
-  is_usb3 : bool
   usb_driver: str | None
   connection_speed_mbps: int | None
   storage_property: StorageProperty | None
@@ -279,9 +295,7 @@ class Disk:
     self.mounted = mounted
     self.partclone_image = "/ubuntu.partclone.gz"
     self.is_disk = None
-    self.is_ata_or_scsi = None
-    self.is_usb = None
-    self.bus = None
+    self.bus_type = None
     self.vendor = ""
     self.model_name = ""
     self.serial_no = ""
@@ -292,8 +306,7 @@ class Disk:
     self.smart = False
     self.smart_enabled = False
 
-    # These two will be redesigned. Need a better way.
-    self.is_usb3 = False
+    # This will be redesigned. Need a better way.
     self.usb_driver = None
     self.connection_speed_mbps = None
     self.storage_property = None
@@ -303,12 +316,18 @@ class Disk:
     """This is for testing pplan. Do not use this for anything else"""
     self.byte_size = size
     pass
-    
+
+  @property
+  def is_usb3(self) -> bool:
+    return (self.bus_type == BusType.USB
+            and bool(self.connection_speed_mbps)
+            and self.connection_speed_mbps >= 5000)
+
   def get_storage_property(self) -> StorageProperty:
     """provides the property of storage device for estimation."""
 
     if self.storage_property == None:
-      if self.is_usb:
+      if self.bus_type == BusType.USB:
         if self.usb_driver == "uas":
           self.storage_property = usb3_disk if self.is_usb3 else usb2_disk
           pass
@@ -438,8 +457,7 @@ class Disk:
     #
     # I'm going to be optimistic here since the user can pick a disk
     self.is_disk = False
-    self.is_ata_or_scsi = False
-    self.is_usb = False
+    self.bus_type = None
 
     out = ""
     err = ""
@@ -480,16 +498,23 @@ class Disk:
         if value is None:
           continue
         if tag == "ID_BUS":
-          if value.lower() == "ata" or value.lower() == "scsi":
-            self.is_ata_or_scsi = True
+          if value.lower() == "ata":
+            self.bus_type = BusType.ATA
+            pass
+          elif value.lower() == "scsi":
+            self.bus_type = BusType.SCSI
             pass
           elif value.lower() == "usb":
-            self.is_usb = True
+            self.bus_type = BusType.USB
             pass
           pass
         elif tag == "DEVPATH":
-          if value.find('/usb') >= 0:
-            self.is_usb = True
+          if value.find('/nvme/') >= 0:
+            self.bus_type = BusType.NVME
+            pass
+          elif value.find('/usb') >= 0:
+            self.bus_type = BusType.USB
+            pass
           pass
         elif tag == "ID_TYPE":
           if value.lower() == "disk":
@@ -507,7 +532,7 @@ class Disk:
           pass
         elif tag == "ID_USB_DRIVER":
           self.usb_driver = value
-          self.is_usb = True
+          self.bus_type = BusType.USB
           pass
         elif tag == "ID_ATA_FEATURE_SET_SMART":
           self.smart = (value == '1')
@@ -520,17 +545,16 @@ class Disk:
 
       devpath = props.get('DEVPATH')
       if devpath:
-        if devpath.find('/nvme/') >= 0:
-          self.connection_speed_mbps = _detect_nvme_speed_mbps(os.path.basename(self.device_name))
+        if self.bus_type == BusType.NVME:
+          self.connection_speed_mbps = _detect_nvme_speed_mbps(os.path.basename(self.device_name)) or NVME_MIN_SPEED_MBPS
           pass
-        elif self.is_usb:
+        elif self.bus_type == BusType.USB:
           self.connection_speed_mbps = _detect_usb_speed_mbps(devpath)
           pass
-        elif self.is_ata_or_scsi:
+        elif self.bus_type in (BusType.ATA, BusType.SCSI):
           self.connection_speed_mbps = _detect_sata_speed_mbps(devpath)
           pass
         pass
-      self.is_usb3 = bool(self.is_usb and self.connection_speed_mbps and self.connection_speed_mbps >= 5000)
       pass
     else:
       self.is_disk = False
@@ -542,7 +566,7 @@ class Disk:
       tlog.info(" ".join(cmd) + ":\n" + err)
       pass
 
-    if self.is_usb:
+    if self.bus_type == BusType.USB:
       tlog.debug("detect_disk: %s uses '%s' usb driver" % (self.device_name, str(self.usb_driver)))
       pass
     return self.is_disk
@@ -592,6 +616,14 @@ class Nvme(Disk):
 
     # Since it's coming back from nvme list command,
     # it must be a nvme disk, and detected.
+    self.bus_type = BusType.NVME
+    # This never goes through detect_disk_type(), so connection_speed_mbps
+    # would otherwise stay None forever - read it from sysfs same as the
+    # udevadm-detected path does, falling back to the slowest plausible
+    # PCIe link (Gen1 x1) if sysfs doesn't have it.
+    if self.device_name:
+      self.connection_speed_mbps = _detect_nvme_speed_mbps(os.path.basename(self.device_name)) or NVME_MIN_SPEED_MBPS
+      pass
     if prop:
       self.is_disk = True
       self.is_detected = True
@@ -921,7 +953,7 @@ class PartitionLister:
     self.out = ""
     pass
   
-  def execute(self):
+  def execute(self) -> "PartitionLister":
     self.parted = subprocess.run(self.argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     self.out = self.parted.stdout.decode('iso-8859-1')
     self.err = self.parted.stderr.decode('iso-8859-1')
@@ -929,7 +961,7 @@ class PartitionLister:
     tlog.debug("Lister " + " ".join([ '%s' % arg for arg in self.argv]))
     tlog.debug(self.out)
     tlog.debug(self.err)
-    pass
+    return self
 
   def set_parted_output(self, out, err):
     self.parted = None
