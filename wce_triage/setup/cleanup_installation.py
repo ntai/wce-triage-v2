@@ -133,7 +133,7 @@ desktop_packages = {
 
 
 def get_ubuntu_release():
-  release_re = re.compile( 'DISTRIB_RELEASE\s*=\s*(\d+\.\d+)' )
+  release_re = re.compile(r'DISTRIB_RELEASE\s*=\s*(\d+\.\d+)' )
   with open('/etc/lsb-release') as lsb_release_fd:
     for line in lsb_release_fd.readlines():
       result = release_re.search(line)
