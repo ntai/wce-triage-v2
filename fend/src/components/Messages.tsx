@@ -1,12 +1,19 @@
 import React, { Component } from 'react';
 import Box from "@mui/material/Box";
 import Checkbox from "@mui/material/Checkbox";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import Button from "@mui/material/Button";
 import FormControl from "@mui/material/FormControl";
+import IconButton from "@mui/material/IconButton";
 import InputLabel from "@mui/material/InputLabel";
 import ListItemText from "@mui/material/ListItemText";
 import MenuItem from "@mui/material/MenuItem";
 import OutlinedInput from "@mui/material/OutlinedInput";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
+import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { DataGrid, GridColDef, GridPaginationModel, GridSortModel, GridFilterModel } from '@mui/x-data-grid';
 import {sweetHome} from '../looseend/home'
 import {socket} from './common/socket';
@@ -28,6 +35,7 @@ type DisplayEntry = {
   level?: string;
   source?: string;
   message: string;
+  data?: Record<string, unknown>;
 }
 
 const TYPE_COLORS: Record<LogEventType, string> = {
@@ -59,6 +67,7 @@ type MessagesStateType = {
   paginationModel: GridPaginationModel;
   sortModel: GridSortModel;
   filterModel: GridFilterModel;
+  detailData: Record<string, unknown> | null;
 }
 
 export default class Messages extends Component<MessagesPropsType, MessagesStateType> {
@@ -73,6 +82,7 @@ export default class Messages extends Component<MessagesPropsType, MessagesState
       paginationModel: {page: 0, pageSize: 25},
       sortModel: [{field: 'timestamp', sort: 'desc'}],
       filterModel: {items: []},
+      detailData: null,
     }
     this.handleMessage = this.handleMessage.bind(this);
     this.handlePaginationModelChange = this.handlePaginationModelChange.bind(this);
@@ -80,6 +90,7 @@ export default class Messages extends Component<MessagesPropsType, MessagesState
     this.handleFilterModelChange = this.handleFilterModelChange.bind(this);
     this.handleTypesChange = this.handleTypesChange.bind(this);
     this.handleLevelsChange = this.handleLevelsChange.bind(this);
+    this.handleCloseDetail = this.handleCloseDetail.bind(this);
   }
 
   componentWillMount() {
@@ -132,6 +143,7 @@ export default class Messages extends Component<MessagesPropsType, MessagesState
         level: log.level ?? undefined,
         source: log.source ?? undefined,
         message: log.message ?? '',
+        data: log.data ?? undefined,
       }));
       this.setState({entries: entries, total: res.total});
     });
@@ -189,8 +201,16 @@ export default class Messages extends Component<MessagesPropsType, MessagesState
     this.setState({selectedLevels, paginationModel: {...this.state.paginationModel, page: 0}}, () => this.fetchMessages());
   }
 
+  handleOpenDetail(data: Record<string, unknown>) {
+    this.setState({detailData: data});
+  }
+
+  handleCloseDetail() {
+    this.setState({detailData: null});
+  }
+
   render() {
-    const {entries, total, sources, selectedTypes, selectedLevels, paginationModel, sortModel, filterModel} = this.state;
+    const {entries, total, sources, selectedTypes, selectedLevels, paginationModel, sortModel, filterModel, detailData} = this.state;
 
     const columns: GridColDef<DisplayEntry>[] = [
       {
@@ -231,6 +251,28 @@ export default class Messages extends Component<MessagesPropsType, MessagesState
         headerName: 'Message',
         flex: 1,
         sortable: false,
+      },
+      {
+        field: 'data',
+        headerName: 'Data',
+        flex: 1,
+        sortable: false,
+        filterable: false,
+        renderCell: (params) => {
+          const value = params.value as Record<string, unknown> | undefined;
+          if (!value) return null;
+          const json = JSON.stringify(value);
+          return (
+            <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, width: '100%', minWidth: 0}}>
+              <span style={{whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1}}>
+                {json}
+              </span>
+              <IconButton size="small" onClick={() => this.handleOpenDetail(value)}>
+                <OpenInFullIcon fontSize="inherit" />
+              </IconButton>
+            </Box>
+          );
+        },
       },
     ];
 
@@ -294,6 +336,20 @@ export default class Messages extends Component<MessagesPropsType, MessagesState
           pageSizeOptions={[10, 25, 50, 100]}
           showToolbar
         />
+        <Dialog open={detailData !== null} onClose={this.handleCloseDetail} maxWidth="md" fullWidth>
+          <DialogTitle>Data</DialogTitle>
+          <DialogContent dividers>
+            <Box
+              component="pre"
+              sx={{fontFamily: 'monospace', fontSize: 13, whiteSpace: 'pre-wrap', wordBreak: 'break-word', m: 0}}
+            >
+              {detailData ? JSON.stringify(detailData, null, 2) : ''}
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={this.handleCloseDetail}>Close</Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     );
   }

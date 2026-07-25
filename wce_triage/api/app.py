@@ -70,6 +70,11 @@ def route_version() -> JSONResponse:
       fversion = manifest.get('version', "1.0.0")
       pass
     pass
+  except FileNotFoundError:
+    from ..lib import get_triage_logger, get_triage_logger
+    tlog = get_triage_logger()
+    tlog.info('Reading %sshare/wce/wce-triage-ui/manifest.json does not exist')
+    pass
   except Exception as _exc:
     from ..lib import get_triage_logger, get_triage_logger
     tlog = get_triage_logger()
