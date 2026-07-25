@@ -186,8 +186,7 @@ def get_purge_dirs(release_version):
   # if os.environ.get('WCE_DESKTOP') == "true":
   #   dirs = dirs + get_package_list(desktop_dirs, release_version)
   #   pass
-  return dirs, release_version
-
+  return dirs
 
 
 if __name__ == "__main__":
