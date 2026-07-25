@@ -12,7 +12,6 @@ from wce_triage.ops.runner import Runner
 from .tasks import task_mount, task_unmount, task_remove_persistent_rules, task_finalize_disk, task_install_grub, \
   task_fetch_partitions, task_refresh_partitions
 
-from .ops_ui import console_ui
 from ..components.disk import create_storage_instance
 from ..lib.util import get_triage_logger
 from .json_ui import json_ui
@@ -108,7 +107,7 @@ def get_source_size(src):
 #
 def run_bless(ui, devname, newhostname, restore_type, do_it=True):
   '''Loading image to desk.
-     :ui: User interface - instance of ops_ui
+     :ui: User interface - instance of json_ui
      :devname: Restroing device name
      :newhostname: New host name assigned to the restored disk. ORIGINAL and RANDOM are special host name.
      :restore_type: dictionary describing the restore parameter. should come from .disk_image_type.json in the image file directory.
@@ -223,14 +222,9 @@ if __name__ == "__main__":
   parser.add_argument("restore_type", help="Restore type. This can be a path to the disk image metadata file or a keyword.")
   parser.add_argument("-m", "--hostname", help="new hostname. two keyword can be used for hostname. RANDOM and ORIGINAL")
   parser.add_argument("-p", "--preflight", action="store_true", help="Does preflight only.")
-  parser.add_argument("-c", "--cli", action="store_true", help="Creates console UI instead of JSON UI for testing.")
 
   args = parser.parse_args()
-  if args.cli:
-    ui = console_ui()
-  else:
-    ui = json_ui(wock_event="loadimage", message_catalog=my_messages)
-    pass
+  ui = json_ui(wock_event="loadimage", message_catalog=my_messages)
 
   restore_type = args.restore_type
 

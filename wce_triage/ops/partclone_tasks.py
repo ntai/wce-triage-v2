@@ -12,6 +12,7 @@ import datetime, re
 import sys
 
 from .tasks import op_task_process
+from .protocol import DriverEvent, DriverEventType, split_lines
 from ..lib.timeutil import in_seconds
 from ..lib.util import get_triage_logger
 from ..lib.disk_images import get_file_system_from_source
@@ -24,11 +25,11 @@ tlog = get_triage_logger()
 class task_partclone(op_task_process):
   t0 = datetime.datetime.strptime('00:00:00', '%H:%M:%S')
 
-  # This needs to match with process driver's output format.
-  progress0_re = re.compile(r'partclone\.stderr:\w+: (\d\d:\d\d:\d\d), \w+: (\d\d:\d\d:\d\d), \w+:\s+(\d+\.\d*)%,\s+[^\/]+/min,')
-  progress1_re = re.compile(r'partclone\.stderr:\w+ block:\s+(\d+), \w+ block:\s+(\d+), \w+:\s+(\d+\.\d*)%')
-  output_re = re.compile(r'^\w+: partclone\.stderr:(.*)')
-  error_re = re.compile(r'^(\w+\.ERROR): (.*)')
+  # partclone's own progress text, carried verbatim in DriverEvent.line
+  # (process_driver.py no longer embeds a "<proc>.<stream>:" text prefix - proc/stream
+  # are structured fields on the event instead)
+  progress0_re = re.compile(r'\w+: (\d\d:\d\d:\d\d), \w+: (\d\d:\d\d:\d\d), \w+:\s+(\d+\.\d*)%,\s+[^\/]+/min,')
+  progress1_re = re.compile(r'\w+ block:\s+(\d+), \w+ block:\s+(\d+), \w+:\s+(\d+\.\d*)%')
 
   def __init__(self, description, **kwargs):
     #
@@ -38,6 +39,13 @@ class task_partclone(op_task_process):
     self.start_re = []
     # If we don't skip the superblock part, the progress is totally messed up
     self.start_re.append(re.compile(r'File system:\s+EXTFS'))
+
+    # Overwritten with a more accurate value once the "File system: EXTFS"
+    # marker line is actually seen (see parse_partclone_progress) - defaults
+    # to 0 (assume imaging started immediately) so progress0_re's branch has
+    # a value to use even if that one-shot marker line never arrives (it can
+    # be dropped by DriverEmitter's coalescing - see parse_partclone_progress).
+    self.imaging_start_seconds = 0
 
     # 15 - fudge - partclone needs "disk sync" time
     self.fudge = kwargs.get('fudge', 15)
@@ -50,20 +58,36 @@ class task_partclone(op_task_process):
 
   def parse_partclone_progress(self):
     #
-    # Check the progress. driver prints everything to stderr
+    # Check the progress. driver prints everything to stderr, as DriverEvent NDJSON.
     #
     if len(self.err) == 0:
       return
-    
-    # look for a line
-    while True:
-      newline = self.err.find('\n')
-      if newline < 0:
-        break
 
-      line = self.err[:newline]
-      self.err = self.err[newline+1:]
+    lines, self.err = split_lines(self.err)
+    for raw_line in lines:
+      if not raw_line:
+        continue
       current_time = datetime.datetime.now()
+
+      try:
+        event = DriverEvent.model_validate_json(raw_line)
+      except Exception:
+        continue
+
+      # Other processes in the pipeline (wget, decompressor) are not partclone's own progress.
+      if event.proc != "partclone":
+        continue
+
+      if event.type == DriverEventType.error:
+        if event.line:
+          self.verdict.append(event.line)
+          pass
+        continue
+
+      if event.type != DriverEventType.line:
+        continue
+
+      line = event.line or ""
 
       # Look for the EXT parition cloning start marker
       while len(self.start_re) > 0:
@@ -77,34 +101,31 @@ class task_partclone(op_task_process):
           pass
         pass
 
-      # passed the start marker
+      # progress0_re's shape ("HH:MM:SS, HH:MM:SS, N%,") never appears in
+      # partclone's startup banner, so there's no real risk of a false match
+      # here - this used to be gated on len(self.start_re) == 0, but that
+      # made the whole progress feed depend on the one-shot "File system:
+      # EXTFS" marker line surviving DriverEmitter's coalescing (which
+      # collapses every "line" event sharing a (proc, stream) key down to
+      # the latest one per ~100ms window - partclone's banner lines land
+      # close enough together that the marker can lose that race and never
+      # arrive at all, permanently stalling time_estimate).
+      m = self.progress0_re.search(line)
+      if m:
+        elapsed = m.group(1)
+        remaining = m.group(2)
+        # completed = float(m.group(3))
 
-      if len(self.start_re) == 0:
-        m = self.progress0_re.search(line)
-        if m:
-          elapsed = m.group(1)
-          remaining = m.group(2)
-          # completed = float(m.group(3))
+        dt_elapsed = datetime.datetime.strptime(elapsed, '%H:%M:%S') - self.t0
+        dt_remaining = datetime.datetime.strptime(remaining, '%H:%M:%S') - self.t0
 
-          dt_elapsed = datetime.datetime.strptime(elapsed, '%H:%M:%S') - self.t0
-          dt_remaining = datetime.datetime.strptime(remaining, '%H:%M:%S') - self.t0
-
-          self.set_time_estimate(self.imaging_start_seconds + in_seconds(dt_elapsed) + in_seconds(dt_remaining) + self.fudge)
-          # Unfortunately, "completed" from partclone for usb stick is totally bogus.
-          dt = current_time - self.start_time
-          self.set_progress(self._estimate_progress_from_time_estimate(dt.total_seconds()), "elapsed: %s remaining: %s" % (elapsed, remaining))
-          pass
-        else:
-          m = self.output_re.match(line)
-          if m:
-            self.message = m.group(1)
-            pass
-
-          m = self.error_re.match(line)
-          if m:
-            self.verdict.append(m.group(2))
-            pass
-          pass
+        self.set_time_estimate(self.imaging_start_seconds + in_seconds(dt_elapsed) + in_seconds(dt_remaining) + self.fudge)
+        # Unfortunately, "completed" from partclone for usb stick is totally bogus.
+        dt = current_time - self.start_time
+        self.set_progress(self._estimate_progress_from_time_estimate(dt.total_seconds()), "elapsed: %s remaining: %s" % (elapsed, remaining))
+        pass
+      elif line.strip():
+        self.message = line.strip()
         pass
       pass
     pass
@@ -177,21 +198,37 @@ class task_restore_disk_image(task_partclone):
   # ignore parsing partclone progress. for restore, it is 100$ wrong.
   def parse_partclone_progress(self):
     #
-    # Check the progress.
+    # Check the progress. driver prints everything to stderr, as DriverEvent NDJSON.
     #
     if len(self.err) == 0:
       return
-    
-    # look for a line
-    while True:
-      newline = self.err.find('\n')
-      if newline < 0:
-        break
-      line = self.err[:newline]
-      self.err = self.err[newline+1:]
+
+    lines, self.err = split_lines(self.err)
+    for raw_line in lines:
+      if not raw_line:
+        continue
       current_time = datetime.datetime.now()
 
+      try:
+        event = DriverEvent.model_validate_json(raw_line)
+      except Exception:
+        continue
+
+      if event.proc != "partclone":
+        continue
+
+      if event.type == DriverEventType.error:
+        if event.line:
+          self.verdict.append(event.line.strip())
+          pass
+        continue
+
+      if event.type != DriverEventType.line:
+        continue
+
+      line = event.line or ""
       tlog.debug("partclone: %s" % line)
+
       # Look for the EXT parition cloning start marker
       while len(self.start_re) > 0:
         m = self.start_re[0].search(line)
@@ -204,55 +241,40 @@ class task_restore_disk_image(task_partclone):
           pass
         pass
 
-      # passed the start marker
-      if len(self.start_re) == 0:
-        m = self.progress1_re.search(line)
-        if m:
-          self.percent_done = m.group(1)
-          dt = current_time - self.start_time
-          # self.set_progress(self._estimate_progress_from_time_estimate(dt.total_seconds()), "elapsed: %s remaining: %s" % (elapsed, remaining))
-          percent = self._estimate_progress_from_time_estimate(dt.total_seconds())
-          try:
-            percent = min(float(m.group(3)), 99)
-            if percent > 10:
-              sofar = percent/100
-              # Progress coming back from partclone is always super optimistic
-              # it doesn't include the cache flushing at the end. In other word, it
-              # is reporting how much input it got, not how much it is written to the
-              # destination.
-              fudge = (1.05 + 0.1 * (1-sofar))
-              # This will still overestimate a lot but probably okay
-              new_estimate = sum([self.time_estimate, (in_seconds(dt) / sofar) * fudge])/2
-              self.set_time_estimate(new_estimate)
-              percent = self._estimate_progress_from_time_estimate(dt.total_seconds())
-              pass
-            pass
-          except:
-            pass
-          current_block = m.group(1)
-          total_blocks = m.group(2)
-          block_percent = round(float(current_block) / float(total_blocks) * 100.0, 1)
-          self.set_progress(percent, "{progress}% done - {current} of {total} blocks completed.".format(progress=block_percent, current=current_block, total=total_blocks))
-          pass
-
-        m = self.progress0_re.search(line)
-        if m:
-          tlog.debug(line.strip())
-          pass
-        else:
-          m = self.output_re.match(line)
-          if m:
-            msg = m.group(1).strip()
-            if msg:
-              tlog.debug(msg)
-              pass
-            pass
-
-          m = self.error_re.match(line)
-          if m:
-            self.verdict.append(m.group(2).strip())
+      # progress1_re's shape ("N block:, M block:, X%") never appears in
+      # partclone's startup banner, so there's no false-match risk here -
+      # see the matching comment on task_partclone.parse_partclone_progress
+      # for why this is no longer gated on len(self.start_re) == 0.
+      m = self.progress1_re.search(line)
+      if m:
+        self.percent_done = m.group(1)
+        dt = current_time - self.start_time
+        # self.set_progress(self._estimate_progress_from_time_estimate(dt.total_seconds()), "elapsed: %s remaining: %s" % (elapsed, remaining))
+        percent = self._estimate_progress_from_time_estimate(dt.total_seconds())
+        try:
+          percent = min(float(m.group(3)), 99)
+          if percent > 10:
+            sofar = percent/100
+            # Progress coming back from partclone is always super optimistic
+            # it doesn't include the cache flushing at the end. In other word, it
+            # is reporting how much input it got, not how much it is written to the
+            # destination.
+            fudge = (1.05 + 0.1 * (1-sofar))
+            # This will still overestimate a lot but probably okay
+            new_estimate = sum([self.time_estimate, (in_seconds(dt) / sofar) * fudge])/2
+            self.set_time_estimate(new_estimate)
+            percent = self._estimate_progress_from_time_estimate(dt.total_seconds())
             pass
           pass
+        except:
+          pass
+        current_block = m.group(1)
+        total_blocks = m.group(2)
+        block_percent = round(float(current_block) / float(total_blocks) * 100.0, 1)
+        self.set_progress(percent, "{progress}% done - {current} of {total} blocks completed.".format(progress=block_percent, current=current_block, total=total_blocks))
+        pass
+      elif line.strip():
+        tlog.debug(line.strip())
         pass
       pass
     pass

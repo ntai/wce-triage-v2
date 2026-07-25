@@ -5,11 +5,13 @@ This reads the partition map using parted and figures out the size of copy.
 If there is no partition, then this is no go.
 """
 
-import os, sys, datetime, json
+import os, sys, datetime
 import typing
 
 from ..lib.timeutil import in_seconds
 from ..components.disk import DiskPortal, PartitionLister
+from ..ops.run_state import RunState
+from ..ops.protocol import ProgressReport, ProgressEnvelope
 import threading
 import io
 import queue
@@ -17,7 +19,6 @@ import mmap
 
 def handler_stop_signals(signum: int, _frame: typing.Any) -> None:
   global running
-  running: bool
   running = False
   pass
 
@@ -61,14 +62,15 @@ class RawWriter(threading.Thread):
   pass
 
 class ProgressReporter:
-  def __init__(self, total_size, output=sys.stdout):
+  def __init__(self, total_size, output=sys.stdout, key="binarycopy"):
     self.start_time = datetime.datetime.now()
     self.report_time = self.start_time
     self.current_time = None
     self.total_size = total_size
     self.output = output
+    self.key = key
     pass
-  
+
   def maybe_report(self, size_done):
     self.current_time = datetime.datetime.now()
     dt_last_report = self.current_time - self.report_time
@@ -85,15 +87,17 @@ class ProgressReporter:
     # Note that this is how much source is read, not written to destination.
     percentage_done = float(size_done) / float(self.total_size)
     progress = min(99, max(1, round(100*percentage_done)))
-    report = { "event": "binarycopy",
-               "message": {"runMessage": "%d of %d bytes copied." % (size_done, self.total_size),
-                           "startTime": self.start_time.isoformat(),
-                           "currentTime": self.current_time.isoformat(),
-                           "progress": progress,
-                           "runTime" : round(in_seconds(dt_elapsed)),
-                           "total_bytes": self.total_size,
-                           "remaining": self.total_size - size_done}}
-    print(json.dumps(report), file=self.output, flush=True)
+    report = ProgressReport(key=self.key,
+                             runStatus=RunState.Running,
+                             runMessage="%d of %d bytes copied." % (size_done, self.total_size),
+                             progress=progress,
+                             runTime=round(in_seconds(dt_elapsed)),
+                             totalBytes=self.total_size,
+                             remainingBytes=self.total_size - size_done,
+                             startTime=self.start_time,
+                             currentTime=self.current_time)
+    envelope = ProgressEnvelope(event="binarycopy", message=report)
+    print(envelope.model_dump_json(exclude_none=True), file=self.output, flush=True)
     pass
   pass
 

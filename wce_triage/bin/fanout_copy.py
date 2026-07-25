@@ -1,10 +1,11 @@
 #!/usr/bin/python3
 import io
-import os, sys, datetime, json, traceback, signal, stat
+import os, sys, datetime, traceback, signal, stat
 import threading
 from ..lib.util import get_triage_logger
 from ..lib.timeutil import in_seconds
-from ..ops.run_state import RunState, RUN_STATE
+from ..ops.run_state import RunState
+from ..ops.protocol import ProgressReport, ProgressEnvelope
 import queue
 import time
 import multiprocessing as mp
@@ -132,37 +133,37 @@ class fanout_copy:
       pass
     pass
 
-  def _report(self, report, current_time = None):
+  def _report(self, report: ProgressReport, current_time = None):
     if current_time is None:
       current_time = datetime.datetime.now()
       pass
     dt_elapsed = in_seconds(current_time - start_time)
-    report["startTime"] = start_time.isoformat()
-    report["currentTime"] = current_time.isoformat()
-    report["runTime"] = (in_seconds(dt_elapsed))
-    print(json.dumps(report), file=self.output, flush=True)
+    report.startTime = start_time
+    report.currentTime = current_time
+    report.runTime = in_seconds(dt_elapsed)
+    envelope = ProgressEnvelope(event="fanoutcopy", message=report)
+    print(envelope.model_dump_json(exclude_none=True), file=self.output, flush=True)
     pass
-  
 
-  def _report_error(self, report, **kwargs):
-    report["runStatus"] = RUN_STATE[RunState.Failed.value]
-    report["runEstimate"] = 0
-    report["totalBytes"] = 0
-    report["remainingBytes"] = 0
-    report["timeReamining"] = 0
-    report["progress"] = 999
+
+  def _report_error(self, key, destination, run_message, **kwargs):
+    report = ProgressReport(key=key, destination=destination,
+                             runStatus=RunState.Failed, runMessage=run_message,
+                             runEstimate=0, totalBytes=0, remainingBytes=0, progress=999)
     self._report(report, **kwargs)
     pass
 
-  def report_read_error(self, report, **kwargs):
-    report["runMessage"] = "Read failed. %d of %d bytes copied." % (self.sofar, self.source_file_size)
-    self._report_error(report, **kwargs)
+  def report_read_error(self, **kwargs):
+    run_message = "Read failed. %d of %d bytes copied." % (self.sofar, self.source_file_size)
+    for idx, key, filename, pipe, child in self.downstreams:
+      self._report_error(key, filename, run_message, **kwargs)
+      pass
     pass
 
 
-  def report_write_error(self, report, **kwargs):
-    report["runMessage"] = "Write failed. %d of %d bytes copied." % (self.sofar, self.source_file_size)
-    self._report_error(report, **kwargs)
+  def report_write_error(self, key, filename, **kwargs):
+    run_message = "Write failed. %d of %d bytes copied." % (self.sofar, self.source_file_size)
+    self._report_error(key, filename, run_message, **kwargs)
     pass
 
 
@@ -187,7 +188,7 @@ class fanout_copy:
       except Exception as exc:
         debuglog("Reader got an exception. " + traceback.format_exc())
         self.running = False
-        self.report_read_error({"filename": self.source_file})
+        self.report_read_error()
         continue
       pass
     self.writebufs.put(None)
@@ -226,8 +227,8 @@ class fanout_copy:
           except:
             debuglog("killing %d failed" % idx)
             pass
-          self.dead_child[idx] = (exc.format_exc(), self.sofar)
-          self.report_write_error({"filename": filename})
+          self.dead_child[idx] = (traceback.format_exc(), self.sofar)
+          self.report_write_error(key, filename)
           pass
         pass
 
@@ -253,7 +254,7 @@ class fanout_copy:
           except:
             debuglog("killing %d failed" % idx)
             pass
-          self.report_write_error({"filename": filename})
+          self.report_write_error(key, filename)
           pass
         pass
 
@@ -288,14 +289,14 @@ class fanout_copy:
 
     if run_state is RunState.Running:
       bytesCopied = self.sofar
-      run_message = "Copied %d of %d bytes. (%dMB/sec)" % (self.sofar, self.source_file_size, round(speed/(2**20), 1)),
+      run_message = "Copied %d of %d bytes. (%dMB/sec)" % (self.sofar, self.source_file_size, round(speed/(2**20), 1))
       percentage_done = float(self.sofar) / float(self.source_file_size)
       progress = min(99, max(1, round(100*percentage_done)))
       remaining_bytes = self.source_file_size - self.sofar
       time_remaining = remaining_bytes / speed
     elif run_state is RunState.Success:
       bytesCopied = self.source_file_size
-      run_message = "Copying completed (%d bytes copied.)" % (self.source_file_size),
+      run_message = "Copying completed (%d bytes copied.)" % (self.source_file_size)
       progress = 100
       remaining_bytes = 0
       time_remaining = 0
@@ -308,16 +309,14 @@ class fanout_copy:
       time_remaining = 0
       pass
 
-    report = {"key": key,
-              "totalBytes": bytesCopied,
-              "destination": dest_path,
-              "runStatus": RUN_STATE[run_state.value],
-              "runMessage": run_message,
-              "progress": progress,
-              "remainingBytes": remaining_bytes,
-              "runEstimate" : round(time_remaining+in_seconds(dt_elapsed))
-    }
-    return report
+    return ProgressReport(key=key,
+                           totalBytes=bytesCopied,
+                           destination=dest_path,
+                           runStatus=run_state,
+                           runMessage=run_message,
+                           progress=progress,
+                           remainingBytes=remaining_bytes,
+                           runEstimate=round(time_remaining+in_seconds(dt_elapsed)))
   
     
   def reporter(self):

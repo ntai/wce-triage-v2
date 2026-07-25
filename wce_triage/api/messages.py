@@ -17,10 +17,10 @@ class MessageDispatch(ModelDispatch):
     return super().dispatch({"message": update, "severity": 1})
 
   def note(self, message):
-    return self.dispatch({"message": message, "severity": 1})
+    return super().dispatch({"message": message, "severity": 1})
 
   def error(self, message):
-    return self.dispatch({"message": message, "severity": 2})
+    return super().dispatch({"message": message, "severity": 2})
 
 
 class ErrorDispatch(ModelDispatch):

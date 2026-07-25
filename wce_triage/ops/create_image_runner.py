@@ -9,7 +9,6 @@ from .tasks import (task_fetch_partitions, task_refresh_partitions, task_mount, 
                     task_remove_logs, task_fsck, task_shrink_partition, task_expand_partition, task_unmount,
                     task_remove_triage_home_cache)
 from .partclone_tasks import task_create_disk_image
-from .ops_ui import console_ui
 from ..components.disk import create_storage_instance
 from .runner import Runner
 from ..lib.disk_images import make_disk_image_name
@@ -93,16 +92,9 @@ if __name__ == "__main__":
   # Preflight is for me to see the tasks. http server runs this with json_ui.
   do_it = True
   if destdir == "preflight":
-    ui = console_ui()
     do_it = False
     pass
-  elif destdir == "testflight":
-    ui = console_ui()
-    do_it = True
-    pass
-  else:
-    ui = json_ui(wock_event="saveimage", message_catalog=my_messages)
-    pass
+  ui = json_ui(wock_event="saveimage", message_catalog=my_messages)
 
   if re.match(part, r'\d+'):
     part = int(part)
