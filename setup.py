@@ -38,7 +38,7 @@ setuptools.setup(
   install_requires=[
     'aiohttp==3.6.2',
     'aiohttp-cors==0.7.0',
-    'Flask==3.0.2',
+    'Flask==3.1.3',
     'Flask-CLI==0.4.0',
     'Flask-Cors==3.0.10',
     'Flask-SocketIO==5.3.6',
