@@ -26,8 +26,8 @@ if __name__ == "__main__":
            # 'install_chrome',
            # Install triage software and services
            'install_assets',
-           ('install_wce_triage', ["18.04", "20.04", "22.04"]),
-           ('install_wce_kiosk' ["18.04", "20.04", "22.04"]),
+           ('install_wce_triage', ["18.04", "20.04", "22.04", "24.04", "26.04"]),
+           ('install_wce_kiosk', ["18.04", "20.04", "22.04"]),
            # Install non-snap (aka pkg) Firefox
            'install_firefox',
            'install_sound',
