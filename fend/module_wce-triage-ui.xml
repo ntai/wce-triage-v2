@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="module_wce-triage-ui" default="compile.module.wce-triage-ui">
+  <dirname property="module.wce-triage-ui.basedir" file="${ant.file.module_wce-triage-ui}"/>
+  
+  <property name="module.jdk.home.wce-triage-ui" value=""/>
+  <property name="module.jdk.bin.wce-triage-ui" value=""/>
+  <property name="module.jdk.classpath.wce-triage-ui" value=""/>
+  
+  <property name="compiler.args.wce-triage-ui" value="-encoding UTF-8 -source 12 -target 12 ${compiler.args}"/>
+  
+  <property name="wce-triage-ui.output.dir" value="${module.wce-triage-ui.basedir}/out/production/wce-triage-ui"/>
+  <property name="wce-triage-ui.testoutput.dir" value="${module.wce-triage-ui.basedir}/out/test/wce-triage-ui"/>
+  
+  <path id="wce-triage-ui.module.bootclasspath">
+    <!-- Paths to be included in compilation bootclasspath -->
+  </path>
+  
+  <path id="wce-triage-ui.module.production.classpath"/>
+  
+  <path id="wce-triage-ui.runtime.production.module.classpath">
+    <pathelement location="${wce-triage-ui.output.dir}"/>
+  </path>
+  
+  <path id="wce-triage-ui.module.classpath">
+    <pathelement location="${wce-triage-ui.output.dir}"/>
+  </path>
+  
+  <path id="wce-triage-ui.runtime.module.classpath">
+    <pathelement location="${wce-triage-ui.testoutput.dir}"/>
+    <pathelement location="${wce-triage-ui.output.dir}"/>
+  </path>
+  
+  
+  <patternset id="excluded.from.module.wce-triage-ui">
+    <patternset refid="ignored.files"/>
+  </patternset>
+  
+  <patternset id="excluded.from.compilation.wce-triage-ui">
+    <patternset refid="excluded.from.module.wce-triage-ui"/>
+  </patternset>
+  
+  
+  <target name="compile.module.wce-triage-ui" depends="compile.module.wce-triage-ui.production,compile.module.wce-triage-ui.tests" description="Compile module wce-triage-ui"/>
+  
+  <target name="compile.module.wce-triage-ui.production" depends="register.custom.compilers" description="Compile module wce-triage-ui; production classes"/>
+  
+  <target name="compile.module.wce-triage-ui.tests" depends="register.custom.compilers,compile.module.wce-triage-ui.production" description="compile module wce-triage-ui; test classes" unless="skip.tests"/>
+  
+  <target name="clean.module.wce-triage-ui" description="cleanup module">
+    <delete dir="${wce-triage-ui.output.dir}"/>
+    <delete dir="${wce-triage-ui.testoutput.dir}"/>
+  </target>
+</project>

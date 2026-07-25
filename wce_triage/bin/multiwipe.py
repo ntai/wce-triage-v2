@@ -1,10 +1,11 @@
 #!/usr/bin/python3
 
-import os, sys, datetime, json, traceback, signal, subprocess
+import os, sys, datetime, traceback, signal, subprocess
 import threading
 from ..lib.util import get_triage_logger
 from ..lib.timeutil import in_seconds
-from ..ops.run_state import RunState, RUN_STATE
+from ..ops.run_state import RunState
+from ..ops.protocol import ProgressReport, ProgressEnvelope
 import time
 
 start_time = datetime.datetime.now()
@@ -89,14 +90,6 @@ n_sectors: number of sectors.
     self.running = False
     pass
 
-  def _report(self):
-    report = { "device": self.dest,
-               "totalSectors": self.n_sectors,
-               "n_written": self.n_written,
-               "running": self.running}
-    return report
-    pass
-  
   pass
 
 
@@ -118,48 +111,40 @@ class Reporter(threading.Thread):
       n_running = 0
 
       for wiper in self.wipers:
-        report = wiper._report()
-      
-        report["startTime"] = start_time.isoformat()
-        report["currentTime"] = current_time.isoformat()
-        report["runTime"] = round(dt_duration, 1)
-
-        running = report['running']
-        n_sectors = report['totalSectors']
-        n_written = report['n_written']
+        n_sectors = wiper.n_sectors
+        n_written = wiper.n_written
+        running = wiper.running
 
         if running:
           n_running += 1
           percentage_done = float(n_written) / float(n_sectors)
           progress = min(99, max(1, round(100*percentage_done)))
-          report["progress"] = progress
-          report["runMessage"] = "%d of %d sectors wiped." % (n_written, n_sectors)
-          report["runStatus"] = RUN_STATE[RunState.Running.value]
+          run_message = "%d of %d sectors wiped." % (n_written, n_sectors)
+          run_status = RunState.Running
           speed = float(n_written) / dt_duration
-          time_reamining = float(n_sectors - n_written) / max(4096, speed)
-          report["timeReamining"] = round(time_reamining)
-          report["remainingSectors"] = n_sectors - n_written
-          report["runEstimate"] = round(dt_duration + time_reamining, 1)
+          time_remaining = float(n_sectors - n_written) / max(4096, speed)
+          remaining_sectors = n_sectors - n_written
+          run_estimate = round(dt_duration + time_remaining, 1)
         else:
           if n_written == n_sectors:
-            run_state = RunState.Success
+            run_status = RunState.Success
             progress = 100
-            report["runMessage"] = "Wipe completed. (%d of %d sectors)" % (n_written, n_sectors)
+            run_message = "Wipe completed. (%d of %d sectors)" % (n_written, n_sectors)
           else:
-            run_state = RunState.Failed
+            run_status = RunState.Failed
             progress = 999
-            report["runMessage"] = "Wipe failed. (%d of %d sectors)" % (n_written, n_sectors)
+            run_message = "Wipe failed. (%d of %d sectors)" % (n_written, n_sectors)
             pass
-
-          report["runStatus"] = RUN_STATE[run_state.value]
-          report["progress"] = progress
-          report["timeReamining"] = 0
-          report["remainingSectors"] = 0
-          report["runEstimate"] = round(dt_duration, 1)
+          remaining_sectors = 0
+          run_estimate = round(dt_duration, 1)
           pass
 
-        msg = { "event": "zerowipe", "message": report }
-        print(json.dumps(msg), file=self.output, flush=True)
+        report = ProgressReport(key=wiper.dest, runStatus=run_status, runMessage=run_message,
+                                 progress=progress, runTime=round(dt_duration, 1), runEstimate=run_estimate,
+                                 totalSectors=n_sectors, writtenSectors=n_written, remainingSectors=remaining_sectors,
+                                 startTime=start_time, currentTime=current_time)
+        envelope = ProgressEnvelope(event="zerowipe", message=report)
+        print(envelope.model_dump_json(exclude_none=True), file=self.output, flush=True)
         pass
 
       if n_running == 0:

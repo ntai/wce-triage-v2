@@ -1,13 +1,15 @@
 import sys
 import typing
 from typing import Optional
-from fastapi import status
+from fastapi import HTTPException, status
 
 from .. import op_sync
 from ..models import ModelDispatch
-from ..internal.process_runner import SimpleProcessRunner
+from ..internal.process_runner import SimpleProcessRunner, ProcessRunnerMeta
+from ..server import server
 
 from ...lib import get_triage_logger
+from ...ops.protocol import OperationProgress
 
 
 #
@@ -21,17 +23,17 @@ class SyncCommandRunner(SimpleProcessRunner):
   def __init__(self,
                stdout_dispatch: Optional[ModelDispatch] = None,
                stderr_dispatch: Optional[ModelDispatch] = None,
-               meta=None):
+               meta: Optional[ProcessRunnerMeta] = None):
     if not meta:
       meta = {"tag": "syncing"}
     super().__init__(stdout_dispatch=stdout_dispatch, stderr_dispatch=stderr_dispatch, meta=meta)
     pass
 
-  def queue_sync(self, image_files: list, target_disks: typing.List[str], clean=False):
+  def queue_sync(self, image_files: list, target_disks: typing.List[str], clean=False) -> OperationProgress:
     tlog = get_triage_logger()
     if len(target_disks) == 0:
       tlog.debug("SYNC: Sync target disk is none.")
-      return {}, status.HTTP_400_BAD_REQUEST
+      raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Sync target disk is none.")
 
     if clean:
       # clean
@@ -40,6 +42,6 @@ class SyncCommandRunner(SimpleProcessRunner):
       args = [sys.executable, '-m', 'wce_triage.ops.sync_image_runner', ",".join(target_disks)] + image_files
       pass
     self.queue(args, {"args": args})
-    return {}, status.HTTP_200_OK
+    return OperationProgress(**server._sync_image.model.data)
 
   pass

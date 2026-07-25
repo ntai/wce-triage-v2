@@ -1,0 +1,25 @@
+.ReactTable input.checkbox {
+    -webkit-appearance: checkbox;
+    appearance: auto;
+}
+
+.react-resizable{
+    max-width: 100%;
+}
+
+.react-dropdown-select-dropdown {
+    overflow: initial;
+}
+
+.btn {
+  margin: 0rem 0.5rem;
+}
+
+.preformat {
+    white-space: pre;
+}
+
+
+.twist-icon {
+    padding: 4px 4px;
+}

@@ -2,8 +2,10 @@ from typing import Optional
 from fastapi import status
 
 from ..models import ModelDispatch
-from ..internal.process_runner import SimpleProcessRunner
+from ..internal.process_runner import SimpleProcessRunner, ProcessRunnerMeta
+from ..server import server
 from ...components.disk import PartitionLister, Disk
+from ...ops.protocol import OperationProgress
 
 
 #
@@ -18,14 +20,14 @@ class UnmountCommandRunner(SimpleProcessRunner):
   def __init__(self,
                stdout_dispatch: Optional[ModelDispatch] = None,
                stderr_dispatch: Optional[ModelDispatch] = None,
-               meta=None):
+               meta: Optional[ProcessRunnerMeta] = None):
     unmount_meta = {"tag": "unmount"}
     if meta:
       unmount_meta.update(meta)
     super().__init__(stdout_dispatch=stdout_dispatch, stderr_dispatch=stderr_dispatch, meta=unmount_meta)
     pass
 
-  def queue_unmount(self, devices):
+  def queue_unmount(self, devices) -> OperationProgress:
     parts = [PartitionLister(Disk(device_name=device)).execute() for device in devices]
     part : PartitionLister
     for part in parts:
@@ -33,6 +35,6 @@ class UnmountCommandRunner(SimpleProcessRunner):
       args = ['umount'] + part_names
       self.queue(args, {"args": args, "devnames": ",".join(part_names)})
       pass
-    return {}, status.HTTP_200_OK
+    return OperationProgress(**server._unmount_disk.model.data)
 
   pass

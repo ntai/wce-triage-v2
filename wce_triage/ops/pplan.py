@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 #
 import typing
+from typing import List, Optional
+
+from pydantic import BaseModel
 
 from ..components.disk import Partition
 from ..const import const
@@ -10,31 +13,15 @@ EFI_PART_OPT ='boot,esp'
 BIOS_GRUB_OPT = 'bios_grub'
 
 
-class PartPlan:
-  attribs = ['no', 'name', 'filesys', 'start', 'size', 'partcode', 'flags', 'mkfs_opts']
-
-  def __init__(self, no, name, filesys, start, size, partcode, flags, mkfs_opts):
-    self.no = no
-    self.name = name
-    self.filesys = filesys
-    self.start = start
-    self.size = size # Size is in MiB
-    self.partcode = partcode
-    self.flags = flags
-    self.mkfs_opts = mkfs_opts
-    pass
-
-  def __get__(self, tag):
-    if tag not in self.attribs:
-      raise("NO %s!" % tag)
-    return super().__get__(tag)
-
-  def __set__(self, tag, value):
-    if tag not in self.attribs:
-      raise("NO %s!" % tag)
-    super().__set__(tag, value)
-    pass
-
+class PartPlan(BaseModel):
+  no: int
+  name: Optional[str] = None
+  filesys: Optional[str] = None
+  start: int = 0
+  size: int              # Size is in MiB; 0 means "flex" - size_partitions() fills in the remainder.
+  partcode: str
+  flags: Optional[str] = None
+  mkfs_opts: Optional[List[str]] = None
   pass
 
 
@@ -94,11 +81,11 @@ def make_efi_partition_plan(disk, ext4_version=None, efi_boot=False, partition_i
     partition_id = 'Linux'
     pass
 
-  pplan = [PartPlan(0, None, None, 0, 2, Partition.MBR, None, None),
-           PartPlan(1, 'BOOT',       None,         0,       32, Partition.BIOSBOOT, bios_part_opt, None),
-           PartPlan(2, EFI_NAME,     'fat32',      0,      512, Partition.UEFI,     efi_part_opt,  None),
-           PartPlan(3, 'SWAP',       'linux-swap', 0, swapsize, Partition.SWAP,     None,          None),
-           PartPlan(4, partition_id, 'ext4',       0,        0, Partition.EXT4,     None,          mkfs_opts) ]
+  pplan = [PartPlan(no=0, name=None,        filesys=None,         start=0, size=2,        partcode=Partition.MBR,      flags=None,          mkfs_opts=None),
+           PartPlan(no=1, name='BOOT',      filesys=None,         start=0, size=32,       partcode=Partition.BIOSBOOT, flags=bios_part_opt, mkfs_opts=None),
+           PartPlan(no=2, name=EFI_NAME,    filesys='fat32',      start=0, size=512,      partcode=Partition.UEFI,     flags=efi_part_opt,  mkfs_opts=None),
+           PartPlan(no=3, name='SWAP',      filesys='linux-swap', start=0, size=swapsize, partcode=Partition.SWAP,     flags=None,          mkfs_opts=None),
+           PartPlan(no=4, name=partition_id, filesys='ext4',      start=0, size=0,        partcode=Partition.EXT4,     flags=None,          mkfs_opts=mkfs_opts) ]
 
   return size_partitions(pplan, diskmbsize)
 
@@ -116,10 +103,10 @@ def make_traditional_partition_plan(disk, ext4_version=None, partition_id=None):
   bios_part_opt = 'boot'
   #efi_part_opt = None
 
-  pplan = [PartPlan(0, None,         None,         0,        2, Partition.MBR,      None, None),
-           PartPlan(1, 'BOOT', None, 0, 32, Partition.BIOSBOOT, BIOS_GRUB_OPT, None),
-           PartPlan(2, None,         'ext4',       0,        0, Partition.EXT4,     bios_part_opt, mkfs_opts),
-           PartPlan(3, None,         'linux-swap', 0, swapsize, Partition.SWAP,     None,          None) ]
+  pplan = [PartPlan(no=0, name=None, filesys=None,         start=0, size=2,        partcode=Partition.MBR,      flags=None,          mkfs_opts=None),
+           PartPlan(no=1, name='BOOT', filesys=None,       start=0, size=32,       partcode=Partition.BIOSBOOT, flags=BIOS_GRUB_OPT, mkfs_opts=None),
+           PartPlan(no=2, name=None, filesys='ext4',       start=0, size=0,        partcode=Partition.EXT4,     flags=bios_part_opt, mkfs_opts=mkfs_opts),
+           PartPlan(no=3, name=None, filesys='linux-swap', start=0, size=swapsize, partcode=Partition.SWAP,     flags=None,          mkfs_opts=None) ]
   return size_partitions(pplan, diskmbsize)
 
 
@@ -134,16 +121,16 @@ def make_usb_stick_partition_plan(disk, partition_id=None, ext4_version=None, ef
   mkfs_opts = _ext4_version_to_mkfs_opts(ext4_version)
 
   if efi_boot:
-    pplan = [PartPlan(0, None,         None,         0,        2, Partition.MBR,   None,         None),
+    pplan = [PartPlan(no=0, name=None,         filesys=None,    start=0, size=2,  partcode=Partition.MBR,      flags=None,         mkfs_opts=None),
              # For desktop and Windows, etc., the EFI partition is 512MiB but for USB stick,
              # it's only for installation. 32MiB is plenty big.
-             PartPlan(1, 'BOOT', None, 0, 32, Partition.BIOSBOOT, BIOS_GRUB_OPT, None),
-             PartPlan(2, EFI_NAME,     'fat32',      0,       32, Partition.UEFI,  EFI_PART_OPT, None),
-             PartPlan(3, partition_id, 'ext4',       0,        0, Partition.EXT4,  None,         mkfs_opts) ]
+             PartPlan(no=1, name='BOOT',       filesys=None,    start=0, size=32, partcode=Partition.BIOSBOOT, flags=BIOS_GRUB_OPT, mkfs_opts=None),
+             PartPlan(no=2, name=EFI_NAME,     filesys='fat32', start=0, size=32, partcode=Partition.UEFI,     flags=EFI_PART_OPT,  mkfs_opts=None),
+             PartPlan(no=3, name=partition_id, filesys='ext4',  start=0, size=0,  partcode=Partition.EXT4,     flags=None,          mkfs_opts=mkfs_opts) ]
   else:
-    pplan = [PartPlan(0, None,         None,         0,        2, Partition.MBR,   None,  None),
-             PartPlan(1, 'BOOT', None, 0, 32, Partition.BIOSBOOT, BIOS_GRUB_OPT, None),
-             PartPlan(2, partition_id, 'ext4',       0,        0, Partition.EXT4, 'boot', mkfs_opts) ]
+    pplan = [PartPlan(no=0, name=None,         filesys=None,   start=0, size=2,  partcode=Partition.MBR,      flags=None,          mkfs_opts=None),
+             PartPlan(no=1, name='BOOT',       filesys=None,   start=0, size=32, partcode=Partition.BIOSBOOT, flags=BIOS_GRUB_OPT, mkfs_opts=None),
+             PartPlan(no=2, name=partition_id, filesys='ext4', start=0, size=0,  partcode=Partition.EXT4,     flags='boot',        mkfs_opts=mkfs_opts) ]
     pass
   return size_partitions(pplan, diskmbsize)
 

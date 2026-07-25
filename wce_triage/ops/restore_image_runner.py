@@ -6,7 +6,6 @@ import sys, uuid, traceback, argparse, os, json
 
 from .tasks import task_fetch_partitions, task_refresh_partitions, task_set_fat_volume_id, task_fsck, task_set_ext_partition_uuid, task_mount, task_unmount, task_remove_persistent_rules, task_finalize_disk, task_install_grub, task_expand_partition, task_finalize_efi
 
-from .ops_ui import console_ui
 from .partition_runner import PartitionDiskRunner
 from ..components.video import detect_video_cards
 from ..components.disk import create_storage_instance
@@ -167,7 +166,7 @@ def get_source_size(src):
 #
 def run_load_image(ui, devname, imagefile, imagefile_size, efisrc, newhostname, restore_type, wipe, do_it=True):
   '''Loading image to desk.
-     :ui: User interface - instance of ops_ui
+     :ui: User interface - instance of json_ui
      :devname: Restroing device name
      :imagefile: compressed partclone image file
      :imagefile_size: Size of image file. If not known, 0 is used.
@@ -294,17 +293,12 @@ if __name__ == "__main__":
 
   parser.add_argument("-m", "--hostname", help="new hostname. two keyword can be used for hostname. RANDOM and ORIGINAL")
   parser.add_argument("-p", "--preflight", action="store_true", help="Does preflight only.")
-  parser.add_argument("-c", "--cli", action="store_true", help="Creates console UI instead of JSON UI for testing.")
   parser.add_argument("-w", "--fullwipe", action="store_true", help="wipes full disk before partitioning")
   parser.add_argument("--quickwipe", action="store_true", help="wipes first 1MB before partitioning, thus clearning the partition map.")
 
   args = parser.parse_args()
-  
-  if args.cli:
-    ui = console_ui()
-  else:
-    ui = json_ui(wock_event="loadimage", message_catalog=my_messages)
-    pass
+
+  ui = json_ui(wock_event="loadimage", message_catalog=my_messages)
 
   wipe = None
   if args.fullwipe:
