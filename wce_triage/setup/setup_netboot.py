@@ -196,6 +196,8 @@ TFTP_OPTIONS="--secure"
                      ('/boot/initrd.img', '/var/lib/netboot/wce/initrd.img')],
             "24.04": [('/boot/vmlinuz', '/var/lib/netboot/wce/vmlinuz'),
                      ('/boot/initrd.img', '/var/lib/netboot/wce/initrd.img')],
+            "26.04": [('/boot/vmlinuz', '/var/lib/netboot/wce/vmlinuz'),
+                      ('/boot/initrd.img', '/var/lib/netboot/wce/initrd.img')],
         }
         
         if os_version not in kernel_files:

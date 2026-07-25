@@ -32,7 +32,10 @@ ppa_list = {
   ],
   '24.04': [
     'ppa:ubuntu-mozilla-security/ppa',
-  ]
+  ],
+  '26.04': [
+    'ppa:ubuntu-mozilla-security/ppa',
+  ],
 }
 
 # python3-aiohttp python3-aiohttp-cors - triage backend.
@@ -130,6 +133,19 @@ base_packages = {
     'rtl8812au-dkms',
     'broadcom-sta-dkms',
   ],
+  '26.04': [
+    'iw',                       # for seeing wifi device list
+    'network-manager',          # connect to wifi through nmcli command
+    'xdg-utils',
+    'build-essential',
+    'overlayroot',
+    'ubuntu-restricted-extras',
+    'firmware-realtek-rtl8723cs-bt',
+    'r8125-dkms',
+    'r8168-dkms',
+    'rtl8812au-dkms',
+    'broadcom-sta-dkms',
+  ],
 }
 
 
@@ -161,6 +177,9 @@ xorg_packages = {
     'xserver-xorg-video-mga',
   ],
   '24.04': [
+    'xserver-xorg-video-mga',
+  ],
+  '26.04': [
     'xserver-xorg-video-mga',
   ]
 }
@@ -213,6 +232,8 @@ triage_kiosk_packages = {
   ],
   '24.04': for_server_minimal + [
   ],
+  '26.04': for_server_minimal + [
+  ],
 }
 
 # For existing triage server, these packages are needed.
@@ -260,6 +281,7 @@ server_packages = {
   '20.04': [],
   '22.04': [],
   '24.04': [],
+  '26.04': [],
 }
 
 
@@ -322,6 +344,7 @@ desktop_packages = {
   '22.04': [
   ],
   '24.04': [],
+  '26.04': [],
 }
 
 external_packages = {
@@ -342,8 +365,9 @@ external_packages = {
                          'https://drive.google.com/uc?export=download&id=1kuuSriqjDGBa9XgOctV4a5FkUOQ80A8Y']),
     ('./tertiary.deb', ['curl', '-L', '-o', 'tertiary.deb',
                         'https://drive.google.com/uc?export=download&id=1b_vbnKZcLBMfGbkSfrUkvPUin7U2LKAm']),
-  ]
-
+  ],
+  '24.04': [],
+  '26.04': [],
 }
   
 

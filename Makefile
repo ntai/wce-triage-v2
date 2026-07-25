@@ -1,4 +1,6 @@
-.PHONY: setup upload install manifest local run ui flask gu uflask
+.PHONY: setup upload install manifest local run ui flask gu uflask vm-connect
+
+VM_NAME ?= ubuntu-server
 
 PYPI_USER := $(shell echo $$PYPI_USERNAME)
 PYPI_PASSWORD := $(shell echo $$PYPI_PASSWORD)
@@ -59,3 +61,6 @@ run:
 
 ui:
 	rsync -av --delete ../wce-triage-ui/build/ ./wce_triage/ui/
+
+vm-connect:
+	virt-viewer --connect qemu:///system --wait ${VM_NAME}
