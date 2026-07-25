@@ -12,6 +12,10 @@ export type CpuInfo = components["schemas"]["CpuInfo"];
 export type ComponentDecision = components["schemas"]["ComponentDecision"];
 export type TriageUpdateEvent = components["schemas"]["TriageUpdateEvent"];
 export type RunState = components["schemas"]["RunState"];
+export type LogEntry = components["schemas"]["LogEntry"];
+export type LogEventType = components["schemas"]["LogEventType"];
+export type LogsResponse = components["schemas"]["LogsResponse"];
+export type LogFacets = components["schemas"]["LogFacets"];
 
 // The backend's "DiskImageType" schema describes a restore-type *catalog*
 // entry (id/filestem/catalogDirectory/partition_plan/...) - unrelated to

@@ -10,6 +10,7 @@ import traceback
 
 from .emitter import start_emitter_thread
 from ..lib import get_triage_logger
+from ..lib.log_store import install_sqlite_log_handler
 
 environ = os.environ
 wcedir = environ.get("wcedir")
@@ -22,6 +23,10 @@ ui_dir = share_ui_dir if os.path.exists(share_ui_dir) else os.path.join(os.path.
 
 tlog = get_triage_logger()
 tlog.setLevel(logging.DEBUG)
+# Only the main server process routes tlog through sqlite - subprocess
+# runners (python -m wce_triage.ops.*) keep using the plain-text rotating
+# file logger, untouched. See wce_triage/lib/log_store.py's module docstring.
+install_sqlite_log_handler(tlog)
 
 # Create a FastAPI instance
 app = FastAPI(docs_url="/docs")
@@ -78,6 +83,9 @@ def route_hello() -> JSONResponse:
   """Get the version number of backend"""
   # FIXME: Front end version is in manifest.
   return JSONResponse({"message": "world"})
+
+from .routers.logs import router as logs_router
+app.include_router(logs_router)
 
 from .routers.dispatch import router as dispatch_router
 app.include_router(dispatch_router, prefix='/dispatch')

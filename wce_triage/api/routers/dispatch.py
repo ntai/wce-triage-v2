@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 from fastapi import APIRouter, HTTPException, Query, status
 
 from pydantic import BaseModel
-from typing import List, Optional, Any
+from typing import List, Optional
 
 from .. import op_save
 from ..formatters import disk_info, optical_drive_info, network_device_status, DiskInfo, OpticalDriveInfo, DiskImageInfo, NetworkDeviceStatus, CpuInfo, DiskImageType
@@ -99,32 +99,6 @@ def route_music() -> FileResponse:
     server.update_component_decision({"component": "Sound"},
                                      {"result": True, "message": "Sound is tested."})
   return FileResponse(music_file, media_type=f"audio/{filetype}")
-
-
-class MessageDataType(BaseModel):
-  start: int
-  count: int
-  messages: Optional[List[str]] = None
-
-
-@router.get("/messages", operation_id="route_messages")
-def route_messages(
-    start: int = Query(default=0, ge=0),
-    count: int = Query(default=100, ge=1)
-) -> MessageDataType:
-  from ..messages import message_model
-  all_messages: List[Any] = message_model.data.get("message", [])
-
-  messages: List[str] = [message.get("message") for message in all_messages[start:start + count]]
-  return MessageDataType(start=start, count=count, messages=messages)
-
-
-@router.head("/messages", operation_id="route_messages_head")
-def route_messages_head(
-    start: int = Query(default=0, ge=0),
-    count: int = Query(default=100, ge=1)
-) -> MessageDataType:
-  return MessageDataType(start=start, count=count)
 
 
 class CpuInfoResponse(BaseModel):

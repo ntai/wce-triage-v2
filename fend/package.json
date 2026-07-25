@@ -8,6 +8,7 @@
     "@mui/icons-material": "^9.2.0",
     "@mui/material": "^9.2.0",
     "@mui/styles": "^6.4.8",
+    "@mui/x-data-grid": "^9.10.1",
     "@mui/x-tree-view": "^9.9.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",

@@ -44,6 +44,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Route Logs
+         * @description Browse the sqlite-backed operational log: generic log lines, user
+         *     messages/errors, progress reports, task plans, and command start/end.
+         */
+        get: operations["route_logs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logs/facets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Route Logs Facets */
+        get: operations["route_logs_facets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/dispatch/schema/disks-event": {
         parameters: {
             query?: never;
@@ -135,24 +173,6 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/dispatch/messages": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Route Messages */
-        get: operations["route_messages"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        /** Route Messages Head */
-        head: operations["route_messages_head"];
         patch?: never;
         trace?: never;
     };
@@ -917,6 +937,38 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** LogEntry */
+        LogEntry: {
+            /** Id */
+            id: number;
+            /** Timestamp */
+            timestamp: string;
+            type: components["schemas"]["LogEventType"];
+            /** Level */
+            level?: string | null;
+            /** Source */
+            source?: string | null;
+            /** Message */
+            message?: string | null;
+            /** Data */
+            data?: Record<string, never> | null;
+        };
+        /**
+         * LogEventType
+         * @enum {string}
+         */
+        LogEventType: "LOG" | "MESSAGE" | "ERROR" | "PROGRESS" | "PLAN" | "COMMAND_START" | "COMMAND_END";
+        /**
+         * LogFacets
+         * @description Distinct values seen in the log so far, for populating filter dropdown
+         *     options client-side. type/level are fixed/known sets (LogEventType, Python
+         *     logging levelnames) so only source - open-ended, e.g. logger names or
+         *     runner ids - actually needs to be queried.
+         */
+        LogFacets: {
+            /** Sources */
+            sources: string[];
+        };
         /**
          * LogMessageEvent
          * @description Payload for the 'message' socket event (UserMessages/ErrorMessages via
@@ -928,14 +980,16 @@ export interface components {
             /** Severity */
             severity: number;
         };
-        /** MessageDataType */
-        MessageDataType: {
+        /** LogsResponse */
+        LogsResponse: {
             /** Start */
             start: number;
             /** Count */
             count: number;
-            /** Messages */
-            messages?: string[] | null;
+            /** Total */
+            total: number;
+            /** Logs */
+            logs: components["schemas"]["LogEntry"][];
         };
         /** NetworkDeviceStatus */
         NetworkDeviceStatus: {
@@ -1116,6 +1170,64 @@ export interface operations {
             };
         };
     };
+    route_logs: {
+        parameters: {
+            query?: {
+                start?: number;
+                count?: number;
+                type?: components["schemas"]["LogEventType"][];
+                level?: string[];
+                source?: string[];
+                /** @description substring filter on message text */
+                q?: string | null;
+                sort?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    route_logs_facets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogFacets"];
+                };
+            };
+        };
+    };
     _disks_event_schema_dispatch_schema_disks_event_get: {
         parameters: {
             query?: never;
@@ -1212,70 +1324,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
-                };
-            };
-        };
-    };
-    route_messages: {
-        parameters: {
-            query?: {
-                start?: number;
-                count?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MessageDataType"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    route_messages_head: {
-        parameters: {
-            query?: {
-                start?: number;
-                count?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MessageDataType"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

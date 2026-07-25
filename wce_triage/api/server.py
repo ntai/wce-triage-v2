@@ -35,6 +35,7 @@ from ..const import const
 from ..ops.protocol import idle_operation_progress
 from .socket_protocol import ComponentDecision, TriageUpdateEvent
 from ..lib import get_triage_logger
+from ..lib.log_store import get_log_store, LogEventType
 
 wce_share_re = re.compile(const.wce_share + r'=([\w/.+\-_:?=@#*&\\%]+)')
 wce_payload_re = re.compile(const.wce_payload + r'=([\w.+\-_:?=@#*&\\%]+)')
@@ -294,8 +295,18 @@ class TriageServer(threading.Thread):
   def send_to_ui(self, event: str, message: dict):
     if isinstance(message, dict):
       message['_sequence_'] = self.emit_count
+      if event == "message":
+        etype = LogEventType.ERROR if message.get("severity") == 2 else LogEventType.MESSAGE
+        log_message = message.get("message", "")
+      elif message.get("report") == "tasks":
+        etype = LogEventType.PLAN
+        log_message = event
+      else:
+        etype = LogEventType.PROGRESS
+        log_message = event
+        pass
+      get_log_store().log(etype, log_message, source=event, data=message)
       pass
-    get_triage_logger().debug("send_to_ui: %s %s" % (event, repr(message)))
     self.emit_queue.put((event, message))
     # asyncio.run_coroutine_threadsafe(self.socketio.emit(event, message), asyncio.get_event_loop())
     pass

@@ -11,6 +11,7 @@ from .process_pipe_reader import ProcessPipeReader
 from ..models import ModelDispatch, Model
 from ..messages import UserMessages, ErrorMessages
 from ...lib import get_triage_logger
+from ...lib.log_store import get_log_store, LogEventType
 from ...ops.protocol import OperationProgress
 import json
 
@@ -74,6 +75,7 @@ class ProcessRunner(threading.Thread):
 
   def run_process(self, tag, args, context, result):
     self.logger.info("Start process: " + shlex.join(args))
+    get_log_store().log(LogEventType.COMMAND_START, "Start process: " + shlex.join(args), source=tag, data={"argv": args})
     try:
       self.process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL)
     except FileNotFoundError as exc:
@@ -100,6 +102,11 @@ class ProcessRunner(threading.Thread):
     except Exception as exc:
       self.error_message("%s: %s" % (tag, traceback.format_exc()))
       pass
+
+    get_log_store().log(LogEventType.COMMAND_END,
+                         "Process '%s' exited with %s" % (shlex.join(args), self.process.returncode if self.process else None),
+                         source=tag,
+                         data={"argv": args, "returncode": self.process.returncode if self.process else None})
 
     if self.process:
       cmd = shlex.join(args)
