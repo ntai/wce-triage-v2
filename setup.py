@@ -36,7 +36,7 @@ setuptools.setup(
             'wce_triage.ops',
             'wce_triage.setup'],
   install_requires=[
-    'aiohttp==3.6.2',
+    'aiohttp==3.14.1',
     'aiohttp-cors==0.7.0',
     'Flask==3.0.2',
     'Flask-CLI==0.4.0',
