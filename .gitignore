@@ -14,3 +14,5 @@ ui/
 wce_triage/ui/
 .idea/*
 /bootstrap
+/.venv/*
+/-

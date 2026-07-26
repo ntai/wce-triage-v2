@@ -145,6 +145,8 @@ base_packages = {
     'r8168-dkms',
     'rtl8812au-dkms',
     'broadcom-sta-dkms',
+    'firmware-carl9170',
+    'urfkill',
   ],
 }
 

@@ -26,13 +26,8 @@ uvicorn = "*"
 python-socketio = {extras = ["asyncio"], version = "*"}
 typing-extensions = "*"
 ruamel-yaml = "*"
-aiohttp = "*"
-aiohttp-cors = "*"
 pydantic = "*"
 
-
-[tool.poetry.group.dev.dependencies]
-mypy = "^1.9.0"
 
 [build-system]
 requires = ["poetry-core"]
