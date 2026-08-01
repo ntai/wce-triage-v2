@@ -32,4 +32,4 @@ sudo -H "$REPO_DIR/venv/bin/pip" install --upgrade pip
 # code, no reinstall needed.
 sudo -H "$REPO_DIR/venv/bin/pip" install -e "$REPO_DIR"
 
-"$REPO_DIR/venv/bin/python3" -m wce_triage.setup.install_wce_triage
+"$REPO_DIR/venv/bin/python3" -m wce_triage.setup.setup_triage_system

@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Create a QEMU/KVM virtual machine (via libvirt/virt-install) for Ubuntu Server.
+"""Create a QEMU/KVM virtual machine (via libvirt/virt-install) for Xubuntu.
 
-Downloads the official server ISO, verifies its SHA256 checksum, then hands
-off to `virt-install` to define and boot the VM. The VM is a normal libvirt
-domain, so it shows up in virt-manager immediately for GUI console access.
+Downloads the official Xubuntu desktop ISO, verifies its SHA256 checksum,
+then hands off to `virt-install` to define and boot the VM. The VM is a
+normal libvirt domain, so it shows up in virt-manager immediately for GUI
+console access. The ISO boots into a live desktop session - launch the
+"Install Xubuntu" icon from there to install.
 
 Requires: virt-install, qemu-kvm, libvirt (apt install virtinst qemu-kvm
 libvirt-daemon-system virt-manager).
@@ -20,7 +22,7 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
-UBUNTU_RELEASES_BASE = "https://releases.ubuntu.com"
+XUBUNTU_RELEASES_BASE = "https://cdimage.ubuntu.com/xubuntu/releases"
 # The default libvirt storage pool - qemu:///system's libvirt-qemu user can
 # always read from here, unlike a path under $HOME (which is typically not
 # world-traversable). Root-owned (mode 711), so writing into it needs sudo -
@@ -79,15 +81,16 @@ def check_dependencies(assume_yes: bool) -> None:
 
 
 def fetch_iso_info(release: str, arch: str) -> tuple[str, str]:
-    sums_url = f"{UBUNTU_RELEASES_BASE}/{release}/SHA256SUMS"
+    sums_url = f"{XUBUNTU_RELEASES_BASE}/{release}/release/SHA256SUMS"
     with urllib.request.urlopen(sums_url) as resp:
         sums_text = resp.read().decode()
 
-    pattern = re.compile(rf"^([0-9a-f]{{64}})\s+\*?(.*live-server-{arch}\.iso)$", re.MULTILINE)
+    # Matches e.g. xubuntu-26.04-desktop-amd64.iso, not the -minimal- variant.
+    pattern = re.compile(rf"^([0-9a-f]{{64}})\s+\*?(.*desktop-{arch}\.iso)$", re.MULTILINE)
     match = pattern.search(sums_text)
     if not match:
         raise RuntimeError(
-            f"Could not find a live-server-{arch}.iso entry in {sums_url}"
+            f"Could not find a desktop-{arch}.iso entry in {sums_url}"
         )
     sha256, filename = match.group(1), match.group(2)
     return filename, sha256
@@ -141,7 +144,7 @@ def ensure_iso(args: argparse.Namespace) -> Path:
         pass
     filename, expected_sha256 = fetch_iso_info(args.release, args.arch)
     iso_path = args.iso_dir / filename
-    iso_url = f"{UBUNTU_RELEASES_BASE}/{args.release}/{filename}"
+    iso_url = f"{XUBUNTU_RELEASES_BASE}/{args.release}/release/{filename}"
 
     if iso_path.is_file() and not args.force_download:
         print(f"Found cached ISO at {iso_path}, verifying checksum...")
@@ -149,6 +152,10 @@ def ensure_iso(args: argparse.Namespace) -> Path:
             print("Checksum OK, reusing cached ISO.")
             return iso_path
         print("Checksum mismatch, redownloading.")
+
+    if args.dry_run:
+        print(f"[dry-run] Would download {iso_url} -> {iso_path}")
+        return iso_path
 
     download(iso_url, iso_path)
 
@@ -192,8 +199,8 @@ def build_virt_install_cmd(args: argparse.Namespace, iso_path: Path) -> list[str
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--name", default="ubuntu-server", help="libvirt domain name")
-    p.add_argument("--release", default="26.04", help="Ubuntu release, e.g. 26.04")
+    p.add_argument("--name", default="xubuntu", help="libvirt domain name")
+    p.add_argument("--release", default="26.04", help="Xubuntu release, e.g. 26.04")
     p.add_argument("--arch", default="amd64")
     p.add_argument("--ram", type=int, default=4096, help="RAM in MiB")
     p.add_argument("--vcpus", type=int, default=2)
