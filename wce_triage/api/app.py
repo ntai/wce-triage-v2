@@ -18,8 +18,8 @@ rootdir = environ.get("rootdir")
 wce_share = environ.get("wce_share")
 live_triage = environ.get("live_triage", False)
 payload = environ.get("payload")
-share_ui_dir = '/usr/local/share/wce/wce-triage-ui'
-ui_dir = share_ui_dir if os.path.exists(share_ui_dir) else os.path.join(os.path.split((os.path.split(__file__)[0]))[0], "ui")
+share_ui_dir = '/usr/local/share/wce/triage/wce-triage-v2/fend/build'
+ui_dir = share_ui_dir if os.path.exists(share_ui_dir) else os.path.join(os.path.split(os.path.split((os.path.split(__file__)[0]))[0])[0], "fend", "build")
 
 tlog = get_triage_logger()
 tlog.setLevel(logging.DEBUG)

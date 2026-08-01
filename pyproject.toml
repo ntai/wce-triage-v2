@@ -12,9 +12,7 @@ classifiers = [
     "Operating System :: POSIX :: Linux"
 ]
 exclude = ["wce_triage/.idea", "wce_triage/backend"]
-include = ["wce_triage/ui/*",
-           "wce_triage/ui/**/*",
-           "wce_triage/setup/patches/**/*",
+include = ["wce_triage/setup/patches/**/*",
            "wce_triage/setup/share/**/*",
 	   ]
 packages = [{include = "wce_triage"}]
