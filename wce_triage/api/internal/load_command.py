@@ -1,5 +1,5 @@
 import sys
-from typing import Optional
+from typing import Optional, Dict, Any
 from fastapi import HTTPException, status
 
 from .. import op_load
@@ -71,7 +71,7 @@ class LoadCommandRunner(SimpleProcessRunner):
     #disk = server.disk_portal.find_disk_by_device_name(devname)
 
     # loadType is a single word coming back from read_disk_image_types()
-    image_type = None
+    image_type: Optional[Dict[str, Any]] = None
     for _type in read_disk_image_types():
       if _type["id"] == load_type:
         image_type = _type
@@ -90,7 +90,7 @@ class LoadCommandRunner(SimpleProcessRunner):
       raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
 
     # Load image runs its own course, and output will be monitored by a call back
-    self.queue(args, {"args": args, "devname": devname, "imagefile": imagefile, "wipe": wipe, "newhostname": newhostname })
+    self.queue(args, {"args": args, "devname": devname, "imagefile": imagefile, "wipe": wipe, "newhostname": newhostname, "grow": image_type.get("grow", "no") })
     return OperationProgress(**server._load_image.model.data)
 
   pass

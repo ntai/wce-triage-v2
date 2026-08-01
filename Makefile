@@ -62,5 +62,14 @@ run:
 ui:
 	rsync -av --delete ../wce-triage-ui/build/ ./wce_triage/ui/
 
+
+local-triage:
+	./wce_triage/builder/vm_from_device.py /dev/sdd /var/lib/libvirt/images/ubuntu-server.qcow2 --allow-shared-disk
+
 vm-connect:
-	virt-viewer --connect qemu:///system --wait ${VM_NAME}
+	- sudo virsh --connect qemu:///system start ${VM_NAME}
+	sudo virt-viewer --connect qemu:///system --wait ${VM_NAME}
+
+vm-dump:
+	- sudo virsh --connect qemu:///system start wce-triage-device
+	sudo virt-viewer --connect qemu:///system --wait wce-triage-device

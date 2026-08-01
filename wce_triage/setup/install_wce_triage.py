@@ -43,4 +43,4 @@ wce_triage_service.close()
 subprocess.run(['sudo', '-H', 'install', '-m', '0644', '/tmp/wce-triage.service', '/etc/systemd/system/wce-triage.service'])
 
 subprocess.run(['sudo', 'systemctl', 'daemon-reload'])
-subprocess.run(['sudo', 'systemctl', 'enable', 'wce-kiosk.service'])
+subprocess.run(['sudo', 'systemctl', 'enable', 'wce-triage.service'])

@@ -899,6 +899,94 @@ class task_remove_logs(task_remove_files):
   pass
 
 
+# Bakes a one-shot systemd service into the captured image that grows the
+# root partition and filesystem to fill whatever disk it's eventually
+# booted from - a Raspberry-Pi-style first-boot resize, independent of
+# wce-triage's own restore-time partitioning (restore_image_runner.py
+# already sizes the partition correctly, so this is a redundant, harmless
+# safety net there, and the only thing that saves you if the image is ever
+# deployed by something other than wce-triage's restore flow, e.g. plain dd).
+GROWFS_SCRIPT = '''#!/bin/sh
+set -e
+ROOTPART=$(findmnt -no SOURCE /)
+DISK=/dev/$(lsblk -no pkname "$ROOTPART")
+PARTNUM=$(cat /sys/class/block/$(basename "$ROOTPART")/partition)
+
+# Relocate the GPT backup header to the true end of the disk first - after
+# writing a shrunk image onto a bigger disk, the backup header is still
+# where the old (smaller) disk ended, and parted's non-interactive -s mode
+# can't answer the "Fix/Ignore" prompt that causes. No-op / harmless exit
+# on non-GPT disks.
+sgdisk -e "$DISK" || true
+
+parted -s -a optimal "$DISK" resizepart "$PARTNUM" 100%
+resize2fs "$ROOTPART"
+
+systemctl disable wce-growfs-once.service
+'''
+
+GROWFS_SERVICE_UNIT = '''[Unit]
+Description=WCE Triage: grow root partition and filesystem to fill disk (runs once)
+After=local-fs.target
+ConditionPathExists=/usr/local/sbin/wce-growfs-once.sh
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/wce-growfs-once.sh
+
+[Install]
+WantedBy=multi-user.target
+'''
+
+
+class task_install_growfs_service(op_task_python_simple):
+    #
+  def __init__(self, description, disk=None, partition_id='Linux', **kwargs):
+    super().__init__(description, time_estimate=1, **kwargs)
+    self.disk = disk
+    self.partition_id = partition_id
+    pass
+
+  def run_python(self):
+    part = self.disk.find_partition(self.partition_id)
+    if part is None:
+      self.set_progress(999, 'Partition does not exist.')
+      return
+
+    rootpath = part.get_mount_point()
+
+    script_path = os.path.join(rootpath, "usr/local/sbin/wce-growfs-once.sh")
+    with open(script_path, "w") as script_file:
+      script_file.write(GROWFS_SCRIPT)
+      pass
+    os.chmod(script_path, 0o755)
+
+    unit_path = os.path.join(rootpath, "etc/systemd/system/wce-growfs-once.service")
+    with open(unit_path, "w") as unit_file:
+      unit_file.write(GROWFS_SERVICE_UNIT)
+      pass
+    os.chmod(unit_path, 0o644)
+
+    # Offline equivalent of "systemctl enable wce-growfs-once.service" -
+    # no live systemd/chroot available while the partition is just mounted.
+    wants_dir = os.path.join(rootpath, "etc/systemd/system/multi-user.target.wants")
+    if not os.path.exists(wants_dir):
+      os.makedirs(wants_dir)
+      pass
+    symlink_path = os.path.join(wants_dir, "wce-growfs-once.service")
+    if os.path.islink(symlink_path) or os.path.exists(symlink_path):
+      os.remove(symlink_path)
+      pass
+    os.symlink("../wce-growfs-once.service", symlink_path)
+
+    self.verdict.append("Installed first-boot grow-partition service.")
+    self.set_progress(100, "First-boot grow-partition service installed")
+    pass
+
+  pass
+
+
 # Installing MBR on disk
 class task_install_mbr(op_task_process_simple):
   def __init__(self, description, disk=None, **kwargs):

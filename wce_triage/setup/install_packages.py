@@ -81,6 +81,12 @@ base_packages = {
     'alsa-firmware-loaders',
 
     #
+    # Bluetooth stack + firmware
+    #
+    'bluez',                    # Bluetooth daemon/tools - core BT stack
+    'bluez-firmware',           # firmware for Broadcom/misc BT adapters not in linux-firmware
+
+    #
     'parallel',
     #
     # Network
@@ -140,10 +146,8 @@ base_packages = {
     'build-essential',
     'overlayroot',
     'ubuntu-restricted-extras',
-    'firmware-realtek-rtl8723cs-bt',
     'r8125-dkms',
     'r8168-dkms',
-    'rtl8812au-dkms',
     'broadcom-sta-dkms',
     'firmware-carl9170',
     'urfkill',

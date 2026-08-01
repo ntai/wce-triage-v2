@@ -4,7 +4,7 @@
 
 import sys, uuid, traceback, argparse, os, json
 
-from .tasks import task_fetch_partitions, task_refresh_partitions, task_set_fat_volume_id, task_fsck, task_set_ext_partition_uuid, task_mount, task_unmount, task_remove_persistent_rules, task_finalize_disk, task_install_grub, task_expand_partition, task_finalize_efi
+from .tasks import task_fetch_partitions, task_refresh_partitions, task_set_fat_volume_id, task_fsck, task_set_ext_partition_uuid, task_mount, task_unmount, task_remove_persistent_rules, task_finalize_disk, task_install_grub, task_expand_partition, task_finalize_efi, task_install_growfs_service
 
 from .partition_runner import PartitionDiskRunner
 from ..components.video import detect_video_cards
@@ -133,6 +133,13 @@ class RestoreDiskRunner(PartitionDiskRunner):
                                            newhostname=self.newhostname,
                                            wce_share_url=self.wce_share_url,
                                            cmdline=self.restore_type.get(const.cmdline)))
+      pass
+
+    # Bake in a first-boot service that grows the root partition/filesystem
+    # to fill whatever disk it's eventually booted from - opt-in per image
+    # type via "grow": "yes" in the disk image catalog entry.
+    if self.restore_type.get("grow") == "yes":
+      self.tasks.append(task_install_growfs_service("Install first-boot grow-partition service", disk=disk, partition_id=partition_id))
       pass
 
     # Install GRUB
