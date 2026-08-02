@@ -1,6 +1,6 @@
-.PHONY: setup upload install manifest local run ui flask gu uflask vm-connect
+.PHONY: setup upload install manifest local run ui flask gu uflask vm-start vm-stop vm-connect local-triage-start local-triage-stop local-triage-connect
 
-VM_NAME ?= ubuntu-server
+VM_NAME ?= xubuntu
 
 PYPI_USER := $(shell echo $$PYPI_USERNAME)
 PYPI_PASSWORD := $(shell echo $$PYPI_PASSWORD)
@@ -66,10 +66,23 @@ ui:
 local-triage:
 	./builder/vm_from_device.py /dev/sdd --extra-disk /var/lib/libvirt/images/xubuntu.qcow2 --allow-shared-disk
 
+local-triage-start:
+	sudo virsh --connect qemu:///system start wce-triage-device
+
+local-triage-stop:
+	sudo virsh --connect qemu:///system shutdown wce-triage-device
+
+local-triage-connect:
+	- sudo virsh --connect qemu:///system start wce-triage-device
+	sudo virt-viewer --connect qemu:///system --wait wce-triage-device
+
+vm-start:
+	sudo virsh --connect qemu:///system start ${VM_NAME}
+
+vm-stop:
+	sudo virsh --connect qemu:///system shutdown ${VM_NAME}
+
 vm-connect:
 	- sudo virsh --connect qemu:///system start ${VM_NAME}
 	sudo virt-viewer --connect qemu:///system --wait ${VM_NAME}
 
-vm-dump:
-	- sudo virsh --connect qemu:///system start wce-triage-device
-	sudo virt-viewer --connect qemu:///system --wait wce-triage-device
