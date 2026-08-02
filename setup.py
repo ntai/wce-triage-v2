@@ -42,7 +42,7 @@ setuptools.setup(
     'Flask-CLI==0.4.0',
     'Flask-Cors==3.0.10',
     'Flask-SocketIO==5.3.6',
-    'python-engineio==4.9.0',
+    'python-engineio==4.13.2',
     'python-socketio==5.11.2',
     'typing_extensions==4.9.0',
   ],
