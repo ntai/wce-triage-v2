@@ -176,6 +176,16 @@ class task_image_sync_copy(op_task_process_simple, task_image_sync):
   def poll(self):
     self._poll_process()
     self.pares_fanout_copy_progress()
+    # Same guard as task_image_rsync.poll() below: self.progress here comes
+    # purely from parsing relayed progress text, not from the outer
+    # `fanout_copy.py` driver process actually exiting. Runner._run_task()'s
+    # `while task.progress < 100` loop treats progress==100 as authoritative
+    # and moves on immediately, so don't let it reach 100 until
+    # self.process.returncode (set by _poll_process()'s process.poll()
+    # above) confirms the OS process has really returned.
+    if self.progress >= 100 and self.process.returncode is None:
+      self.progress = 99
+      pass
     pass
 
   def pares_fanout_copy_progress(self):
@@ -360,6 +370,21 @@ class task_image_rsync(op_task_process_simple, task_image_sync):
   def poll(self):
     self._poll_process()
     self.parse_rsync_copy_progress()
+    # self.progress reaching 100 here only means we've seen an exit
+    # DriverEvent for every PID we ever saw a start DriverEvent for
+    # (self.pids). That can't prove nothing is still running - a missed or
+    # delayed start event leaves a live rsync untracked, so its exit is
+    # never counted. The Runner's task loop (runner.py's `while
+    # task.progress < 100`) treats progress==100 as authoritative and moves
+    # on immediately, with no check that the OS process actually exited -
+    # so clamp back down until self.process itself (the outer
+    # `rsync_copy.py` driver, reaped by _poll_process() above) has really
+    # returned. This is the same invariant op_task_process._update_progress()
+    # enforces via is_success(); task_image_rsync bypasses that base-class
+    # method entirely, so it has to be re-asserted here.
+    if self.progress >= 100 and self.process.returncode is None:
+      self.progress = 99
+      pass
     pass
 
   def _parse_rsync_line(self, line: str, dt_elapsed: float, source_size: int) -> Optional[ProgressReport]:

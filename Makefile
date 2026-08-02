@@ -64,7 +64,7 @@ ui:
 
 
 local-triage:
-	./wce_triage/builder/vm_from_device.py /dev/sdd /var/lib/libvirt/images/ubuntu-server.qcow2 --allow-shared-disk
+	./builder/vm_from_device.py /dev/sdd --extra-disk /var/lib/libvirt/images/xubuntu.qcow2 --allow-shared-disk
 
 vm-connect:
 	- sudo virsh --connect qemu:///system start ${VM_NAME}
