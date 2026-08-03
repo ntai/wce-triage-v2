@@ -16,3 +16,4 @@ wce_triage/ui/
 /bootstrap
 /.venv/*
 /-
+__pycache__/

@@ -1,0 +1,17 @@
+#
+# WCE Network Server boot setup.
+#
+GRUB_DEFAULT=0
+GRUB_TIMEOUT=10
+GRUB_DISTRIBUTOR=Ubuntu
+GRUB_CMDLINE_LINUX_DEFAULT="nvme_core.default_ps_max_latency_us=0"
+GRUB_CMDLINE_LINUX=""
+GRUB_BACKGROUND="/usr/local/share/wce/triage/assets/wceboot2.png"
+#
+export GRUB_PRIMARY_MENU_TITLE="WCE Network Server - Ubuntu"
+#
+# For running in read-only mode
+#
+export GRUB_CMDLINE_LINUX_DEFAULT_ALT="aufs=tmpfs nvme_core.default_ps_max_latency_us=0"
+export GRUB_MENU_TITLE_ALT="WCE Network Server - Read only mode"
+export GRUB_ALT_MENU_TITLE="WCE Network Server - Read only mode"

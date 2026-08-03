@@ -224,21 +224,26 @@ triage_kiosk_packages = {
     'openbox',
     'vbetool',
     'gfxboot',
-    'lighttpd',
     'hardinfo',
     'smartmontools'
   ],
-  '18.04': [],
+  '18.04': [
+    'lighttpd',
+  ],
   '20.04': [
     'overlayroot',
     'build-essential',
     'gcc',
+    'lighttpd',
   ],
   '22.04': for_server_minimal + [
+    'lighttpd',
   ],
   '24.04': for_server_minimal + [
+    'lighttpd',
   ],
   '26.04': for_server_minimal + [
+    'nginx',
   ],
 }
 
@@ -269,7 +274,6 @@ desktop_python_packages = {
 server_packages = {
   None: [
     'tftpd',
-    'lighttpd',
     'dnsmasq',
     'emacs',
     'openbsd-inetd',
@@ -283,11 +287,21 @@ server_packages = {
     'beep',
     'syslog-ng',
   ],
-  '18.04': [],
-  '20.04': [],
-  '22.04': [],
-  '24.04': [],
-  '26.04': [],
+  '18.04': [
+    'lighttpd',
+  ],
+  '20.04': [
+    'lighttpd',
+  ],
+  '22.04': [
+    'lighttpd',
+  ],
+  '24.04': [
+    'lighttpd',
+  ],
+  '26.04': [
+    "nginx"
+  ],
 }
 
 

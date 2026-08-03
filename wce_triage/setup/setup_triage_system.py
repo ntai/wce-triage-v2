@@ -33,7 +33,7 @@ if __name__ == "__main__":
            'install_sound',
            'install_live_triage',
            # patch up system and boot loader installation
-           ('patch_system',  ["18.04", "20.04", "22.04"]),
+           ('patch_system',  ["18.04", "20.04", "22.04", "24.04", "26.04",]),
            'install_boot',
            'cleanup_installation',
   ]

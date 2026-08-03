@@ -1,0 +1,43 @@
+DEFAULT vesamenu.c32
+TIMEOUT 100
+TOTALTIMEOUT 600
+PROMPT 0
+NOESCAPE 1
+ALLOWOPTIONS 1
+# MENU BACKGROUND wceboot2.png
+MENU MARGEIN 5
+
+MENU TITLE WCE PXE Triage
+
+LABEL WCE Triage
+  MENU DEFAULT
+  MENU LABEL WCE ^Triage
+  KERNEL wce/vmlinuz
+  APPEND initrd=wce/initrd.img hostname=bionic nosplash noswap boot=nfs netboot=nfs nfsroot=10.3.2.1:/var/lib/netclient/wcetriage acpi_enforce_resources=lax edd=on ip=dhcp aufs=tmpfs wce_share=http://10.3.2.1:8080/wce ---
+  TEXT HELP
+  * WCE Traige V2 alpha 2 
+  ENDTEXT
+
+LABEL WCE Content Loading
+  MENU LABEL WCE Mate 1^8 Content Loading
+  KERNEL wce/vmlinuz
+  APPEND initrd=wce/initrd.img hostname=bionic nosplash noswap boot=nfs netboot=nfs nfsroot=10.3.2.1:/var/lib/netclient/wcetriage acpi_enforce_resources=lax edd=on ip=dhcp aufs=tmpfs wce_share=http://10.3.2.1:8080/wce wce_payload=wce-mate18-2019-08-03.ext4.partclone.gz ---
+  TEXT HELP
+  * WCE Traige V2 alpha 2 
+  ENDTEXT
+
+LABEL WCE Content Loading
+  MENU LABEL WCE Mate 1^6 Content Loading
+  KERNEL wce/vmlinuz
+  APPEND initrd=wce/initrd.img hostname=bionic nosplash noswap boot=nfs netboot=nfs nfsroot=10.3.2.1:/var/lib/netclient/wcetriage acpi_enforce_resources=lax edd=on ip=dhcp aufs=tmpfs wce_share=http://10.3.2.1:8080/wce wce_payload=wce-v6-mate16-2017-06-03.partclone.gz ---
+  TEXT HELP
+  * WCE Traige V2 alpha 2 
+  ENDTEXT
+
+Label Local
+  MENU LABEL Local operating system in harddrive (if available)
+  KERNEL chain.c32
+  APPEND sda1
+  TEXT HELP
+  Boot local OS from first hard disk if it's available
+  ENDTEXT

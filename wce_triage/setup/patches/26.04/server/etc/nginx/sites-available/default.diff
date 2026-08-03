@@ -1,0 +1,21 @@
+*** default~	2026-08-02 14:50:27.056892629 -0400
+--- default	2026-08-02 14:50:27.059621872 -0400
+***************
+*** 19,26 ****
+  # Default server configuration
+  #
+  server {
+! 	listen 80 default_server;
+! 	listen [::]:80 default_server;
+
+  	# SSL configuration
+  	#
+--- 19,26 ----
+  # Default server configuration
+  #
+  server {
+! 	listen 8080 default_server;
+! 	listen [::]:8080 default_server;
+
+  	# SSL configuration
+  	#

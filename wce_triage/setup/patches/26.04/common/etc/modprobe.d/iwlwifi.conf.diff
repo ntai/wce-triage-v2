@@ -1,0 +1,14 @@
+*** iwlwifi.conf~	2018-01-28 10:34:49.000000000 -0500
+--- iwlwifi.conf	2019-09-05 18:22:21.997715124 -0400
+***************
+*** 1,4 ****
+--- 1,9 ----
+  # /etc/modprobe.d/iwlwifi.conf
++ #
++ options iwlwifi swcrypto=1
++ options iwlwifi 11n_disable=8
++ options iwlwifi auto_agg=0
++ #
+  # iwlwifi will dyamically load either iwldvm or iwlmvm depending on the
+  # microcode file installed on the system.  When removing iwlwifi, first
+  # remove the iwl?vm module and then iwlwifi.
