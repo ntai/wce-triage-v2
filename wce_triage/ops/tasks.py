@@ -1696,12 +1696,31 @@ configfile $prefix/grub.cfg
 """
 
 class task_finalize_efi(op_task_python_simple):
-  def __init__(self, description, disk=None, partition_id='Linux', efi_id = EFI_NAME, bootloader_id='ubuntu', **kwargs):
+  """Rewrites the grub.cfg search-and-handoff stub with this disk's actual
+  ext4 partition UUID - the UUID is freshly randomized per restore (see
+  task_set_ext_partition_uuid), so whatever was baked into the source image
+  is necessarily wrong for this specific disk.
+
+  Two different builds put that stub in two different places, and which
+  one a given disk has depends on which EFI image it was restored from:
+  - Triage's ISO-style EFI/BOOT layout (see [[project_efi_fallback_boot_chain]]):
+    a self-contained grub with prefix=/boot/grub, no /EFI/ubuntu dependency.
+    The stub ships pre-baked at the ESP root, <efi>/boot/grub/grub.cfg,
+    with a placeholder UUID that just needs correcting.
+  - grub-install's Canonical pre-signed-image layout: creates <efi>/EFI/ubuntu/
+    (shim/grub/mm) but never writes a grub.cfg of its own - this task is the
+    only thing that ever does, the first time, right after task_install_grub.
+
+  Rather than needing the caller to know in advance which kind of build this
+  is (which really just depends on what the source image happened to ship),
+  check for both and update whichever is actually present. They're tiny
+  text files - writing both when both happen to exist is harmless.
+  """
+  def __init__(self, description, disk=None, partition_id='Linux', efi_id = EFI_NAME, **kwargs):
     super().__init__(description, time_estimate=1, **kwargs)
     self.disk = disk
     self.partition_id = partition_id
     self.efi_id = efi_id
-    self.bootloader_id = bootloader_id
     pass
 
 
@@ -1734,34 +1753,37 @@ class task_finalize_efi(op_task_python_simple):
 
     efi_grub_cfg = EFI_ubuntu_grub_template.format(Linux_UUID=self.linuxpart.fs_uuid, Linux_part_no=self.linuxpart.partition_number)
 
-    # grubx64.efi's own default prefix is baked in at build time and, on
-    # Ubuntu with shim-signed installed, grub-install just copies Canonical's
-    # pre-signed image rather than rebuilding one with --bootloader-id's
-    # value - that signed image always looks for /EFI/ubuntu/grub.cfg no
-    # matter which directory it actually got installed into. So this stub
-    # always has to exist there, regardless of bootloader_id.
-    self._write_grub_cfg("ubuntu", efi_grub_cfg)
+    wrote_any = False
 
-    # Mirror the same stub into the branded directory too, purely so it's
-    # self-consistent for anyone browsing the ESP - it's not what grub
-    # actually reads at boot, EFI/ubuntu/grub.cfg above is.
-    if self.bootloader_id != "ubuntu":
-      self._write_grub_cfg(self.bootloader_id, efi_grub_cfg)
+    # Triage's ISO-style stub: ships pre-baked as a real file, just needs
+    # its UUID corrected for this disk.
+    triage_stub_path = os.path.join(self.efi_dir, "boot", "grub", "grub.cfg")
+    if os.path.isfile(triage_stub_path):
+      wrote_any = self._write_grub_cfg(triage_stub_path, efi_grub_cfg) or wrote_any
+      pass
+
+    # grub-install's layout: the EFI/ubuntu/ directory exists (grub-install
+    # just ran, earlier in this same restore) but grub.cfg inside it doesn't
+    # yet - this is what creates it, the first time, every time.
+    ubuntu_stub_path = os.path.join(self.efi_dir, "EFI", "ubuntu", "grub.cfg")
+    if os.path.isdir(os.path.dirname(ubuntu_stub_path)):
+      wrote_any = self._write_grub_cfg(ubuntu_stub_path, efi_grub_cfg) or wrote_any
+      pass
+
+    if not wrote_any:
+      msg = ("Neither %s exists nor %s's directory exists; grub-install or the "
+             "EFI image restore must run before finalizing EFI." % (triage_stub_path, ubuntu_stub_path))
+      self.verdict.append(msg)
+      tlog.warning(msg)
       pass
     pass
 
-  def _write_grub_cfg(self, bootloader_id, efi_grub_cfg):
-    efi_grub_cfg_path = "%s/EFI/%s/grub.cfg" % (self.efi_dir, bootloader_id)
-    if not os.path.isdir(os.path.dirname(efi_grub_cfg_path)):
-      msg = "%s does not exist; grub-install must run before finalizing EFI." % os.path.dirname(efi_grub_cfg_path)
-      self.verdict.append(msg)
-      tlog.warning(msg)
-      return
+  def _write_grub_cfg(self, efi_grub_cfg_path, efi_grub_cfg):
     with open(efi_grub_cfg_path, "w") as efi_grub_cfg_fd:
       efi_grub_cfg_fd.write(efi_grub_cfg)
       pass
     self.verdict.append("%s:\n%s" % (efi_grub_cfg_path, efi_grub_cfg))
-    pass
+    return True
   pass
 
 

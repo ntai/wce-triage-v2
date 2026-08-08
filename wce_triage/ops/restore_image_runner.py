@@ -157,7 +157,7 @@ class RestoreDiskRunner(PartitionDiskRunner):
 
     if self.efi_source:
       self.tasks.append(task_mount("Mount the EFI partition", disk=disk, partition_id=EFI_NAME))
-      self.tasks.append(task_finalize_efi("Finalize EFI", disk=disk, partition_id=partition_id, efi_id=EFI_NAME, bootloader_id=bootloader_id))
+      self.tasks.append(task_finalize_efi("Finalize EFI", disk=disk, partition_id=partition_id, efi_id=EFI_NAME))
       self.tasks.append(task_unmount("Unmount the EFI partition", disk=disk, partition_id=EFI_NAME))
 
       # Not needed for triage itself - the USB stick already boots by
