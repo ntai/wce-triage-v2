@@ -69,3 +69,7 @@ const._REMOVE_ = '_REMOVE_'
 # Universal boot flag
 # This is for Triage USB stick to install GRUB differently from normal EFI.
 const.universal_boot = 'universal_boot'
+
+# EFI bootloader-id (--bootloader-id, i.e. the EFI/<name>/ directory
+# grub-install creates). Defaults to "ubuntu" if absent from a catalog entry.
+const.bootloader_id = 'bootloader_id'

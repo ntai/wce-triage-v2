@@ -111,7 +111,7 @@ class ProcessRunner(threading.Thread):
     if self.process:
       cmd = shlex.join(args)
       if self.process.returncode == -15:
-        self.error_message("Process '%s' killed", cmd)
+        self.error_message("Process '%s' killed" % cmd)
         self.logger.info("Process '%s' killed." % cmd)
       elif self.process.returncode != 0:
         self.error_message("Process '%s' failed with error code %d" % (cmd, self.process.returncode))

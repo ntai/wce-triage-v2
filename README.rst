@@ -333,6 +333,15 @@ It's not difficult to have different "wce-disk-images" directory, and as a matte
 +---------------------+------------+------------------------------------------------+------------------------------+
 | cmdline             | json       | See cmdline description below                  | { "splash": "_REMOVE_" }     |
 +---------------------+------------+------------------------------------------------+------------------------------+
+| bootloader_id       | string     | EFI --bootloader-id, i.e. the EFI/<name>       | triage                       |
+|                     |            | directory grub-install creates on the ESP.     |                              |
+|                     |            | Defaults to "ubuntu" if absent. See "EFI boot  |                              |
+|                     |            | chain quirk" below before changing this.       |                              |
++---------------------+------------+------------------------------------------------+------------------------------+
+| universal_boot      | bool       | Also install GRUB to the EFI/BOOT fallback path| true                         |
+|                     |            | (--removable --no-nvram), for media that       |                              |
+|                     |            | firmware boots with no prior NVRAM entry.      |                              |
++---------------------+------------+------------------------------------------------+------------------------------+
 
 cmdline
 -------
@@ -357,6 +366,56 @@ cmdline is a json (or python's attrib) that can be augmented with existing cmdli
 
 Here "acpi_enforce_resource=lax nvme_core.default_ps_max_latency_us=5500" is added to the _CMDLINE for boot flags.
 The value "_REMOVE_" is special, and when this is present, the tag/value is removed from the cmdline.
+
+EFI boot chain quirk: why EFI/ubuntu always has to exist
+---------------------------------------------------------
+
+If you ever touch the EFI System Partition's boot loader directory - renaming
+it, rebranding it (e.g. ``EFI/ubuntu`` -> ``EFI/triage`` via
+``bootloader_id`` above), or trying to rebuild ``grubx64.efi`` by hand -
+there's a non-obvious gotcha worth recording here so nobody has to
+re-discover it by bricking a boot disk on game day.
+
+Ubuntu's ``grub-install --target=x86_64-efi`` does **not** rebuild
+``grubx64.efi`` on your machine when ``shim-signed``/``grub-efi-amd64-signed``
+are installed - which is the case on every normal Ubuntu box, including the
+one this project's disk images are built on. Instead it just copies a
+**pre-signed** binary that Canonical builds once, at package-build time, via
+a script (Debian/Ubuntu's shared ``debian/build-efi-images``) that calls
+``grub-mkimage`` with a **hardcoded** ``-p /EFI/ubuntu`` prefix. This is
+confirmed by `Debian bug #769172
+<https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=769172>`_ ("grub2:
+build-efi-images calls grub-mkimage with ubuntu prefix"), where Ubuntu's
+grub/shim maintainer Colin Watson confirms the hardcoding is intentional and
+Ubuntu-specific, and declines to parameterize it.
+
+The practical consequence: **``--bootloader-id`` only controls which
+directory grub-install copies its files into** (``EFI/<bootloader-id>/``) -
+it does *not* change the prefix baked into ``grubx64.efi`` itself, which is
+always ``/EFI/ubuntu`` no matter what directory that copy of the binary ends
+up living in. This applies just as much to the ``--removable`` fallback
+install (``EFI/BOOT/``, controlled by ``universal_boot`` above) - it's the
+same pre-signed binary, just copied to a different place.
+
+So on any disk where the EFI directory has been renamed away from
+``EFI/ubuntu``, or where a custom ``bootloader_id`` like ``triage`` is used,
+**``EFI/ubuntu/grub.cfg`` still has to exist**, containing the small "search
+by UUID and chainload the real config" stub. Without it, *every* copy of
+``grubx64.efi`` on the disk - whichever directory it physically sits in,
+including the ``EFI/BOOT`` fallback - drops to an interactive ``grub>``
+prompt instead of booting, because it can't find its own bootstrap config.
+(Shim itself doesn't have this restriction - its lookup for the next-stage
+``grubx64.efi`` is a same-directory relative path, not a hardcoded one - so
+shim can live in any directory without issue. It's specifically grub's own
+binary that's fussy.)
+
+``task_install_grub`` and ``task_finalize_efi`` (in
+``wce_triage/ops/tasks.py``) handle this automatically: whenever an EFI
+partition is present, they always install into / write
+``EFI/ubuntu/grub.cfg`` first (required), and only *additionally* mirror the
+same files into ``EFI/<bootloader_id>/`` when a catalog entry sets a custom
+``bootloader_id`` (cosmetic - keeps the ESP looking consistent to anyone
+browsing it, but grub never actually reads its config from there).
 
 
 Network Server for PXE boot and triage/disk imaging

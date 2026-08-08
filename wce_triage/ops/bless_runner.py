@@ -90,7 +90,10 @@ class BlessRunner(Runner):
 
     # Install GRUB
     videos = (0, 0, 1)
-    self.tasks.append(task_install_grub('Install GRUB boot manager', disk=disk, detected_videos=videos, partition_id=partition_id))
+    universal_boot = self.restore_type.get(const.universal_boot, False)
+    bootloader_id = self.restore_type.get(const.bootloader_id, "ubuntu")
+    self.tasks.append(task_install_grub('Install GRUB boot manager', disk=disk, detected_videos=videos, partition_id=partition_id,
+                                        universal_boot=universal_boot, bootloader_id=bootloader_id))
     self.tasks.append(task_unmount("Unmount target", disk=disk, partition_id=partition_id))
     pass
 

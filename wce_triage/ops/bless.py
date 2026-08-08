@@ -12,22 +12,25 @@ from ..components.disk import create_storage_instance
 
 #
 class BlessDiskRunner(Runner):
-  def __init__(self, ui, runner_id, disk, partition_id='Linux'):
+  def __init__(self, ui, runner_id, disk, partition_id='Linux', bootloader_id='ubuntu'):
     super().__init__(ui, runner_id)
     self.disk = disk
     # FIXME: may become a task
     self.disk.detect_disk()
     self.time_estimate = 2
     self.partition_id = partition_id
+    self.bootloader_id = bootloader_id
     pass
 
   def prepare(self):
     super().prepare()
+    disk = self.disk
     self.tasks.append(task_fetch_partitions("Fetch disk information", disk))
     self.tasks.append(task_refresh_partitions("Refresh partition information", disk))
     self.tasks.append(task_mount("Mount disk %s" % disk.device_name, disk, partition_id=self.partition_id))
     mock_video = (0, 0, 1)
-    self.tasks.append(task_install_grub('Install GRUB boot manager', disk=disk, detected_videos=mock_video, partition_id=self.partition_id))
+    self.tasks.append(task_install_grub('Install GRUB boot manager', disk=disk, detected_videos=mock_video, partition_id=self.partition_id,
+                                        bootloader_id=self.bootloader_id))
     self.tasks.append(task_finalize_disk('Finalize disk', disk, partition_id=self.partition_id))
     unmounter = task_unmount("Unmount disk %s" % disk.device_name, disk, partition_id=self.partition_id)
     unmounter.set_teardown_task()

@@ -4,7 +4,7 @@
 
 import sys, uuid, traceback, argparse, os, json
 
-from .tasks import task_fetch_partitions, task_refresh_partitions, task_set_fat_volume_id, task_fsck, task_set_ext_partition_uuid, task_mount, task_unmount, task_remove_persistent_rules, task_finalize_disk, task_install_grub, task_expand_partition, task_finalize_efi, task_install_growfs_service
+from .tasks import task_fetch_partitions, task_refresh_partitions, task_set_fat_volume_id, task_fsck, task_set_ext_partition_uuid, task_mount, task_unmount, task_remove_persistent_rules, task_finalize_disk, task_install_grub, task_expand_partition, task_finalize_efi, task_install_growfs_service, task_setup_efi_boot_entry
 
 from .partition_runner import PartitionDiskRunner
 from ..components.video import detect_video_cards
@@ -144,8 +144,10 @@ class RestoreDiskRunner(PartitionDiskRunner):
 
     # Install GRUB
     universal_boot = self.restore_type.get(const.universal_boot, False)
+    bootloader_id = self.restore_type.get(const.bootloader_id, "ubuntu")
     self.tasks.append(task_install_grub('Install GRUB boot manager', disk=disk,
                                         universal_boot=universal_boot,
+                                        bootloader_id=bootloader_id,
                                         detected_videos=detected_videos, partition_id=partition_id))
 
     # unmount so I can run fsck and expand partition
@@ -155,8 +157,23 @@ class RestoreDiskRunner(PartitionDiskRunner):
 
     if self.efi_source:
       self.tasks.append(task_mount("Mount the EFI partition", disk=disk, partition_id=EFI_NAME))
-      self.tasks.append(task_finalize_efi("Finalize EFI", disk=disk, partition_id=partition_id, efi_id=EFI_NAME))
+      self.tasks.append(task_finalize_efi("Finalize EFI", disk=disk, partition_id=partition_id, efi_id=EFI_NAME, bootloader_id=bootloader_id))
       self.tasks.append(task_unmount("Unmount the EFI partition", disk=disk, partition_id=EFI_NAME))
+
+      # Not needed for triage itself - the USB stick already boots by
+      # other means once it's running. Worth doing for an actual OS
+      # install onto a machine's own disk though: pre-registers an
+      # explicit-file-path NVRAM boot entry, working around firmware that
+      # chokes on the bare device-path fallback a brand new disk gets by
+      # default (see task_setup_efi_boot_entry's docstring). The task
+      # itself no-ops if the target disk isn't the machine's own fixed
+      # controller, since the device path wouldn't survive being moved.
+      if self.restore_type["id"] != "triage":
+        self.tasks.append(task_setup_efi_boot_entry("Set up EFI boot entry", disk=disk,
+                                                     partition_id=partition_id, efi_id=EFI_NAME,
+                                                     bootloader_id=bootloader_id,
+                                                     label=self.restore_type.get("name", "Linux")))
+        pass
       pass
     pass
 

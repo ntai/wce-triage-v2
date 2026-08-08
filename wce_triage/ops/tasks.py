@@ -1297,7 +1297,7 @@ class task_install_grub(op_task_process):
   script_path_template = "%s/tmp/bless.sh"
 
   def __init__(self, description, disk=None, detected_videos=None, partition_id='Linux',
-               universal_boot=False, **kwargs):
+               universal_boot=False, bootloader_id='ubuntu', **kwargs):
     # Disk to bless
     self.disk = disk
     self.partition_id = partition_id
@@ -1309,6 +1309,12 @@ class task_install_grub(op_task_process):
     self.script_path = None
     self.script = None
     self.universal_boot = universal_boot
+    # Directory name grub-install creates under EFI/ (--bootloader-id).
+    # Note this does NOT change the prefix baked into grubx64.efi itself -
+    # on Ubuntu with shim-signed installed, grub-install copies Canonical's
+    # pre-signed image, which always looks for /EFI/ubuntu/grub.cfg
+    # regardless of --bootloader-id. See task_finalize_efi.
+    self.bootloader_id = bootloader_id
 
     # FIXME: Time estimate is very different between USB stick and hard disk.
     # grub copies a bunch of files
@@ -1366,12 +1372,27 @@ class task_install_grub(op_task_process):
       self.script.append("mount %s /boot/efi" % self.efi_part.device_name)
 
       if self.universal_boot:
-        # --removable installs GRUB to fallback place, not the normal /EFI/ubuntu, and thus no reason to update NVRam
+        # --removable installs GRUB to the fallback place (EFI/BOOT), not the
+        # bootloader-id directory below, and thus no reason to update NVRam
         grub_efi_cmd = "/usr/sbin/grub-install --target=x86_64-efi --efi-directory=/boot/efi --boot-directory=/boot --removable --no-nvram --force --recheck %s"
         self.script.append(grub_efi_cmd % (self.disk.device_name))
 
-      grub_efi_cmd = "/usr/sbin/grub-install --target=x86_64-efi --efi-directory=/boot/efi --boot-directory=/boot --force %s"
+      # Always install into EFI/ubuntu, whatever self.bootloader_id says.
+      # On Ubuntu with shim-signed installed, grub-install just copies
+      # Canonical's pre-signed grubx64.efi rather than rebuilding one - that
+      # binary always looks for /EFI/ubuntu/grub.cfg regardless of
+      # --bootloader-id, so EFI/ubuntu has to physically exist with real
+      # shim/grub/mm files no matter what directory name we'd rather use.
+      grub_efi_cmd = "/usr/sbin/grub-install --target=x86_64-efi --efi-directory=/boot/efi --boot-directory=/boot --bootloader-id=ubuntu --force %s"
       self.script.append(grub_efi_cmd % (self.disk.device_name))
+
+      if self.bootloader_id != "ubuntu":
+        # Also install a second, identically-signed copy into the branded
+        # directory, purely so the ESP looks self-consistent to anyone
+        # browsing it. Not what grub actually reads at boot - EFI/ubuntu above is.
+        grub_efi_cmd = "/usr/sbin/grub-install --target=x86_64-efi --efi-directory=/boot/efi --boot-directory=/boot --bootloader-id=%s --force %s"
+        self.script.append(grub_efi_cmd % (self.bootloader_id, self.disk.device_name))
+        pass
 
     if (not self.universal_boot) and self.n_ati > 0:
       self.script.append('# If this machine has ATI video, get rid of other video drivers that can get in its way.')
@@ -1675,13 +1696,14 @@ configfile $prefix/grub.cfg
 """
 
 class task_finalize_efi(op_task_python_simple):
-  def __init__(self, description, disk=None, partition_id='Linux', efi_id = EFI_NAME, **kwargs):
+  def __init__(self, description, disk=None, partition_id='Linux', efi_id = EFI_NAME, bootloader_id='ubuntu', **kwargs):
     super().__init__(description, time_estimate=1, **kwargs)
     self.disk = disk
     self.partition_id = partition_id
     self.efi_id = efi_id
+    self.bootloader_id = bootloader_id
     pass
-   
+
 
   def run_python(self):
     #
@@ -1710,14 +1732,128 @@ class task_finalize_efi(op_task_python_simple):
     self.mount_dir = self.linuxpart.get_mount_point()
     self.efi_dir = self.efi_part.get_mount_point()
 
-    # patch up the grub.cfg
-    efi_grub_cfg_path = "%s/EFI/ubuntu/grub.cfg" % self.efi_dir
-    efi_grub_cfg_fd = open(efi_grub_cfg_path, "w")
     efi_grub_cfg = EFI_ubuntu_grub_template.format(Linux_UUID=self.linuxpart.fs_uuid, Linux_part_no=self.linuxpart.partition_number)
-    efi_grub_cfg_fd.write(efi_grub_cfg)
-    efi_grub_cfg_fd.close()
+
+    # grubx64.efi's own default prefix is baked in at build time and, on
+    # Ubuntu with shim-signed installed, grub-install just copies Canonical's
+    # pre-signed image rather than rebuilding one with --bootloader-id's
+    # value - that signed image always looks for /EFI/ubuntu/grub.cfg no
+    # matter which directory it actually got installed into. So this stub
+    # always has to exist there, regardless of bootloader_id.
+    self._write_grub_cfg("ubuntu", efi_grub_cfg)
+
+    # Mirror the same stub into the branded directory too, purely so it's
+    # self-consistent for anyone browsing the ESP - it's not what grub
+    # actually reads at boot, EFI/ubuntu/grub.cfg above is.
+    if self.bootloader_id != "ubuntu":
+      self._write_grub_cfg(self.bootloader_id, efi_grub_cfg)
+      pass
+    pass
+
+  def _write_grub_cfg(self, bootloader_id, efi_grub_cfg):
+    efi_grub_cfg_path = "%s/EFI/%s/grub.cfg" % (self.efi_dir, bootloader_id)
+    if not os.path.isdir(os.path.dirname(efi_grub_cfg_path)):
+      msg = "%s does not exist; grub-install must run before finalizing EFI." % os.path.dirname(efi_grub_cfg_path)
+      self.verdict.append(msg)
+      tlog.warning(msg)
+      return
+    with open(efi_grub_cfg_path, "w") as efi_grub_cfg_fd:
+      efi_grub_cfg_fd.write(efi_grub_cfg)
+      pass
     self.verdict.append("%s:\n%s" % (efi_grub_cfg_path, efi_grub_cfg))
     pass
+  pass
+
+
+class task_setup_efi_boot_entry(op_task_process_simple):
+  """Registers a persisted UEFI NVRAM boot entry (via efibootmgr) that
+  points directly at the installed shim's file path, e.g.
+  \\EFI\\ubuntu\\shimx64.efi.
+
+  Why: some firmware's handling of a brand new disk - one with no NVRAM
+  entry yet, so it falls back to a bare device-path boot entry - can fail
+  outright on certain USB bridge chip/firmware combinations (confirmed:
+  HP + Realtek RTL9210B-CG causes a "System Reset" every time, regardless
+  of what file is actually at EFI/BOOT/BOOTX64.EFI), while an explicit
+  file-path entry - or the firmware's own "Boot from File" browser -
+  boots the exact same files fine. This task pre-creates that explicit
+  entry so a fresh install doesn't need a technician to do it by hand.
+
+  Only meaningful when the target disk is the same machine's own fixed
+  controller (SATA/NVMe on the motherboard): efibootmgr computes the
+  device path from the live PCI/ACPI topology of whatever disk it's
+  pointed at. That's stable across reboots for a fixed internal disk
+  (motherboard routing doesn't change based on what's plugged into USB
+  at the time), but is *not* portable if the target disk is itself
+  removable and might later be moved to different hardware or a
+  different port - so this skips itself (via _noop()) for anything
+  behind a USB bridge, for a missing EFI partition, or if efibootmgr
+  isn't even installed.
+
+  A real efibootmgr failure is also treated as non-fatal (is_success()
+  override below) rather than left to op_task_process's default - a
+  failing task here would otherwise flip the whole runner to
+  RunState.Failed and abort every task after it (see runner.py's
+  `if task.progress > 100`), which is exactly backwards for something
+  that's explicitly a nice-to-have: worst case, the target just falls
+  back to firmware's own default boot resolution, same as if this task
+  didn't exist at all.
+  """
+  def __init__(self, description, disk=None, partition_id='Linux', efi_id=EFI_NAME, bootloader_id='ubuntu', label='Linux', **kwargs):
+    self.disk = disk
+    self.partition_id = partition_id
+    self.efi_id = efi_id
+    self.bootloader_id = bootloader_id
+    self.label = label
+    # Placeholder for preflight's explain() - setup() below resolves the
+    # real partition number (and may skip the process entirely).
+    argv = ["efibootmgr", "-c", "-d", disk.device_name, "-p", str(efi_id),
+            "-L", label, "-l", "\\EFI\\%s\\shimx64.efi" % bootloader_id]
+    super().__init__(description, argv=argv, time_estimate=2, **kwargs)
+    pass
+
+  def setup(self):
+    if self.disk.usb_driver is not None:
+      msg = ("%s is behind a USB bridge (driver: %s) - skipping efibootmgr boot "
+             "entry, its device path would not survive being moved to different "
+             "hardware or a different port." % (self.disk.device_name, self.disk.usb_driver))
+      self.verdict.append(msg)
+      tlog.info(msg)
+      self._noop()
+      return
+
+    self.efi_part = self.disk.find_partition(self.efi_id)
+    if self.efi_part is None:
+      msg = "EFI partition %s does not exist on %s; cannot set up boot entry." % (str(self.efi_id), self.disk.device_name)
+      self.verdict.append(msg)
+      tlog.warning(msg)
+      self._noop()
+      return
+
+    efibootmgr_path = shutil.which("efibootmgr")
+    if efibootmgr_path is None:
+      msg = "efibootmgr is not installed - skipping EFI boot entry setup."
+      self.verdict.append(msg)
+      tlog.warning(msg)
+      self._noop()
+      return
+
+    self.argv = [efibootmgr_path, "-c",
+                 "-d", self.disk.device_name,
+                 "-p", str(self.efi_part.partition_number),
+                 "-L", self.label,
+                 "-l", "\\EFI\\%s\\shimx64.efi" % self.bootloader_id]
+    super().setup()
+    pass
+
+  def is_success(self):
+    real_success = super().is_success()
+    if real_success is False:
+      msg = "efibootmgr exited %d - continuing anyway, this step is optional." % self.process.returncode
+      self.verdict.append(msg)
+      tlog.warning(msg)
+      return True
+    return real_success
   pass
 
 #
