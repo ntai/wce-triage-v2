@@ -1,4 +1,4 @@
-.PHONY: setup upload install manifest local run ui flask gu uflask vm-start vm-stop vm-connect local-triage-start local-triage-stop local-triage-connect
+.PHONY: setup upload install manifest local run ui flask gu uflask vm-start vm-stop vm-connect local-triage-start local-triage-stop local-triage-connect local-triage-clear
 
 VM_NAME ?= xubuntu
 
@@ -75,6 +75,14 @@ local-triage-stop:
 local-triage-connect:
 	- sudo virsh --connect qemu:///system start wce-triage-device
 	sudo virt-viewer --connect qemu:///system --wait wce-triage-device
+
+# virt-install refuses to redefine a domain name that's still registered,
+# even shut off - run this before re-running local-triage against a
+# different device (e.g. the USB stick landed on a different /dev/sdX
+# this time).
+local-triage-clear:
+	- sudo virsh --connect qemu:///system destroy wce-triage-device
+	- sudo virsh --connect qemu:///system undefine wce-triage-device
 
 vm-start:
 	sudo virsh --connect qemu:///system start ${VM_NAME}

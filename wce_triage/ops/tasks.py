@@ -1355,6 +1355,7 @@ class task_install_grub(op_task_process):
       "#!/bin/sh",
       "mount -t proc none /proc",
       "mount -t sysfs none /sys",
+      "mount -t devtmpfs none /dev",
       "mount -t devpts none /dev/pts",
       "#"]
 
@@ -1409,6 +1410,7 @@ class task_install_grub(op_task_process):
     self.script.append('umount /proc || umount -lf /proc')
     self.script.append('umount /sys')
     self.script.append('umount /dev/pts')
+    self.script.append('umount /dev')
     self.script.append('# script end')
 
     # Write out the bless script
