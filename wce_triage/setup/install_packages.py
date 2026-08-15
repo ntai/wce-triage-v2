@@ -63,7 +63,7 @@ base_packages = {
     # 24.04/26.04 drags out pipewire-audio and every desktop metapackage that
     # depends on it - on 26.04 budgie it removed ubuntu-budgie-desktop and
     # ubuntu-budgie-desktop-minimal. Per-release audio server is below.
-    'pulseaudio-utils',         # pactl/paplay - talk to PipeWire's pulse shim too
+    # 'pulseaudio-utils',         # pactl/paplay - talk to PipeWire's pulse shim too
     'rfkill',                   # rfkill reports the wifi hardware/software switches
     'fonts-roboto',             # Google's fonts for UI.
     'wpasupplicant',            # wifi auth
@@ -200,7 +200,7 @@ for_server_minimal = [
     # Because the minimal server contains very little, this list is longer.
     # Maybe not using the minimal makes things easier but then it may include
     # man pages
-    'pulseaudio-utils',
+    # 'pulseaudio-utils',
     'iproute2',
     'overlayroot',
     'build-essential',          # Needed to build python packages. Should be uninstalled at the end
