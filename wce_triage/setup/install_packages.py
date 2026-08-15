@@ -26,16 +26,11 @@ def list_installed_packages():
   return installed_packages
 
 
+# ppa:ubuntu-mozilla-security/ppa used to live here. It has nothing newer than
+# jammy and only ever published cargo, so on 24.04/26.04 it produced
+# "does not have a Release file" and broke every following apt update.
+# Non-snap Firefox comes from ppa:mozillateam/ppa in install_firefox.py.
 ppa_list = {
-  '22.04': [
-    'ppa:ubuntu-mozilla-security/ppa',
-  ],
-  '24.04': [
-    'ppa:ubuntu-mozilla-security/ppa',
-  ],
-  '26.04': [
-    'ppa:ubuntu-mozilla-security/ppa',
-  ],
 }
 
 # python3-aiohttp python3-aiohttp-cors - triage backend.
@@ -313,56 +308,88 @@ desktop_packages = {
     'arduino',
     'audacity',
     'seahorse',
-    'eclipse',
     'gpg',
     'apt-transport-https',
+    # Kiwix - offline wikipedia. kiwix-tools provides kiwix-serve.
+    'kiwix-tools',
+    'zlib1g',
+    'liblzma5',
+    'libpugixml1v5',
+    'libxapian30',
+    # GNU Octave and friends
     'octave',
     'octave-doc',
-    'gperiodic',
-    'gdis',
+    'gnuplot-qt',
+    'gnuplot-x11',
+    'g++',
+    'gcc',
+    'libopenblas0',
+    'libatlas3-base',
+    'pstoedit',
+    'epstool',
+    'default-jre-headless',
+    # Chemistry
     'chemical-structures',
     'chemtool',
     'easychem',
     'cp2k',
     'cp2k-data',
-    'zlib1g',
+    'avogadro',            # molecule editor/viewer
+    'kalzium',             # periodic table (replaces gperiodic)
+    # Math
+    'maxima',
+    'wxmaxima',
+    # Astronomy, geography
+    'stellarium',
+    'kgeography',
+    'marble',
+    # Physics
+    'step',                # interactive physics simulator
+    # Python for students
+    'python3-numpy',
+    'python3-scipy',
+    'python3-matplotlib',
+    'python3-pandas',
+    'python3-sympy',
+    'python3-tk',
+    'thonny',              # beginner Python IDE
+    'idle',
+    'jupyter-notebook',
+    # Programming
+    'git',
+    'build-essential',
+    'default-jdk',
+    'geany',
+    'meld',
+    'sqlite3',
+    # Younger students
+    'gcompris-qt',
+    'tuxpaint',
+    'tuxmath',
+    'tuxtype',
+    'klavaro',             # touch typing tutor
     'etoys',
     'etoys-doc',
-    'libicu60',
-    'libpugixml1v5',
-    'liblzma5',
-    'libxapian30',
-    'libcurl4',
-    'libmicrohttpd12',
-    'zlib1g',
-    'libicu60',
-    'libpugixml1v5',
-    'liblzma5',
-    'libxapian30',
-    'libcurl4',
-    'libmicrohttpd12',
-    # GNU Octave and friends
-    'gnuplot-qt',
-    'gnuplot-x11',
-    'g++',
-    'gcc',
-    'libopenblas-base',
-    'pstoedit',
-    'epstool',
-    'default-jre-headless',
+    # Graphics, media
+    'gimp',
+    'inkscape',
+    'krita',
+    'dia',                 # diagram editor
+    'vlc',
+    'ffmpeg',
+    # CAD
+    'openscad',
+    'librecad',
+    # Reference, notes
+    'zim',                 # desktop wiki / notebook
+    'goldendict-ng',       # offline dictionaries, pairs with kiwix
+    # Utilities
+    'gparted',
+    'keepassxc',
   ],
-  '18.04': [
-    'libatlas3-base'
-    'ubuntu-edu-preschool',
-    'ubuntu-edu-primary',
-    'ubuntu-edu-secondary',
-    'ubuntu-edu-tertiary',
-  ],
-  '20.04': [
-    'libatlas3-base'
-  ],
-  '22.04': [
-  ],
+  # Heavy for refurbished hardware. Enable per deployment if the machines can
+  # take it: 'blender', 'kdenlive', 'qgis', 'kicad', 'darktable', 'scilab',
+  # 'r-base', 'openboard', 'musescore3', 'lmms'
   '24.04': [],
   '26.04': [],
 }

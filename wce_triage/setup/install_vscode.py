@@ -17,7 +17,7 @@ def install_vscode():
   cat = subprocess.Popen('sudo -H tee /etc/apt/sources.list.d/vscode.list', shell=True, stdin=subprocess.PIPE)
   cat.communicate("deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/packages.microsoft.gpg] https://packages.microsoft.com/repos/vscode stable main".encode('iso-8859-1'))
   subprocess.run('sudo -H apt-get update', shell=True)
-  subprocess.run('sudo -H apt-get install code', shell=True) # or code-insiders
+  subprocess.run('sudo -H apt-get install -y code', shell=True) # or code-insiders
   pass
 
 #

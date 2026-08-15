@@ -1,7 +1,22 @@
 #!/bin/sh
-while [ ! -r /usr/local/share/wce/contents/wikipedia/Wikipedia.zim ] ; do
-  sleep 30
-done
-systemctl start kiwix-server-proxy.service > /dev/null 2>&1
-systemctl start kiwix-server.service > /dev/null 2>&1
-exec /usr/local/bin/kiwix-serve --port=$1 /usr/local/share/wce/contents/wikipedia/*.zim
+#
+# Serve the offline wiki content. Started on demand by kiwix-server.service,
+# which is pulled in by kiwix-server-proxy.socket on port 7777.
+#
+PORT=${1:-17777}
+CONTENT_DIR=/usr/local/share/wce/contents/wikipedia
+
+KIWIX_SERVE=$(command -v kiwix-serve 2>/dev/null)
+if [ -z "$KIWIX_SERVE" ]; then
+  echo "kiwix-serve not installed. apt install kiwix-tools" >&2
+  exit 1
+fi
+
+# No content, no server. Exiting beats spinning - the socket stays armed and
+# the next request retries, by which time the .zim may have been copied in.
+if [ -z "$(ls "$CONTENT_DIR"/*.zim 2>/dev/null)" ]; then
+  echo "No .zim files in $CONTENT_DIR" >&2
+  exit 1
+fi
+
+exec "$KIWIX_SERVE" --port="$PORT" "$CONTENT_DIR"/*.zim

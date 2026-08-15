@@ -1,13 +1,14 @@
 [Unit]
 Description=Kiwix server
-After=network.target kiwix-server.socket
-Requires=kiwix-server.socket
+After=network.target
 
 [Service]
 Type=simple
 ExecStart=/usr/local/bin/wce-kiwix-server 17777
 User=www-data
 TimeoutStopSec=5
+# Shut down again when the proxy goes idle and releases us.
+StopWhenUnneeded=yes
 
-[Install]
-WantedBy=default.target
+# No [Install] section on purpose. kiwix-server-proxy.service requires this
+# unit, so it starts on demand and nothing runs until someone asks for the wiki.

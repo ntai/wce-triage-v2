@@ -1,14 +1,19 @@
 [Unit]
-Requires=kiwix-server.service
-After=kiwix-server.service
+Description=Kiwix server proxy
 Requires=kiwix-server-proxy.socket
 After=kiwix-server-proxy.socket
-JoinsNamespaceOf=kiwis-server.service
-PartOf=kiwix-server.service
+Requires=kiwix-server.service
+After=kiwix-server.service
 
 [Service]
-ExecStart=/lib/systemd/systemd-socket-proxyd 0.0.0.0:17777
+# kiwix-serve cannot accept a socket from systemd, so systemd-socket-proxyd
+# holds 7777 and forwards to kiwix-serve on loopback 17777.
+# kiwix-server.service is only "started" once forked, not once listening, so
+# wait for the port before handing connections over.
+ExecStartPre=/bin/bash -c 'until (exec 3<>/dev/tcp/127.0.0.1/17777) 2>/dev/null; do sleep 0.5; done'
+ExecStart=/usr/lib/systemd/systemd-socket-proxyd --exit-idle-time=15min 127.0.0.1:17777
+TimeoutStartSec=120
 User=www-data
 
-[Install]
-WantedBy=kiwix-server-proxy.socket
+# No [Install] section on purpose. kiwix-server-proxy.socket pulls this in on
+# the first connection; enabling it would defeat the on-demand start.

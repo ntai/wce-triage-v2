@@ -1,9 +1,12 @@
 [Unit]
 Description=Kiwix Server Proxy
-DefaultDependencies=no
-PartOf=kiwix-server.service
 
 [Socket]
+# Front door for the offline wiki. No address given, so it binds every
+# interface, v4 and v6 - remote machines reach the wiki at http://<host>:7777/.
+# 7777 is deliberately not 80/8080/8000: no root port, no port a browser or
+# another web server would assume. systemd holds this socket from boot and only
+# starts kiwix on the first connection.
 ListenStream=7777
 
 [Install]

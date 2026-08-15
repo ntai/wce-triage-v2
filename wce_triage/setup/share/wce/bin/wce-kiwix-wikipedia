@@ -1,4 +1,7 @@
 #!/bin/sh
-curl -q -s http://localhost:7777/Wikipedia >/dev/null 2>/dev/null
-sleep 1
+#
+# Open the offline wiki. The first request wakes the server through the
+# socket unit, so give it a moment before pointing the browser at it.
+#
+curl -q -s -o /dev/null --max-time 120 http://localhost:7777/ 2>/dev/null
 exec x-www-browser http://localhost:7777/$1
