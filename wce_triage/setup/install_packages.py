@@ -310,8 +310,9 @@ desktop_packages = {
     # GNU Octave and friends
     'octave',
     'octave-doc',
+    # gnuplot-qt and gnuplot-x11 both provide gnuplot and conflict, so listing
+    # both made every setup run swap one for the other. qt is the desktop one.
     'gnuplot-qt',
-    'gnuplot-x11',
     'g++',
     'gcc',
     'libopenblas0',
