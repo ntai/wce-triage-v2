@@ -33,9 +33,8 @@ def list_installed_packages():
 ppa_list = {
 }
 
-# python3-aiohttp python3-aiohttp-cors - triage backend.
-# yes, you can cross-domain
-# probably, not used for live triage.
+# The triage backend is fastapi + uvicorn out of a venv (see pyproject.toml).
+# It needs no python packages from apt.
 
 
 base_packages = {
@@ -59,8 +58,12 @@ base_packages = {
     'patch',                    # patch - needed to patch config files
     'partclone',                # partclone
     'parted',                   # parted
-    'pulseaudio',               # Ubuntu audio server
-    'pulseaudio-utils',         # Ubuntu PA utils
+    # NO 'pulseaudio' here. From 23.04 on, the audio server is PipeWire, and
+    # pipewire-audio declares Conflicts: pulseaudio. Installing pulseaudio on
+    # 24.04/26.04 drags out pipewire-audio and every desktop metapackage that
+    # depends on it - on 26.04 budgie it removed ubuntu-budgie-desktop and
+    # ubuntu-budgie-desktop-minimal. Per-release audio server is below.
+    'pulseaudio-utils',         # pactl/paplay - talk to PipeWire's pulse shim too
     'rfkill',                   # rfkill reports the wifi hardware/software switches
     'fonts-roboto',             # Google's fonts for UI.
     'wpasupplicant',            # wifi auth
@@ -90,8 +93,6 @@ base_packages = {
   '18.04': [
     'iwconfig',                 # for seeing wifi device list
     'prism2-usb-firmware',
-    'python3-aiohttp',          # for python http server
-    'python3-aiohttp-cors',     # for python http server
     'linux-wlan-ng-firmware',   # wlan fw
   ],
   '20.04': [
@@ -103,8 +104,6 @@ base_packages = {
     'overlayroot',
     'ubuntu-restricted-extras',
     'prism2-usb-firmware',
-    'python3-aiohttp',          # for python http server
-    'python3-aiohttp-cors',     # for python http server
     'linux-wlan-ng-firmware',   # wlan fw
   ],
   '22.04': [
@@ -117,8 +116,6 @@ base_packages = {
     'ubuntu-restricted-extras',
     'prism2-usb-firmware-installer',
     'linux-wlan-ng',
-    'python3-aiohttp',          # for python http server
-    'python3-aiohttp-cors',     # for python http server
     'linux-wlan-ng-firmware',   # wlan fw
   ],
   '24.04': [
@@ -128,6 +125,7 @@ base_packages = {
     'build-essential',
     'overlayroot',
     'ubuntu-restricted-extras',
+    'pipewire-audio',           # audio server. Replaced pulseaudio in 23.04.
     'firmware-realtek-rtl8723cs-bt',
     'r8125-dkms',
     'r8168-dkms',
@@ -141,6 +139,7 @@ base_packages = {
     'build-essential',
     'overlayroot',
     'ubuntu-restricted-extras',
+    'pipewire-audio',           # audio server. Replaced pulseaudio in 23.04.
     'r8125-dkms',
     'r8168-dkms',
     'broadcom-sta-dkms',
@@ -242,16 +241,8 @@ triage_kiosk_packages = {
   ],
 }
 
-# For existing triage server, these packages are needed.
-# 
-
-wce_triage_python_packages = {
-  None: [
-    "aiohttp==3.6.2",
-    "aiohttp-cors==0.7.0",
-    "python-socketio==5.6.0"
-  ]
-}
+# The triage server's own python dependencies are not installed from here.
+# It is fastapi + uvicorn running out of a venv - pyproject.toml owns that list.
 
 # Some interesting packages.
 desktop_python_packages = {
@@ -484,18 +475,13 @@ if __name__ == "__main__":
     os.chdir(cwd)
     pass
 
-  # This should move to venv
-  #
-  # install python packages
+  # install the extra desktop python packages
   #  Why not use pip3? Ubuntu server is far more stable than pypi server.
   #  Also, the packages on pypi moves too fast and dependencies can be a headache.
 
-  # python_packages = get_package_list(wce_triage_python_packages, release_version)
   # if os.environ.get('WCE_DESKTOP') == "true":
-  #   python_packages = python_packages + get_package_list(desktop_python_packages, release_version)
-  #   pass
-  
-  # for ppkg in python_packages:
-  #   subprocess.run([sudo, '-E', '-H', 'pip3', 'install', ppkg])
+  #   for ppkg in get_package_list(desktop_python_packages, release_version):
+  #     subprocess.run([sudo, '-E', '-H', 'pip3', 'install', ppkg])
+  #     pass
   #   pass
   pass

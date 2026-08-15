@@ -42,7 +42,7 @@ app.add_middleware(
   allow_headers=["*"],
 )
 # Create a SocketIO instance
-# Note: 'async_mode' could be 'asgi' or 'aiohttp' depending on your preference
+# 'asgi' is the async_mode that matches FastAPI/uvicorn.
 sockio = socketio.AsyncServer(async_mode='asgi',
                               cors_allowed_origins=DevConfig.CORS_ORIGIN_WHITELIST,
                               cors_allowed_methods=["*"],

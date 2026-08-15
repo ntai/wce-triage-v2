@@ -35,16 +35,15 @@ setuptools.setup(
             'wce_triage.http',
             'wce_triage.ops',
             'wce_triage.setup'],
+  # Keep in step with [tool.poetry.dependencies] in pyproject.toml, which is
+  # what actually builds and publishes the package.
   install_requires=[
-    'aiohttp==3.6.2',
-    'aiohttp-cors==0.7.0',
-    'Flask==3.0.2',
-    'Flask-CLI==0.4.0',
-    'Flask-Cors==3.0.10',
-    'Flask-SocketIO==5.3.6',
-    'python-engineio==4.9.0',
-    'python-socketio==5.11.2',
-    'typing_extensions==4.9.0',
+    'fastapi',
+    'uvicorn',
+    'python-socketio',
+    'typing_extensions',
+    'ruamel.yaml',
+    'pydantic',
   ],
   classifiers=[
     "Programming Language :: Python :: 3",

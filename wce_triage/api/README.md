@@ -1,7 +1,7 @@
 # api
 
-This is a re-reimplementation of the http server. HTTP server is a aiohttp server and 
-there is little to no braincell used to implement it.
+This is a re-reimplementation of the http server. It is a FastAPI application
+served by uvicorn.
 
 The Flask implementation somewhat works but I find it unsustainable. 
 

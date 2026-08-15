@@ -26,11 +26,15 @@ debian_package_dependencies = (
     'grub2-common',  # 
     'grub2-pc',      # 
     'efibootmgr',    # 
-    'alsa-utils',    # 
-    'pulseaudio',    #
-    'pulseaudio-utils',     #
-    'python3-aiohttp',      #
-    'python3-aiohttp-cors', #
+    'alsa-utils',    #
+    # No audio server here. The sound test streams the file to the browser and
+    # the browser plays it - see api/routers/dispatch.py route_music - so this
+    # package needs no pulseaudio/pipewire/pactl of its own. Requiring
+    # 'pulseaudio' actively broke 24.04/26.04: it conflicts with pipewire-audio
+    # and takes the desktop metapackages out with it.
+    # No python packages here. The server is fastapi + uvicorn now, not
+    # aiohttp, and it runs out of a venv - see pyproject.toml. System python
+    # packages are not on that path, so listing them installs dead weight.
 )
 """A tuple of strings with required Debian packages."""
 
