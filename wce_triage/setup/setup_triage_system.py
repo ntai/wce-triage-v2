@@ -6,7 +6,7 @@
 #
 
 import os, subprocess
-from . import get_ubuntu_release
+from . import get_ubuntu_release, sudo_run_module
 
 env = os.environ.copy()
 
@@ -47,7 +47,7 @@ if __name__ == "__main__":
       if ubuntu_release not in releases:
         continue
       package_name = 'wce_triage.setup.' + step_name
-    subprocess.run(['sudo', '-E', '-H', 'python3', '-m', package_name], env=env)
+    sudo_run_module(package_name, env)
     pass
 
   # Don't run periodical updates for triage.

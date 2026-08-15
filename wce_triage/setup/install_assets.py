@@ -44,7 +44,7 @@ if __name__ == "__main__":
   os.chdir('/usr/local/share/wce/triage/bin')
 
   update_triage = open('/tmp/update-wce-triage', 'w')
-  update_triage.write('''#!/bin/sh
+  update_triage.write(r'''#!/bin/sh
 #sudo -H pip3 install --no-cache-dir -i https://test.pypi.org/simple/ --no-deps wce_triage
 tempdir=/tmp/wce-$$
 mkdir -p $tempdir

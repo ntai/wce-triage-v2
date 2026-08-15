@@ -4,6 +4,7 @@
 #
 import os, subprocess
 from ..const import const
+from . import sudo_run_module
 
 # For the setup user 
 env = os.environ.copy()
@@ -34,7 +35,7 @@ if __name__ == "__main__":
   
   for step in steps:
     package_name = 'wce_triage.setup.' + step
-    subprocess.run(['sudo', '-E', '-H', 'python3', '-m', package_name], env=env)
+    sudo_run_module(package_name, env)
     pass
   pass
 

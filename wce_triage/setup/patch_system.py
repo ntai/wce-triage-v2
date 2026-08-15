@@ -2,10 +2,26 @@
 #
 import os, subprocess
 import json
-import re
+import sys
 
+from . import get_ubuntu_release
 
 SYSTEM_ROOT = '/'
+
+# Fallback when PATCHES is not in the environment. sudo may drop the
+# environment ("-E is ignored"), so guess from the other markers.
+def get_patch_variant():
+  variant = os.environ.get('PATCHES')
+  if variant:
+    return variant
+  for env_var, guess in [('WCE_TRIAGE_DISK', 'triage'),
+                         ('WCE_SERVER', 'server'),
+                         ('WCE_DESKTOP', 'desktop')]:
+    if os.environ.get(env_var) == 'true':
+      print("PATCHES not set. Using '%s' from %s." % (guess, env_var))
+      return guess
+  print("PATCHES not set and no WCE_* marker in environment. Using 'desktop'.")
+  return 'desktop'
 
 class patch_plan:
   def __init__(self, rootdepth, direc, file):
@@ -88,6 +104,9 @@ class plan_builder:
     pass
 
   def traverse_dir(self, direc):
+    if not os.path.isdir(direc):
+      print("Patch directory %s does not exist. Skipping." % direc)
+      return
     self.rootdepth = len(direc.split('/'))
     self._traverse_dir(direc)
     pass
@@ -124,22 +143,22 @@ class plan_builder:
   pass
 
 
-def get_ubuntu_release():
-  release_re = re.compile( 'DISTRIB_RELEASE\s*=\s*(\d+\.\d+)' )
-  with open('/etc/lsb-release') as lsb_release_fd:
-    for line in lsb_release_fd.readlines():
-      result = release_re.search(line)
-      if result:
-        return result.group(1)
-      pass
-    pass
-  return None
-
 if __name__ == "__main__":
-  patch_dir = os.path.dirname(__file__) 
-  patch_source_root = os.path.join(patch_dir, 'patches', get_ubuntu_release())
+  ubuntu_release = get_ubuntu_release()
+  if ubuntu_release is None:
+    print("Cannot determine Ubuntu release from /etc/lsb-release.")
+    sys.exit(1)
+    pass
+
+  patch_dir = os.path.dirname(__file__)
+  patch_source_root = os.path.join(patch_dir, 'patches', ubuntu_release)
+  if not os.path.isdir(patch_source_root):
+    print("No patches for Ubuntu %s (%s missing)." % (ubuntu_release, patch_source_root))
+    sys.exit(1)
+    pass
+
   COMMON_PATCH_SRC = os.path.join(patch_source_root, "common")
-  VARIANT_PATCH_SRC = os.path.join(patch_source_root, os.environ['PATCHES'])
+  VARIANT_PATCH_SRC = os.path.join(patch_source_root, get_patch_variant())
 
   builder = plan_builder()
   builder.traverse_dir(COMMON_PATCH_SRC)

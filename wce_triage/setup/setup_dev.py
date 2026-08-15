@@ -5,6 +5,7 @@
 #
 import os, subprocess
 from ..const import const
+from . import sudo_run_module
 
 env = os.environ.copy()
 env[const.GRUB_DISABLE_OS_PROBER] = const.true
@@ -35,7 +36,7 @@ if __name__ == "__main__":
   
   for step in steps:
     package_name = 'wce_triage.setup.' + step
-    subprocess.run(['sudo', '-E', '-H', 'python3', '-m', package_name], env=env)
+    sudo_run_module(package_name, env)
     pass
 
   # disable auto mount
