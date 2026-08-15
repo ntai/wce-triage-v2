@@ -14,6 +14,9 @@ env['PATCHES'] = 'desktop'
 
 if __name__ == "__main__":
   steps = ['install_packages',
+           # SDL2+GLEW applications need Xwayland. Runs after the packages
+           # are in, since it looks at what actually got installed.
+           'patch_wayland',
            # Create triage account
            'config_triage_user',
            # Install triage software and services
