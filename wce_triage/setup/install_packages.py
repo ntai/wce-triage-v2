@@ -385,6 +385,29 @@ desktop_packages = {
   '26.04': [],
 }
 
+
+# Edubuntu came back as a flavor in 24.04, so ubuntu-edu-* is in universe again
+# and the google drive .debs below are no longer needed there.
+#
+# These metapackages are empty - Installed-Size 12, no Depends, everything in
+# Recommends - so they must be installed WITH recommends or they bring nothing.
+# That is why they are not in desktop_packages.
+recommends_packages = {
+  None: [],
+  '24.04': [
+    'ubuntu-edu-preschool',
+    'ubuntu-edu-primary',
+    'ubuntu-edu-secondary',
+    'ubuntu-edu-tertiary',
+  ],
+  '26.04': [
+    'ubuntu-edu-preschool',
+    'ubuntu-edu-primary',
+    'ubuntu-edu-secondary',
+    'ubuntu-edu-tertiary',
+  ],
+}
+
 external_packages = {
   None: [],
   '18.04': [],
@@ -458,11 +481,20 @@ if __name__ == "__main__":
     pass
 
   if os.environ.get('WCE_DESKTOP') == "true":
+    # Metapackages whose contents are all Recommends. --no-install-recommends
+    # would install an empty package and nothing else.
+    for package in get_package_list(recommends_packages, release_version):
+      if installed_packages.get(package):
+        continue
+      subprocess.run([sudo, '-E', '-H', 'apt', 'install', '-y', package])
+      pass
+
     install_vscode()
 
     # install external packages
-    # Edubuntu is now released as separate meta packages in google drive.
-    # 
+    # For 20.04 and 22.04, the Edubuntu metapackages were not in the archive and
+    # came from google drive. 24.04 brought them back to universe, so those
+    # releases use recommends_packages above instead.
     cwd = os.getcwd()
     tempdir = tempfile.mkdtemp()
     os.chdir(tempdir)
