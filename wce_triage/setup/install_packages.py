@@ -383,7 +383,10 @@ desktop_packages = {
   # take it: 'blender', 'kdenlive', 'qgis', 'kicad', 'darktable', 'scilab',
   # 'r-base', 'openboard', 'musescore3', 'lmms'
   '24.04': [],
-  '26.04': [],
+  '26.04': [
+    'nginx',
+    'eclipse',
+  ],
 }
 
 
