@@ -1,0 +1,18 @@
+# wce-triage desktop client: serves offline content (e.g. kiwix, see
+# install_kiwix_server) straight from /usr/local/share/wce/contents/ on
+# plain HTTP, port 80 - no separate host/proxy setup needed for this role.
+server {
+	listen 80 default_server;
+	listen [::]:80 default_server;
+
+	root /usr/local/share/wce/contents;
+
+	index index.html index.htm;
+
+	server_name _;
+
+	location / {
+		try_files $uri $uri/ =404;
+		autoindex on;
+	}
+}
