@@ -1,5 +1,8 @@
 #!/usr/bin/python3
-import os, subprocess
+import os, shutil, subprocess
+
+if not shutil.which("lighttpd"):
+    exit(0)
 
 stem = ['sudo', '-H', 'lighty-enable-mod']
 

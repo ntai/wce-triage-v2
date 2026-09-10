@@ -21,7 +21,8 @@ if __name__ == "__main__":
   
   steps = ['install_packages',
            #
-           'configure_lighttpd'
+           'configure_lighttpd',
+           'configure_nginx',
 
            # Create triage account
            'config_triage_user',

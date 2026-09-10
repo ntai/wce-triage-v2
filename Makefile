@@ -64,7 +64,7 @@ ui:
 
 
 local-triage:
-	./builder/vm_from_device.py /dev/sdd --extra-disk /var/lib/libvirt/images/xubuntu.qcow2 --allow-shared-disk
+	./builder/vm_from_device.py /dev/sdg --extra-disk /var/lib/libvirt/images/xubuntu.qcow2 --allow-shared-disk
 
 local-triage-start:
 	sudo virsh --connect qemu:///system start wce-triage-device

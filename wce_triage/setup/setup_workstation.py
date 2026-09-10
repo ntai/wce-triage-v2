@@ -35,7 +35,8 @@ if __name__ == "__main__":
            #
            'install_pxeboot',
            #
-           'configure_lighttpd'
+           'configure_lighttpd',
+           'configure_nginx',
   ]
   
   for step in steps:
