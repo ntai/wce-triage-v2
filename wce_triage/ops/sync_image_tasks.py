@@ -186,6 +186,15 @@ class task_image_sync_copy(op_task_process_simple, task_image_sync):
     if self.progress >= 100 and self.process.returncode is None:
       self.progress = 99
       pass
+    # The flip side of the clamp above: the report carrying progress=100 is
+    # only emitted once, on the child's exit transition. If that lands one
+    # tick before self.process.returncode is observed, it gets clamped to 99
+    # above and nothing ever re-raises it - pares_fanout_copy_progress() sees
+    # an empty self.err on every later poll and leaves self.progress alone.
+    # See task_image_rsync.poll() for the same fix and fuller rationale.
+    elif self.progress < 100 and self.process.returncode is not None:
+      self.progress = 100 if self.process.returncode in self.good_returncode else 999
+      pass
     pass
 
   def pares_fanout_copy_progress(self):
@@ -384,6 +393,18 @@ class task_image_rsync(op_task_process_simple, task_image_sync):
     # method entirely, so it has to be re-asserted here.
     if self.progress >= 100 and self.process.returncode is None:
       self.progress = 99
+      pass
+    # The flip side of the clamp above: the exit DriverEvent that carries
+    # progress=100 gets parsed and immediately clamped back to 99 whenever
+    # the outer driver's own exit hasn't been observed by _poll_process()
+    # yet in that same tick. Once it has been observed, no further line is
+    # coming to re-raise progress - parse_rsync_copy_progress() sees an
+    # empty self.err and leaves self.progress untouched - so without this,
+    # the task sits at 99% forever even though the copy finished long ago.
+    # Mirrors op_task_process.is_success()'s good_returncode check, since
+    # this class bypasses that base-class method entirely.
+    elif self.progress < 100 and self.process.returncode is not None:
+      self.progress = 100 if self.process.returncode in self.good_returncode else 999
       pass
     pass
 
