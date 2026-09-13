@@ -2,7 +2,7 @@ import os
 import subprocess
 import traceback
 from fastapi.responses import FileResponse
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Response, status
 
 from pydantic import BaseModel
 from typing import List, Optional
@@ -29,6 +29,13 @@ from ...components import network as _network
 from ..socket_protocol import DisksEvent, LogMessageEvent
 
 router = APIRouter()
+
+
+def _no_store(response: Response) -> None:
+  """Mark a response as live/volatile state that the browser must never cache
+  across process restarts or runs."""
+  response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+  response.headers["Pragma"] = "no-cache"
 
 
 # Schema-only stubs: DisksEvent/LogMessageEvent are socket.io-only payloads (see
@@ -63,8 +70,9 @@ def route_wipe_types() -> WipeTypesResponse:
 #
 #
 @router.get("/triage", response_model_exclude_none=True)
-def route_triage() -> TriageUpdateEvent:
+def route_triage(response: Response) -> TriageUpdateEvent:
   """Handles requesting triage result"""
+  _no_store(response)
   return TriageUpdateEvent(**server.triage)
 
 
@@ -108,8 +116,9 @@ class CpuInfoResponse(BaseModel):
 # get_cpu_info is potentially ver slow for older computers as this runs a
 # cpu benchmark.
 @router.get("/cpu_info")
-def route_cpu_info() -> CpuInfoResponse:
+def route_cpu_info(response: Response) -> CpuInfoResponse:
   """Handles getting CPU rating """
+  _no_store(response)
   cpu_info = server.cpu_info
   if cpu_info is None:
     raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="CPU info not available")
@@ -139,13 +148,15 @@ def stop_save() -> None:
 
 @router.get("/disk-save-status")
 @router.get("/save/status")
-def disk_save_status() -> OperationProgress:
+def disk_save_status(response: Response) -> OperationProgress:
+  _no_store(response)
   return OperationProgress(**server._save_image.model.data)
 
 
 @router.get("/disk-load-status")
 @router.get("/load/status")
-def disk_load_status() -> OperationProgress:
+def disk_load_status(response: Response) -> OperationProgress:
+  _no_store(response)
   tlog = get_triage_logger()
   tlog.debug(repr(server._load_image.model.data))
   return OperationProgress(**server._load_image.model.data)
@@ -168,8 +179,9 @@ class DisksResponse(BaseModel):
 
 
 @router.get("/disks")
-def route_disks() -> DisksResponse:
+def route_disks(response: Response) -> DisksResponse:
   """Handles getting the list of disks"""
+  _no_store(response)
   tlog = get_triage_logger()
   server.disk_portal.detect_disks()
   disks = [disk_info(disk) for disk in server.disk_portal.disks]

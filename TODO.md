@@ -5,8 +5,9 @@
 ### 26.04 Triage
 
 * Xubuntu auto mounts USB disk - bad
-* Triage disk needs the browser cache cleared off.
-
+* Triage disk needs the browser cache cleared off 
+   -> done as not caching 
+* Music files 
 
 
 
