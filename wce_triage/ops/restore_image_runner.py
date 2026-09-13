@@ -4,7 +4,7 @@
 
 import sys, uuid, traceback, argparse, os, json
 
-from .tasks import task_fetch_partitions, task_refresh_partitions, task_set_fat_volume_id, task_fsck, task_set_ext_partition_uuid, task_mount, task_unmount, task_remove_persistent_rules, task_finalize_disk, task_install_grub, task_expand_partition, task_finalize_efi, task_install_growfs_service, task_setup_efi_boot_entry
+from .tasks import task_fetch_partitions, task_refresh_partitions, task_set_fat_volume_id, task_fsck, task_set_ext_partition_uuid, task_udevadm_settle, task_mount, task_unmount, task_remove_persistent_rules, task_finalize_disk, task_install_grub, task_finalize_grub_cfg, task_expand_partition, task_finalize_efi, task_install_growfs_service, task_setup_efi_boot_entry
 
 from .partition_runner import PartitionDiskRunner
 from ..components.video import detect_video_cards
@@ -108,6 +108,10 @@ class RestoreDiskRunner(PartitionDiskRunner):
     if self.restore_type["id"] != const.clone:
       # set the fs's uuid to it
       self.tasks.append(task_set_ext_partition_uuid("Set partition UUID", disk=disk, partition_id=partition_id, allow_fail=True))
+      # tune2fs above rewrites the on-disk UUID directly - nudge udev/blkid
+      # to forget the previous one now, instead of letting grub-mkconfig
+      # (task_install_grub, below) discover the stale cached value later.
+      self.tasks.append(task_udevadm_settle("Refresh udev/blkid for new partition UUID", disk=disk, partition_id=partition_id))
     else:
       # Read the fs's uuid back
       self.tasks.append(task_fetch_partitions("Fetch disk information", disk))
@@ -149,6 +153,12 @@ class RestoreDiskRunner(PartitionDiskRunner):
                                         universal_boot=universal_boot,
                                         bootloader_id=bootloader_id,
                                         detected_videos=detected_videos, partition_id=partition_id))
+
+    # Belt-and-suspenders: grub-mkconfig above determines the root UUID
+    # itself via grub-probe -> blkid, which can still be wrong (that's what
+    # task_udevadm_settle tries to prevent upstream). Reconcile grub.cfg
+    # with the UUID we already know is correct, while still mounted.
+    self.tasks.append(task_finalize_grub_cfg("Finalize grub.cfg UUID", disk=disk, partition_id=partition_id))
 
     # unmount so I can run fsck and expand partition
     if self.restore_type["id"] != const.clone:

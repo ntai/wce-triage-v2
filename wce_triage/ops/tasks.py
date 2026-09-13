@@ -1173,6 +1173,53 @@ class task_set_ext_partition_uuid(op_task_process_simple):
 
 
 #
+class task_udevadm_settle(op_task_process_simple):
+  """Forces udev (and blkid's view of the device) to forget whatever
+  file system UUID it associated with this partition before
+  task_set_ext_partition_uuid rewrote its superblock with `tune2fs -U`.
+
+  Nothing else in this pipeline does this. `tune2fs -U` changes the
+  on-disk UUID directly, but /dev/disk/by-uuid/* and blkid's cache are
+  populated from udev events - they keep pointing at the *old* UUID until
+  something re-triggers a probe of this exact device. task_install_grub's
+  `grub-mkconfig` later determines the root filesystem's UUID via
+  grub-probe -> blkid, not via this codebase's own (deliberately
+  blkid-free, see task_refresh_partitions) bookkeeping - so without this
+  settle, it can bake the stale UUID into grub.cfg even though every
+  other file (fstab, the EFI stub) got the correct one.
+
+  Best-effort: a failure here shouldn't fail the whole restore, since
+  task_finalize_grub_cfg reconciles grub.cfg afterwards regardless.
+  """
+  def __init__(self, description, disk=None, partition_id=None, **kwargs):
+    self.disk = disk
+    self.partition_id = partition_id
+    kwargs["time_estimate"] = kwargs.get("time_estimate", 3)
+    # argv is a placeholder - setup() fills in the real device path.
+    super().__init__(description, argv=["udevadm", "settle"], **kwargs)
+    pass
+
+  def setup(self):
+    part1 = self.disk.find_partition(self.partition_id)
+    if part1 is None:
+      self.set_progress(999, "Partition %s does not exist on %s" % (self.partition_id, self.disk.device_name))
+      return
+    device = part1.device_name
+    self.argv = ["sh", "-c",
+                 "udevadm settle --timeout=10; "
+                 "udevadm trigger --settle --action=change %s; "
+                 "udevadm settle --timeout=10" % device]
+    super().setup()
+    return
+
+  def is_success(self) -> Optional[bool]:
+    if self.process.returncode is None:
+      return None
+    return True  # best-effort - see class docstring
+  pass
+
+
+#
 class task_set_fat_label(op_task_process_simple):
   def __init__(self, description, disk=None, partition_id=None, **kwargs):
     self.disk = disk
@@ -1786,6 +1833,77 @@ class task_finalize_efi(op_task_python_simple):
       pass
     self.verdict.append("%s:\n%s" % (efi_grub_cfg_path, efi_grub_cfg))
     return True
+  pass
+
+
+class task_finalize_grub_cfg(op_task_python_simple):
+  """Reconciles /boot/grub/grub.cfg's root-filesystem UUID references
+  with this disk's actual ext4 UUID, the same way task_finalize_efi
+  already does for the tiny EFI stub.
+
+  task_install_grub's `grub-mkconfig` determines that UUID itself, via
+  grub-probe -> blkid - not via this codebase's own bookkeeping, which
+  deliberately avoids blkid (see task_refresh_partitions's docstring)
+  because it can report a stale/wrong UUID for a partition on a disk
+  that previously carried a different layout. task_udevadm_settle tries
+  to prevent that upstream, but this task is the actual safety net: it
+  runs after task_install_grub, while the partition is still mounted,
+  and forces every `search --fs-uuid --set=root <uuid>` and
+  `root=UUID=<uuid>` line in grub.cfg to the UUID we already know is
+  correct - regardless of what grub-probe guessed. Idempotent: if
+  grub-probe got it right, this is a no-op.
+  """
+  uuid_pattern = r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
+  search_re = re.compile(r'(--fs-uuid --set=root )' + uuid_pattern)
+  root_re = re.compile(r'(root=UUID=)' + uuid_pattern)
+
+  def __init__(self, description, disk=None, partition_id='Linux', **kwargs):
+    super().__init__(description, time_estimate=1, **kwargs)
+    self.disk = disk
+    self.partition_id = partition_id
+    pass
+
+  def run_python(self):
+    linuxpart = self.disk.find_partition(self.partition_id)
+    if linuxpart is None:
+      msg = "Partition with %s does not exist." % str(self.partition_id)
+      self.set_progress(999, msg)
+      raise Exception(msg)
+
+    mount_dir = linuxpart.get_mount_point()
+    grub_cfg_path = os.path.join(mount_dir, "boot", "grub", "grub.cfg")
+    if not os.path.isfile(grub_cfg_path):
+      msg = "%s does not exist; task_install_grub must run before finalizing grub.cfg." % grub_cfg_path
+      self.verdict.append(msg)
+      tlog.warning(msg)
+      return
+
+    uuid = linuxpart.fs_uuid
+    if not uuid:
+      msg = "Partition %s has no known file system UUID; leaving %s untouched." % (str(self.partition_id), grub_cfg_path)
+      self.verdict.append(msg)
+      tlog.warning(msg)
+      return
+
+    with open(grub_cfg_path) as grub_cfg_fd:
+      original = grub_cfg_fd.read()
+      pass
+
+    n_search = len(self.search_re.findall(original))
+    n_root = len(self.root_re.findall(original))
+
+    fixed = self.search_re.sub(r'\g<1>' + uuid, original)
+    fixed = self.root_re.sub(r'\g<1>' + uuid, fixed)
+
+    self.verdict.append("%s: reconciled %d 'search --fs-uuid' and %d 'root=UUID=' reference(s) to %s" %
+                         (grub_cfg_path, n_search, n_root, uuid))
+
+    if fixed != original:
+      with open(grub_cfg_path, "w") as grub_cfg_fd:
+        grub_cfg_fd.write(fixed)
+        pass
+      pass
+    pass
   pass
 
 
