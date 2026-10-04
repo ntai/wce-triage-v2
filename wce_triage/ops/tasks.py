@@ -1475,7 +1475,7 @@ class task_install_grub(op_task_process):
     self.verdict.append(cmd)
 
     # Run the blessing script with chroot
-    self.argv = ["/usr/sbin/chroot",  self.mount_dir, "/bin/sh", self.script_path_template % ""]
+    self.argv = ["chroot", self.mount_dir, "/bin/sh", self.script_path_template % ""]
 
     super().setup()
     pass

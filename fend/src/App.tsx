@@ -1,4 +1,5 @@
 import React from 'react';
+import { HashRouter } from 'react-router-dom';
 import Commands from './components/Commands';
 import './App.css';
 import Grid from '@mui/material/Grid';
@@ -87,7 +88,9 @@ class App extends React.Component {
                                 </Grid>
 
                                 <Grid size={12}>
-                                    <Commands/>
+                                    <HashRouter>
+                                        <Commands/>
+                                    </HashRouter>
                                 </Grid>
 
                             </Container>

@@ -1,45 +1,17 @@
 import React from 'react';
+import { Navigate, Route, Routes, useLocation, useNavigate, Location, NavigateFunction } from 'react-router-dom';
 import Triage from './commands/triage/Triage';
 import LoadDiskImage from './commands/load/LoadDiskImage';
 import SaveDiskImage from './commands/save/SaveDiskImage';
 import Messages from './Messages';
 import WipeDisk from "./commands/wipe/WipeDisk";
-import TriageAppSettings from "./settings/TriageAppSettings";
+// import TriageAppSettings from "./settings/TriageAppSettings";
 
 import AppBar from '@mui/material/AppBar';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
-import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import DiskImageManagement from "./commands/diskimage/DiskImageManagement";
-
-
-type TabPanelProps = {
-  children?: React.ReactNode;
-  value: number;
-  index: number;
-  visible?: boolean;
-  title?: string;
-};
-
-class TabPanel extends React.Component<TabPanelProps> {
-  render() {
-    const {children, index, value} = this.props;
-      return (
-        <div>
-          <Typography
-            component="div"
-            role="tabpanel"
-            hidden={value !== index}
-            id={`wrapped-tabpanel-${index}`}
-            aria-labelledby={`wrapped-tab-${index}`}
-          >
-            <Box sx={{p: 1}}>{children}</Box>
-          </Typography>
-        </div>
-      );
-  }
-}
 
 
 function a11yProps(index: number) {
@@ -49,60 +21,60 @@ function a11yProps(index: number) {
   };
 }
 
+// Each tab is a real route, so a manual browser refresh reloads whichever
+// tab the user is looking at instead of always bouncing back to Triage.
+// HashRouter keeps this working against the backend's plain StaticFiles
+// mount (wce_triage/api/app.py) with no server-side route fallback needed.
+const TAB_ROUTES = [
+  { path: "/triage", label: "Triage" },
+  { path: "/load", label: "Load Disk Image" },
+  { path: "/save", label: "Create Disk Image" },
+  { path: "/wipe", label: "Wipe Disk" },
+  { path: "/diskimage", label: "Disk Image" },
+  { path: "/messages", label: "Messages" },
+];
 
-type CommandsState = {
-  key: string;
-  message: string;
-  settings: boolean;
-  selectedTab: number;
+type CommandsProps = {
+  location: Location;
+  navigate: NavigateFunction;
 };
 
-export default class Commands extends React.Component<any, CommandsState> {
-  constructor(props: any) {
+class Commands extends React.Component<CommandsProps> {
+  constructor(props: CommandsProps) {
     super(props);
-    this.state = { key: "triage", message: "No message", settings: false, selectedTab: 0 };
     this.handleChange = this.handleChange.bind(this);
   }
 
   handleChange(event: React.SyntheticEvent, newValue: number) {
-    console.log(newValue);
-    this.setState( {selectedTab: newValue } );
+    this.props.navigate(TAB_ROUTES[newValue].path);
   };
 
   render() {
-    const selectedTab = this.state.selectedTab;
+    const currentPath = this.props.location.pathname;
+    const selectedTab = Math.max(0, TAB_ROUTES.findIndex(tab => tab.path === currentPath));
 
     return (
       <Box >
         <Box sx={{ p: 0 }}>
           <AppBar position="static" sx={{backgroundColor: '#208090'}}>
             <Tabs value={selectedTab} onChange={this.handleChange} aria-label="WCE Triage SPAs" textColor="inherit" indicatorColor="secondary">
-              <Tab label="Triage" {...a11yProps(0)} />
-              <Tab label="Load Disk Image" {...a11yProps(1)} />
-              <Tab label="Create Disk Image" {...a11yProps(2)} />
-              <Tab label="Wipe Disk" {...a11yProps(3)} />
-              <Tab label="Disk Image" {...a11yProps(4)} />
-              <Tab label="Messages" {...a11yProps(5)} />
+              {TAB_ROUTES.map((tab, index) => (
+                <Tab key={tab.path} label={tab.label} {...a11yProps(index)} />
+              ))}
             </Tabs>
           </AppBar>
-          <TabPanel value={selectedTab} index={0} visible={selectedTab === 0} title="Triage">
-            <Triage/>
-          </TabPanel>
-          <TabPanel value={selectedTab} index={1} visible={selectedTab === 1} title="Load">
-            <LoadDiskImage/>
-          </TabPanel>
-          <TabPanel value={selectedTab} index={2} visible={selectedTab === 2} title="Save">
-            <SaveDiskImage/>
-          </TabPanel>
-          <TabPanel value={selectedTab} index={3} visible={selectedTab === 3} title="Wipe">
-            <WipeDisk/>
-          </TabPanel>
-          <TabPanel value={selectedTab} index={4} visible={selectedTab === 4} title="Disk Images">
-            <DiskImageManagement/>
-          </TabPanel>
-          <TabPanel value={selectedTab} index={5} visible={selectedTab === 5} title="Messages">
-            <Messages selected={selectedTab === 5}/>
-          </TabPanel>
+          <Box sx={{p: 1}}>
+            <Routes>
+              <Route path="/" element={<Navigate to="/triage" replace />} />
+              <Route path="/triage" element={<Triage/>} />
+              <Route path="/load" element={<LoadDiskImage/>} />
+              <Route path="/save" element={<SaveDiskImage/>} />
+              <Route path="/wipe" element={<WipeDisk/>} />
+              <Route path="/diskimage" element={<DiskImageManagement/>} />
+              <Route path="/messages" element={<Messages selected={true}/>} />
+              <Route path="*" element={<Navigate to="/triage" replace />} />
+            </Routes>
+          </Box>
           {/*
           <Tab key="settings" eventKey="settings" title="Settings" disabled={!this.state.settings}>
             <TriageAppSettings/>
@@ -112,4 +84,12 @@ export default class Commands extends React.Component<any, CommandsState> {
       </Box>
     );
   }
+}
+
+// react-router v6 dropped withRouter/class-based route props, so this thin
+// function wrapper is what feeds Commands its location/navigate.
+export default function CommandsWithRouter() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  return <Commands location={location} navigate={navigate} />;
 }
