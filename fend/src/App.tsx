@@ -83,7 +83,7 @@ class App extends React.Component {
                                         <img src={wcelogo} className="App-logo" alt="wcelogo"/>
                                     </Grid>
                                     <Grid size="auto">
-                                        <Typography>WCE Triage {this.state.frontendVersion}/{this.state.backendVersion}</Typography>
+                                        <Typography>WCE Triage F{this.state.frontendVersion}/B{this.state.backendVersion}</Typography>
                                     </Grid>
                                 </Grid>
 

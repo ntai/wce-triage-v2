@@ -60,7 +60,7 @@ run:
 	. ./.venv/bin/activate && PYTHONPATH=${PWD} sudo ./.venv/bin/uvicorn wce_triage.api.app:socket_app  --host 0.0.0.0 --port 10600
 
 ui:
-	rsync -av --delete ../wce-triage-ui/build/ ./wce_triage/ui/
+	$(MAKE) -C fend build
 
 
 local-triage:
