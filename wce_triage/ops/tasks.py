@@ -7,7 +7,7 @@
 # exec runs through the tasks.
 #
 
-import datetime, re, subprocess, abc, os, select, uuid, json, traceback, shutil, glob
+import datetime, re, subprocess, abc, os, select, uuid, json, traceback, shutil
 import signal
 import struct
 import errno
@@ -1958,7 +1958,14 @@ class task_verify_initramfs(op_task_python_simple):
       return
 
     known = {part.fs_uuid.lower() for part in self.disk.partitions if part.fs_uuid}
-    initrds = sorted(glob.glob(os.path.join(mount_dir, "boot", "initrd.img-*")))
+    # Only initrds paired with a kernel - what grub-mkconfig boots and dracut
+    # --regenerate-all rebuilds. Leftovers like initrd.img-<ver>.pre-earlykms
+    # on the master still carry its UUIDs but are never used.
+    boot_dir = os.path.join(mount_dir, "boot")
+    initrds = sorted(os.path.join(boot_dir, "initrd.img-" + vmlinuz[len("vmlinuz-"):])
+                     for vmlinuz in os.listdir(boot_dir)
+                     if vmlinuz.startswith("vmlinuz-")
+                     and os.path.isfile(os.path.join(boot_dir, "initrd.img-" + vmlinuz[len("vmlinuz-"):])))
     stale = []
     for initrd in initrds:
       in_chroot = initrd[len(mount_dir):]
