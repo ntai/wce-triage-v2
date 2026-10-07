@@ -10,7 +10,7 @@ import json
 
 from wce_triage.ops.runner import Runner
 from .tasks import task_mount, task_unmount, task_remove_persistent_rules, task_finalize_disk, task_install_grub, \
-  task_fetch_partitions, task_refresh_partitions
+  task_fetch_partitions, task_refresh_partitions, task_verify_initramfs
 
 from ..components.disk import create_storage_instance
 from ..lib.util import get_triage_logger
@@ -94,6 +94,7 @@ class BlessRunner(Runner):
     bootloader_id = self.restore_type.get(const.bootloader_id, "ubuntu")
     self.tasks.append(task_install_grub('Install GRUB boot manager', disk=disk, detected_videos=videos, partition_id=partition_id,
                                         universal_boot=universal_boot, bootloader_id=bootloader_id))
+    self.tasks.append(task_verify_initramfs("Verify initramfs UUIDs", disk=disk, partition_id=partition_id))
     self.tasks.append(task_unmount("Unmount target", disk=disk, partition_id=partition_id))
     pass
 

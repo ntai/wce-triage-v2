@@ -7,7 +7,7 @@
 # exec runs through the tasks.
 #
 
-import datetime, re, subprocess, abc, os, select, uuid, json, traceback, shutil
+import datetime, re, subprocess, abc, os, select, uuid, json, traceback, shutil, glob
 import signal
 import struct
 import errno
@@ -1369,8 +1369,11 @@ class task_install_grub(op_task_process):
     grub_write_size = 4 * 2**20
     grub_size = grub_read_size + grub_write_size
     speed = self.disk.estimate_speed("grub")
+    # Initramfs rebuild: dracut takes tens of seconds per kernel, and an
+    # image usually carries two kernels.
+    initramfs_time = 90
     # argv is a placeholder
-    super().__init__(description, argv=['/usr/sbin/grub-install', disk.device_name], time_estimate=grub_size/speed, **kwargs)
+    super().__init__(description, argv=['/usr/sbin/grub-install', disk.device_name], time_estimate=grub_size/speed + initramfs_time, **kwargs)
     pass
 
   #
@@ -1404,6 +1407,8 @@ class task_install_grub(op_task_process):
       "mount -t sysfs none /sys",
       "mount -t devtmpfs none /dev",
       "mount -t devpts none /dev/pts",
+      # dracut wants /run (systemd, udev db); without it it warns or misbehaves.
+      "mount -t tmpfs none /run",
       "#"]
 
     # Things to do is installing grub
@@ -1447,6 +1452,17 @@ class task_install_grub(op_task_process):
       self.script.append("apt-get -q -y --force-yes purge `dpkg --get-selections | cut -f 1 | grep -v xorg | grep nvidia-`")
       pass
 
+    # Rebuild the initramfs for every installed kernel. The image's initrds
+    # are built on the master machine; dracut's host-only mode bakes in the
+    # master's root UUID (etc/cmdline.d/20-root-dev.conf) and a
+    # dev-disk-by-uuid unit for the master's ESP. Restored disk would hang
+    # ~3 minutes in dracut-initqueue waiting for that ESP and land in the
+    # emergency shell. fstab is already new (task_finalize_disk) and the
+    # target ESP is mounted, so host-only detection now sees the right
+    # devices. Must be all kernels - uname -r here is the triage kernel.
+    self.script.append('# Regenerate initramfs for all installed kernels')
+    self.script.append('if command -v dracut >/dev/null; then dracut -f --regenerate-all; else update-initramfs -u -k all; fi')
+
     self.script.append('# Set up the grub.cfg')
     self.script.append('chmod +rw /boot/grub/grub.cfg')
     self.script.append('grub-mkconfig -o /boot/grub/grub.cfg')
@@ -1454,6 +1470,7 @@ class task_install_grub(op_task_process):
     self.script.append('# clean up')
     if self.efi_part:
       self.script.append("umount /boot/efi")
+    self.script.append('umount /run')
     self.script.append('umount /proc || umount -lf /proc')
     self.script.append('umount /sys')
     self.script.append('umount /dev/pts')
@@ -1903,6 +1920,63 @@ class task_finalize_grub_cfg(op_task_python_simple):
         grub_cfg_fd.write(fixed)
         pass
       pass
+    pass
+  pass
+
+
+class task_verify_initramfs(op_task_python_simple):
+  """Fails loudly if any dracut initrd on the target still references a
+  file system UUID that isn't on this disk.
+
+  task_install_grub regenerates the initramfs, but if that silently went
+  wrong the restored disk hangs in dracut-initqueue waiting for the
+  master's ESP. Checks the 'root=UUID=' in the baked-in dracut cmdline
+  and the dev-disk-by-uuid device units host-only mode pulls in. Only
+  dracut images are checked - initramfs-tools takes root= from the kernel
+  command line, which task_finalize_grub_cfg already covers.
+  """
+  uuid_pattern = r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[0-9a-fA-F]{4}-[0-9a-fA-F]{4}'
+  root_re = re.compile(r'root=UUID=(' + uuid_pattern + ')')
+  unit_re = re.compile(r'dev-disk-by\\x2duuid-([0-9a-fA-F\\x]+)\.device')
+
+  def __init__(self, description, disk=None, partition_id='Linux', **kwargs):
+    super().__init__(description, time_estimate=10, **kwargs)
+    self.disk = disk
+    self.partition_id = partition_id
+    pass
+
+  def run_python(self):
+    linuxpart = self.disk.find_partition(self.partition_id)
+    if linuxpart is None:
+      msg = "Partition with %s does not exist." % str(self.partition_id)
+      self.set_progress(999, msg)
+      raise Exception(msg)
+
+    mount_dir = linuxpart.get_mount_point()
+    if not os.path.exists(os.path.join(mount_dir, "usr", "bin", "lsinitrd")):
+      self.verdict.append("No dracut on target; skipping initramfs UUID check.")
+      return
+
+    known = {part.fs_uuid.lower() for part in self.disk.partitions if part.fs_uuid}
+    initrds = sorted(glob.glob(os.path.join(mount_dir, "boot", "initrd.img-*")))
+    stale = []
+    for initrd in initrds:
+      in_chroot = initrd[len(mount_dir):]
+      out = subprocess.run(["chroot", mount_dir, "lsinitrd", in_chroot],
+                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True).stdout
+      found = set(self.root_re.findall(out))
+      found |= {u.replace("\\x2d", "-") for u in self.unit_re.findall(out)}
+      foreign = sorted(u for u in found if u.lower() not in known)
+      self.verdict.append("%s: UUIDs %s" % (in_chroot, ", ".join(sorted(found)) or "none"))
+      if foreign:
+        stale.append("%s references %s" % (in_chroot, ", ".join(foreign)))
+        pass
+      pass
+
+    if stale:
+      msg = "Stale UUIDs in initramfs (not on this disk): " + "; ".join(stale)
+      self.set_progress(999, msg)
+      raise Exception(msg)
     pass
   pass
 
